@@ -1,4 +1,11 @@
 {
+  "name": "solutionhub_homepage",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
@@ -17,15 +24,5 @@
     "razorpay": "^2.9.6",
     "socket.io": "^4.8.3"
   },
-  "name": "solutionhub_homepage",
-  "version": "1.0.0",
-  "main": "auth.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "license": "ISC"
 }
