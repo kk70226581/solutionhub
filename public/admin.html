@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolutionHub • Admin Dashboard v3.4</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0a0f1e;
+            --bg-secondary: #111827;
+            --card: #1f2937;
+            --glass: rgba(255,255,255,0.03);
+            --accent: #6366f1;
+            --accent-dark: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #f9fafb;
+            --text-muted: #9ca3af;
+            --text-dim: #6b7280;
+            --border: rgba(255,255,255,0.08);
+            --border-hover: rgba(99,102,241,0.2);
+            --shadow: 0 10px 40px rgba(0,0,0,0.4);
+            --shadow-lg: 0 25px 60px -15px rgba(0,0,0,0.5);
+            --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(145deg, var(--bg-primary) 0%, #1e1b2f 100%);
+            color: var(--text); 
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* FIXED IMAGE MODAL */
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+        }
+        .image-modal.active { display: flex !important; align-items: center; justify-content: center; }
+        .modal-content {
+            max-width: 90vw;
+            max-height: 90vh;
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+        }
+        .modal-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            max-width: 800px;
+            max-height: 700px;
+        }
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .modal-close:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+        .modal-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.1);
+            border: none;
+            width: 50px;
+            height: 100px;
+            border-radius: 50px;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .modal-nav:hover { background: rgba(255,255,255,0.2); transform: translateY(-50%) scale(1.1); }
+        .modal-prev { left: 20px; }
+        .modal-next { right: 20px; }
+
+        .dashboard { max-width: 1600px; margin: 0 auto; padding: 2rem; }
+
+        /* Header */
+        .header { 
+            background: rgba(15, 23, 42, 0.8); 
+            backdrop-filter: blur(25px); 
+            border-radius: 24px; 
+            padding: 2.5rem; 
+            margin-bottom: 2.5rem; 
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--gradient);
+        }
+        .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; }
+        .header h1 { 
+            font-size: 2.5rem; 
+            font-weight: 800; 
+            background: var(--gradient);
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent;
+            line-height: 1.1;
+        }
+        .refresh-btn { 
+            background: var(--gradient); 
+            border: none; 
+            padding: 1rem 2rem; 
+            border-radius: 16px; 
+            color: white; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem;
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+        }
+        .refresh-btn:hover:not(:disabled) { 
+            transform: translateY(-3px); 
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.4); 
+        }
+        .refresh-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        /* Stats Cards */
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+            gap: 1.5rem; 
+            margin-bottom: 2.5rem; 
+        }
+        .stat-card { 
+            background: rgba(31, 41, 55, 0.6); 
+            backdrop-filter: blur(10px);
+            border-radius: 20px; 
+            padding: 2rem; 
+            text-align: center; 
+            border: 1px solid var(--border);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .stat-card:hover { 
+            transform: translateY(-8px) scale(1.02); 
+            box-shadow: var(--shadow-lg); 
+            border-color: var(--border-hover);
+        }
+        .stat-card:hover::before { opacity: 1; }
+        .stat-number { 
+            font-size: 3rem; 
+            font-weight: 800; 
+            line-height: 1; 
+            margin-bottom: 0.5rem;
+        }
+        .stat-label { 
+            color: var(--text-muted); 
+            font-size: 0.95rem; 
+            font-weight: 500;
+        }
+        .stat-online { background: linear-gradient(135deg, var(--success), #059669); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-pending { background: linear-gradient(135deg, var(--warning), #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-approved { background: linear-gradient(135deg, var(--success), #047857); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        /* Tabs */
+        .tabs { 
+            display: flex; 
+            gap: 1rem; 
+            margin-bottom: 2.5rem; 
+            flex-wrap: wrap; 
+            background: var(--glass);
+            padding: 1rem;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+        .tab-btn { 
+            padding: 1rem 1.75rem; 
+            border: 2px solid transparent;
+            background: transparent; 
+            color: var(--text-muted); 
+            border-radius: 16px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            transition: all 0.3s ease; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem;
+            white-space: nowrap;
+        }
+        .tab-btn.active { 
+            background: var(--gradient); 
+            color: white; 
+            border-color: transparent;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4); 
+            transform: translateY(-2px);
+        }
+        .tab-btn:hover:not(.active) { 
+            background: rgba(99, 102, 241, 0.15); 
+            color: var(--text); 
+            border-color: var(--border-hover);
+        }
+
+        /* Expert Cards */
+        .section { display: none; }
+        .section.active { display: block; animation: slideUp 0.4s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .expert-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(520px, 1fr)); 
+            gap: 2rem; 
+        }
+
+        .expert-card { 
+            background: var(--glass); 
+            backdrop-filter: blur(20px);
+            border-radius: 28px; 
+            overflow: hidden; 
+            border: 1px solid var(--border);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            max-width: 540px;
+        }
+        .expert-card:hover { 
+            transform: translateY(-12px); 
+            box-shadow: var(--shadow-lg); 
+            border-color: var(--border-hover);
+        }
+        .expert-card.approved { border-image: linear-gradient(45deg, var(--success), var(--accent)) 1; }
+        .expert-card.pending { border-image: linear-gradient(45deg, var(--warning), var(--accent)) 1; }
+        .expert-card.rejected { border-image: linear-gradient(45deg, var(--danger), var(--accent)) 1; }
+
+        .expert-hero { 
+            position: relative; 
+            height: 180px;
+            background: var(--gradient);
+            overflow: visible;
+        }
+        .expert-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+            animation: float 6s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(20px, -20px) rotate(120deg); }
+            66% { transform: translate(-15px, 15px) rotate(240deg); }
+        }
+
+        /* FIXED CLICKABLE AVATAR */
+        .avatar-container {
+            position: absolute;
+            top: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            border: 5px solid rgba(255,255,255,0.35);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 20;
+            cursor: pointer;
+        }
+        .avatar-container:hover {
+            transform: translateX(-50%) scale(1.1);
+            border-color: rgba(255,255,255,0.6);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+        }
+        .avatar { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        .avatar-fallback {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3), rgba(99,102,241,0.2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.8rem;
+            font-weight: 300;
+            color: white;
+        }
+
+        .expert-info-header {
+            padding: 90px 2.5rem 2rem;
+            text-align: center;
+            position: relative;
+            background: rgba(255,255,255,0.02);
+            border-top: 1px solid var(--border);
+        }
+        .expert-name { 
+            font-size: 1.8rem; 
+            font-weight: 800; 
+            margin-bottom: 0.5rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.2;
+        }
+        .expert-field { 
+            color: var(--accent); 
+            font-weight: 600; 
+            font-size: 0.95rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1.5px;
+            margin-bottom: 1.25rem;
+        }
+        .status-badge { 
+            display: inline-flex;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .status-pending { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .status-approved { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .status-rejected { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+
+        .expert-body { padding: 0 2.5rem 2.5rem; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 600px) {
+            .info-grid { grid-template-columns: 1fr; }
+        }
+        .info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem;
+            background: rgba(255,255,255,0.02);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        .info-item:hover {
+            background: rgba(99, 102, 241, 0.08);
+            border-color: var(--border-hover);
+            transform: translateX(6px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+        .info-icon {
+            width: 2.2rem;
+            height: 2.2rem;
+            background: var(--gradient);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: white;
+            flex-shrink: 0;
+            margin-top: 0.2rem;
+        }
+        .info-content strong {
+            display: block;
+            color: var(--text);
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+        .info-content span {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+        .info-content a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .info-content a:hover {
+            text-decoration: underline;
+        }
+
+        /* Resume Section */
+        .resume-section {
+            background: rgba(99, 102, 241, 0.12);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-hover);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .resume-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient);
+        }
+        .resume-icon {
+            width: 4.5rem;
+            height: 4.5rem;
+            background: var(--gradient);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            color: white;
+            margin: 0 auto 1.25rem;
+            box-shadow: 0 12px 35px rgba(99, 102, 241, 0.4);
+        }
+        .resume-link { 
+            color: white; 
+            text-decoration: none; 
+            font-weight: 700; 
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+            padding: 0.9rem 2.5rem;
+            background: var(--gradient);
+            border-radius: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.35);
+        }
+        .resume-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 18px 45px rgba(99, 102, 241, 0.5);
+        }
+        .no-resume {
+            text-align: center;
+            padding: 2.5rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+        .no-resume i { font-size: 3.5rem; opacity: 0.25; margin-bottom: 1rem; display: block; }
+
+        .actions { 
+            display: flex; 
+            gap: 1rem; 
+            padding: 2rem 2.5rem; 
+            border-top: 1px solid var(--border);
+            background: rgba(0,0,0,0.25);
+            backdrop-filter: blur(10px);
+        }
+        .action-btn { 
+            flex: 1; 
+            padding: 1.3rem; 
+            border: none; 
+            border-radius: 16px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            font-size: 1rem;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .approve-btn { 
+            background: linear-gradient(135deg, var(--success), #059669); 
+            color: white; 
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.35);
+        }
+        .reject-btn { 
+            background: linear-gradient(135deg, var(--danger), #dc2626); 
+            color: white; 
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.35);
+        }
+        .action-btn:hover:not(:disabled) { 
+            transform: translateY(-4px); 
+            box-shadow: 0 20px 45px rgba(0,0,0,0.4); 
+        }
+        .action-btn:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed; 
+            transform: none; 
+        }
+
+        /* Empty State */
+        .empty-state { 
+            text-align: center; 
+            padding: 6rem 3rem; 
+            color: var(--text-muted); 
+        }
+        .empty-icon { 
+            font-size: 6rem; 
+            margin-bottom: 2rem; 
+            opacity: 0.2; 
+            display: block;
+        }
+        .empty-state h3 { font-size: 1.5rem; margin-bottom: 1rem; }
+
+        /* Messages */
+        .message { 
+            padding: 1.25rem 2rem; 
+            border-radius: 16px; 
+            margin: 1.5rem 0; 
+            font-weight: 600; 
+            transform: translateX(-100%); 
+            transition: all 0.4s ease; 
+        }
+        .message.show { transform: translateX(0); }
+        .message.success { 
+            background: rgba(16, 185, 129, 0.15); 
+            color: var(--success); 
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        .message.error { 
+            background: rgba(239, 68, 68, 0.15); 
+            color: var(--danger); 
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .expert-grid { grid-template-columns: repeat(auto-fill, minmax(450px, 1fr)); }
+        }
+        @media (max-width: 768px) {
+            .dashboard { padding: 1rem; }
+            .expert-grid { grid-template-columns: 1fr; }
+            .tabs { justify-content: center; flex-direction: column; align-items: center; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .header-top { flex-direction: column; gap: 1.5rem; text-align: center; }
+            .actions { flex-direction: column; }
+            .info-grid { grid-template-columns: 1fr; }
+            .header h1 { font-size: 2rem; }
+            .avatar-container {
+                top: 130px;
+                width: 110px;
+                height: 110px;
+            }
+            .expert-info-header {
+                padding: 85px 2rem 1.75rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- FIXED IMAGE MODAL -->
+    <div id="imageModal" class="image-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeImageModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <img id="modalImage" class="modal-image" src="" alt="Profile Image">
+            <button class="modal-nav modal-prev" onclick="changeImage(-1)">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="modal-nav modal-next" onclick="changeImage(1)">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-top">
+                <h1><i class="fas fa-crown"></i> Admin Dashboard v3.4</h1>
+                <button class="refresh-btn" onclick="loadAllExperts()" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
+                </button>
+            </div>
+            <div id="message" class="message"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number stat-online" id="onlineCount">0</div>
+                <div class="stat-label"><i class="fas fa-circle"></i> Live Experts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number stat-pending" id="pendingCount">0</div>
+                <div class="stat-label"><i class="fas fa-clock"></i> Pending Review</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number stat-approved" id="approvedCount">0</div>
+                <div class="stat-label"><i class="fas fa-check-circle"></i> Approved</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="rejectedCount">0</div>
+                <div class="stat-label"><i class="fas fa-times-circle"></i> Rejected</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalCount">0</div>
+                <div class="stat-label"><i class="fas fa-users"></i> Total Experts</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('pending')">
+                <i class="fas fa-clock"></i> <span id="pendingTabCount">Pending (0)</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('approved')">
+                <i class="fas fa-check-circle"></i> <span id="approvedTabCount">Approved (0)</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('rejected')">
+                <i class="fas fa-times-circle"></i> <span id="rejectedTabCount">Rejected (0)</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab('all')">
+                <i class="fas fa-list"></i> All Experts
+            </button>
+        </div>
+
+        <!-- Content Sections -->
+        <div id="pending-section" class="section active"></div>
+        <div id="approved-section" class="section"></div>
+        <div id="rejected-section" class="section"></div>
+        <div id="all-section" class="section"></div>
+    </div>
+
+    <script>
+        let allExperts = [];
+        let isLoading = false;
+        let currentImageIndex = 0;
+        let currentImages = [];
+
+        const socket = io();
+        socket.on("online_users", (users) => {
+            const onlineCount = Object.values(users).filter(u => u.role === 'expert').length;
+            document.getElementById('onlineCount').textContent = onlineCount;
+        });
+
+        function showMessage(text, type = 'success') {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = `message ${type} show`;
+            setTimeout(() => msg.classList.remove('show'), 4000);
+        }
+
+        // FIXED IMAGE MODAL FUNCTIONS
+        function openImageModal(imageSrc, imagesArray) {
+            try {
+                currentImages = Array.isArray(imagesArray) ? imagesArray : [];
+                currentImageIndex = currentImages.indexOf(imageSrc);
+                if (currentImageIndex === -1) currentImageIndex = 0;
+                document.getElementById('modalImage').src = imageSrc;
+                document.getElementById('imageModal').classList.add('active');
+                document.body.style.overflow = 'hidden';
+                console.log('🖼️ Image modal opened:', imageSrc, currentImages);
+            } catch(e) {
+                console.error('❌ Modal error:', e);
+            }
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        function changeImage(direction) {
+            if (currentImages.length <= 1) return;
+            currentImageIndex = (currentImageIndex + direction + currentImages.length) % currentImages.length;
+            document.getElementById('modalImage').src = currentImages[currentImageIndex];
+        }
+
+        // Close modal on outside click or ESC
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this) closeImageModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeImageModal();
+        });
+
+        async function loadAllExperts() {
+            if (isLoading) return;
+            isLoading = true;
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            refreshBtn.disabled = true;
+
+            try {
+                console.log('🔄 Fetching experts from backend...');
+                
+                const [pendingRes, approvedRes, rejectedRes, healthRes] = await Promise.all([
+                    fetch('/api/experts?status=pending').catch(() => ({json: () => []})),
+                    fetch('/api/experts?status=approved').catch(() => ({json: () => []})),
+                    fetch('/api/experts?status=rejected').catch(() => ({json: () => []})),
+                    fetch('/api/health').catch(() => ({json: () => ({onlineExperts: 0})}))
+                ]);
+
+                const [pending, approved, rejected, health] = await Promise.all([
+                    pendingRes.json(),
+                    approvedRes.json(),
+                    rejectedRes.json(),
+                    healthRes.json()
+                ]);
+
+                allExperts = [...pending, ...approved, ...rejected];
+                
+                document.getElementById('pendingCount').textContent = pending.length;
+                document.getElementById('approvedCount').textContent = approved.length;
+                document.getElementById('rejectedCount').textContent = rejected.length;
+                document.getElementById('totalCount').textContent = allExperts.length;
+                document.getElementById('onlineCount').textContent = health.onlineExperts || 0;
+
+                document.getElementById('pendingTabCount').textContent = `Pending (${pending.length})`;
+                document.getElementById('approvedTabCount').textContent = `Approved (${approved.length})`;
+                document.getElementById('rejectedTabCount').textContent = `Rejected (${rejected.length})`;
+
+                renderExperts('pending');
+                showMessage(`✅ Dashboard updated: ${allExperts.length} total experts`);
+            } catch(err) {
+                console.error('❌ Load error:', err);
+                showMessage('Failed to load data from backend', 'error');
+                document.getElementById('pending-section').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔌</div>
+                        <h3>Backend Connection Issue</h3>
+                        <p>Check if server is running on localhost:3000</p>
+                    </div>
+                `;
+            } finally {
+                isLoading = false;
+                refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh Data';
+                refreshBtn.disabled = false;
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(tab + '-section').classList.add('active');
+            
+            renderExperts(tab);
+        }
+
+        function renderExperts(status) {
+            const container = document.getElementById(status + '-section');
+            const experts = status === 'all' ? allExperts : allExperts.filter(e => e.status === status);
+            
+            if (!experts.length) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">${status === 'pending' ? '⏳' : status === 'approved' ? '✅' : '❌'}</div>
+                        <h3>No ${status} experts</h3>
+                        <p>No experts match this filter yet.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // FIXED: Proper image array handling
+            const allImages = experts
+                .filter(e => e.avatar)
+                .map(e => `/${e.avatar}`);
+            
+            container.innerHTML = experts.map((expert, index) => {
+                const imageUrl = expert.avatar ? `/${expert.avatar}` : '';
+                const safeImagesArray = JSON.stringify(allImages).replace(/'/g, "&#39;");
+                const safeImageUrl = imageUrl.replace(/'/g, "&#39;");
+                
+                return `
+                <div class="expert-card ${expert.status}">
+                    <div class="expert-hero"></div>
+                    <div class="avatar-container" ${imageUrl ? `onclick="openImageModal('${safeImageUrl}', ${safeImagesArray})" title="Click to view full image"` : ''}>
+                        ${expert.avatar ? 
+                            `<img src="${imageUrl}" alt="${expert.name}" class="avatar" 
+                                    onerror="this.parentNode.innerHTML='<div class=\\'avatar-fallback\\'><i class=\\'fas fa-user-circle\\'></i></div>'"
+                                    loading="lazy">` : 
+                            `<div class="avatar-fallback"><i class="fas fa-user-circle"></i></div>`
+                        }
+                    </div>
+                    <div class="expert-info-header">
+                        <h3 class="expert-name">${expert.name || 'Unknown Expert'}</h3>
+                        <div class="expert-field">${expert.field || 'General Expert'}</div>
+                        <span class="status-badge status-${expert.status}">${expert.status.toUpperCase()}</span>
+                    </div>
+                    <div class="expert-body">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-icon"><i class="fas fa-envelope"></i></div>
+                                <div class="info-content">
+                                    <strong>${expert.email || 'No email'}</strong>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-icon"><i class="fas fa-briefcase"></i></div>
+                                <div class="info-content">
+                                    <strong>${expert.experience || 0}+ years</strong>
+                                    <span>Experience</span>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-icon"><i class="fas fa-calendar"></i></div>
+                                <div class="info-content">
+                                    <strong>${expert.createdAt ? new Date(expert.createdAt).toLocaleDateString() : 'Unknown'}</strong>
+                                    <span>Joined</span>
+                                </div>
+                            </div>
+                            ${expert.linkedin ? `
+                            <div class="info-item">
+                                <div class="info-icon"><i class="fab fa-linkedin"></i></div>
+                                <div class="info-content">
+                                    <strong>LinkedIn Profile</strong>
+                                    <span><a href="${expert.linkedin}" target="_blank">View Profile</a></span>
+                                </div>
+                            </div>` : ''}
+                            <div class="info-item">
+                                <div class="info-icon"><i class="fas fa-quote-left"></i></div>
+                                <div class="info-content">
+                                    <strong>${(expert.headline || expert.summary || 'No description').substring(0, 80)}${(expert.headline || expert.summary) && (expert.headline || expert.summary).length > 80 ? '...' : ''}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        ${expert.resumePath ? `
+                            <div class="resume-section">
+                                <div class="resume-icon"><i class="fas fa-file-pdf"></i></div>
+                                <a href="/${expert.resumePath}" target="_blank" class="resume-link">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    View Resume
+                                </a>
+                            </div>
+                        ` : `
+                            <div class="no-resume">
+                                <i class="fas fa-file-alt"></i>
+                                <strong>No resume uploaded</strong>
+                            </div>
+                        `}
+                    </div>
+                    <div class="actions">
+                        <button class="action-btn approve-btn" onclick="updateStatus('${expert.email}', 'approved')" ${expert.status === 'approved' ? 'disabled' : ''}>
+                            <i class="fas fa-check"></i> APPROVE
+                        </button>
+                        <button class="action-btn reject-btn" onclick="updateStatus('${expert.email}', 'rejected')" ${expert.status === 'rejected' ? 'disabled' : ''}>
+                            <i class="fas fa-times"></i> REJECT
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        async function updateStatus(email, status) {
+            const btns = document.querySelectorAll('.action-btn');
+            btns.forEach(btn => btn.disabled = true);
+            
+            try {
+                const expert = allExperts.find(e => e.email === email);
+                showMessage(`Updating ${expert.name} → ${status.toUpperCase()}...`);
+                
+                const res = await fetch('/api/admin/expert-status', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email, status})
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    showMessage(`${expert.name} ${status.toUpperCase()}D! ✅`, 'success');
+                    setTimeout(loadAllExperts, 1000);
+                } else {
+                    showMessage(data.error || 'Update failed', 'error');
+                }
+            } catch(err) {
+                console.error('❌ Update error:', err);
+                showMessage('Network error: ' + err.message, 'error');
+            } finally {
+                btns.forEach(btn => btn.disabled = false);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            console.log('🚀 Admin Dashboard v3.4 - FULLSCREEN IMAGE MODAL FIXED ✅');
+            loadAllExperts();
+        });
+
+        setInterval(loadAllExperts, 15000);
+    </script>
+</body>
+</html>

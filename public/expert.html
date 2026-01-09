@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolutionHub - Verified Experts</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    <!-- Razorpay Checkout Script -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    
+    <style>
+        :root {
+            --bg: #0a0c1a;
+            --card: #111827;
+            --glass: rgba(255,255,255,0.03);
+            --border: rgba(255,255,255,0.08);
+            --text: #f8fafc;
+            --muted: #cbd5e1;
+            --accent: #6366f1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --radius: 20px;
+            --shadow: 0 25px 60px rgba(0,0,0,.45);
+            --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(145deg, var(--bg) 0%, #020617 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(10,12,26,.95);
+            backdrop-filter: blur(25px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-inner {
+            max-width: 1400px;
+            margin: auto;
+            padding: 20px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            font-size: 28px;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            cursor: pointer;
+        }
+
+        .nav {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: var(--muted);
+            font-weight: 600;
+            transition: all .3s ease;
+            font-size: 15px;
+        }
+
+        .nav a:hover { color: var(--text); }
+
+        .nav .cta {
+            background: var(--gradient);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 16px;
+            font-weight: 700;
+            box-shadow: 0 8px 25px rgba(99,102,241,.3);
+        }
+
+        .nav span {
+            color: var(--text);
+            font-weight: 600;
+            font-size: 14px;
+            padding: 8px 16px;
+            background: var(--glass);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .hero {
+            text-align: center;
+            padding: 80px 20px 60px;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+        }
+
+        .hero p {
+            max-width: 700px;
+            margin: 0 auto 40px;
+            color: var(--muted);
+            font-size: 20px;
+        }
+
+        .filters {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 40px auto 60px;
+            max-width: 900px;
+            padding: 0 20px;
+        }
+
+        .filters button {
+            padding: 14px 24px;
+            border-radius: 16px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            cursor: pointer;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            transition: all .3s ease;
+            font-size: 14px;
+        }
+
+        .filters button.active,
+        .filters button:hover {
+            background: var(--gradient);
+            color: white;
+            border-color: transparent;
+            transform: translateY(-2px);
+        }
+
+        .grid {
+            max-width: 1400px;
+            margin: auto;
+            padding: 0 32px 100px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 32px;
+        }
+
+        .card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: all .4s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        .card:hover {
+            transform: translateY(-12px);
+            box-shadow: var(--shadow);
+            border-color: rgba(99,102,241,.3);
+        }
+
+        .card-header {
+            padding: 32px 28px 20px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            flex-shrink: 0;
+        }
+
+        .avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid rgba(99,102,241,.3);
+            display: block;
+        }
+
+        .avatar-fallback {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .card-content {
+            flex: 1;
+        }
+
+        .card-content h3 {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .domain {
+            color: var(--accent);
+            font-weight: 700;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-approved {
+            background: rgba(16,185,129,.15);
+            color: var(--success);
+            border: 1px solid rgba(16,185,129,.3);
+        }
+
+        .status-pending {
+            background: rgba(245,158,11,.15);
+            color: var(--warning);
+            border: 1px solid rgba(245,158,11,.3);
+        }
+
+        .desc {
+            color: var(--text);
+            line-height: 1.7;
+            margin: 16px 28px 20px;
+            font-size: 15px;
+            opacity: .9;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 28px;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 24px;
+        }
+
+        .stats span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .price-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            margin: 0 28px 16px;
+            box-shadow: 0 4px 15px rgba(16,185,129,.3);
+        }
+
+        .price-badge i {
+            font-size: 14px;
+        }
+
+        .connect {
+            width: calc(100% - 56px);
+            margin: 0 28px 28px;
+            background: var(--gradient);
+            border: none;
+            padding: 16px;
+            border-radius: 14px;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all .3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .connect:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(99,102,241,.5);
+        }
+
+        .connect:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: var(--muted);
+            padding: 80px 20px;
+        }
+
+        .empty i {
+            font-size: 80px;
+            opacity: .3;
+            margin-bottom: 24px;
+            display: block;
+        }
+
+        .empty h3 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .payment-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(15px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .payment-modal.active {
+            display: flex;
+        }
+
+        .payment-content {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 50px 40px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            animation: slideUp 0.3s ease;
+        }
+
+        .payment-content i.fa-spinner {
+            font-size: 56px;
+            color: var(--accent);
+            margin-bottom: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        .payment-content h3 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        .payment-content p {
+            color: var(--muted);
+            font-size: 15px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+                padding: 0 16px 60px;
+            }
+            .hero h1 { font-size: 32px; }
+            .hero { padding: 60px 20px 40px; }
+            .filters {
+                flex-direction: column;
+                align-items: stretch;
+                max-width: 300px;
+            }
+            .filters button { width: 100%; }
+            .nav span { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <div class="brand" onclick="location.href='experts.html'">SolutionHub</div>
+            <nav class="nav" id="nav"></nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <h1>Connect with <span style="background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Verified Experts</span></h1>
+        <p>Real professionals ready to help you succeed</p>
+    </section>
+
+    <section class="filters">
+        <button class="active" onclick="filterExperts('all', this)">All Experts</button>
+        <button onclick="filterExperts('programming', this)">Programming</button>
+        <button onclick="filterExperts('devops', this)">DevOps</button>
+        <button onclick="filterExperts('academics', this)">Academics</button>
+        <button onclick="filterExperts('career', this)">Career</button>
+        <button onclick="filterExperts('business', this)">Business</button>
+    </section>
+
+    <section class="grid" id="expertsGrid">
+        <div class="empty">
+            <i class="fas fa-spinner fa-spin"></i>
+            <h3>Loading experts...</h3>
+        </div>
+    </section>
+
+    <!-- Payment Processing Modal -->
+    <div class="payment-modal" id="paymentModal">
+        <div class="payment-content">
+            <i class="fas fa-spinner fa-spin"></i>
+            <h3>Processing Payment...</h3>
+            <p style="margin-top:12px">Please wait while we process your request</p>
+        </div>
+    </div>
+
+    <footer>
+        © 2026 SolutionHub - Empowering Professionals
+    </footer>
+
+    <script>
+        // ==================== CONFIG ====================
+        const API_BASE_URL = 'http://localhost:3000/api'; // CORRECT PORT
+
+        // Expert pricing (INR) - Default fallback prices
+        const EXPERT_PRICING = {
+            'programming': 500,
+            'devops': 600,
+            'academics': 400,
+            'career': 450,
+            'business': 550,
+            'default': 500
+        };
+
+        // ==================== AUTH STATE ====================
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        const storedName = localStorage.getItem('name') || localStorage.getItem('username') || localStorage.getItem('email')?.split('@')[0] || null;
+        const userEmail = localStorage.getItem('email') || null;
+
+        console.log('Auth state:', {
+            API_BASE_URL,
+            token: !!token,
+            role,
+            name: storedName,
+            email: userEmail
+        });
+
+        // ==================== NAV ====================
+        const nav = document.getElementById('nav');
+        if (token && role) {
+            const dashboardUrl = role === 'expert' ? 'expert-dashboard.html' : 'client-dashboard.html';
+            nav.innerHTML = `
+                <a href="${dashboardUrl}">Dashboard</a>
+                <span>${storedName}</span>
+                <a href="#" onclick="logout(); return false;">Logout</a>
+            `;
+        } else {
+            nav.innerHTML = `
+                <a href="login.html" class="cta">Login</a>
+                <a href="signup-client.html">Sign Up</a>
+            `;
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.clear();
+                location.href = 'login.html';
+            }
+        }
+
+        // ==================== LOAD EXPERTS ====================
+        let allExperts = [];
+
+        async function loadExperts() {
+            try {
+                console.log('Loading experts from:', `${API_BASE_URL}/experts?status=approved`);
+                const res = await fetch(`${API_BASE_URL}/experts?status=approved`);
+                
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(`HTTP ${res.status}: ${errorText}`);
+                }
+                
+                allExperts = await res.json();
+                console.log('Experts loaded:', allExperts.length);
+                
+                if (allExperts.length > 0) {
+                    console.log('Sample expert:', allExperts[0]);
+                }
+                
+                renderExperts(allExperts);
+            } catch(err) {
+                console.error('Load error:', err);
+                document.getElementById('expertsGrid').innerHTML = `
+                    <div class="empty">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Unable to load experts</h3>
+                        <p>Error: ${err.message}</p>
+                        <p style="margin-top: 12px; font-size: 13px">API URL: ${API_BASE_URL}</p>
+                        <p style="font-size: 13px">Check if backend is running on http://localhost:3000</p>
+                        <button onclick="loadExperts()" style="margin-top: 20px; padding: 10px 20px; background: var(--gradient); border: none; border-radius: 10px; color: white; cursor: pointer;">Retry</button>
+                    </div>
+                `;
+            }
+        }
+
+        // ==================== PHOTO URL HELPER ====================
+        function getPhotoUrl(expert) {
+            if (!expert.avatar) {
+                console.log('No avatar for', expert.name);
+                return null;
+            }
+            
+            // If avatar already has full URL, use it
+            if (expert.avatar.startsWith('http')) {
+                return expert.avatar;
+            }
+            
+            // Construct full URL to backend
+            const backendBase = API_BASE_URL.replace('/api', ''); // http://localhost:3000
+            
+            // If avatar starts with 'uploads/', use as-is
+            if (expert.avatar.startsWith('uploads/')) {
+                return `${backendBase}/${expert.avatar}`;
+            }
+            
+            // If avatar starts with '/', remove it
+            const cleanPath = expert.avatar.startsWith('/') ? expert.avatar.substring(1) : expert.avatar;
+            
+            // Add uploads prefix if not present
+            if (cleanPath.startsWith('uploads')) {
+                return `${backendBase}/${cleanPath}`;
+            } else {
+                return `${backendBase}/uploads/${cleanPath}`;
+            }
+        }
+
+        // ==================== PRICING HELPER ====================
+        function getExpertPrice(expert) {
+            // Use expert's custom price if available, otherwise use default based on field
+            return expert.price || EXPERT_PRICING[expert.field?.toLowerCase()] || EXPERT_PRICING.default;
+        }
+
+        // ==================== RENDER EXPERTS ====================
+        function renderExperts(list) {
+            const grid = document.getElementById('expertsGrid');
+            
+            if (!list.length) {
+                grid.innerHTML = `
+                    <div class="empty">
+                        <i class="fas fa-users"></i>
+                        <h3>No experts available</h3>
+                        <p>No verified professionals found. Please check back later.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = list.map(expert => {
+                const photoUrl = getPhotoUrl(expert);
+                const initial = expert.name ? expert.name[0].toUpperCase() : 'E';
+                const statusIcon = expert.status === 'approved' ? '✓' : '⏳';
+                const price = getExpertPrice(expert);
+
+                return `
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="avatar-container">
+                                ${photoUrl ? `
+                                    <img src="${photoUrl}" alt="${expert.name}" class="avatar" onerror="console.error('Failed to load', '${photoUrl}'); this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                    <div class="avatar-fallback" style="display:none">${initial}</div>
+                                ` : `
+                                    <div class="avatar-fallback">${initial}</div>
+                                `}
+                            </div>
+                            <div class="card-content">
+                                <h3>${expert.name || 'Unknown Expert'}</h3>
+                                <div class="domain">${expert.field || 'General Expert'}</div>
+                                <span class="status-badge status-${expert.status || 'approved'}">
+                                    ${statusIcon} ${(expert.status?.toUpperCase()) || 'VERIFIED'}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="desc">
+                            ${expert.headline || expert.summary || 'Experienced professional ready to help you succeed.'}
+                        </div>
+                        <div class="stats">
+                            <span><i class="fas fa-briefcase"></i> ${expert.experience || 0}+ years</span>
+                            <span><i class="fas fa-calendar"></i> ${expert.createdAt ? new Date(expert.createdAt).getFullYear() : new Date().getFullYear()}</span>
+                        </div>
+                        <div class="price-badge">
+                            <i class="fas fa-rupee-sign"></i> ${price}/session
+                        </div>
+                        <button class="connect" onclick='connectExpert(${JSON.stringify(expert).replace(/'/g, "&#39;")})'>
+                            <i class="fas fa-lock"></i> Pay & Connect
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== FILTER EXPERTS ====================
+        function filterExperts(type, btn) {
+            document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            if (type === 'all') {
+                renderExperts(allExperts);
+            } else {
+                const filtered = allExperts.filter(e => e.field?.toLowerCase().includes(type.toLowerCase()));
+                renderExperts(filtered);
+            }
+            
+            console.log(`Filtered by ${type}:`, type === 'all' ? allExperts.length : filtered.length, 'results');
+        }
+
+        // ==================== RAZORPAY PAYMENT INTEGRATION ====================
+        async function connectExpert(expert) {
+            // Check authentication
+            if (!token) {
+                alert('Please login to connect with an expert.');
+                location.href = 'login.html';
+                return;
+            }
+
+            console.log('Initiating payment for expert:', expert.email);
+            console.log('Expert price:', expert.price || EXPERT_PRICING[expert.field?.toLowerCase()] || EXPERT_PRICING.default);
+
+            try {
+                // Show loading modal
+                document.getElementById('paymentModal').classList.add('active');
+
+                // Step 1: Create order on backend
+                console.log('Creating order...');
+                const orderResponse = await fetch(`${API_BASE_URL}/create-order`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        expertEmail: expert.email,
+                        expertField: expert.field
+                    })
+                });
+
+                if (!orderResponse.ok) {
+                    const errorData = await orderResponse.json();
+                    throw new Error(errorData.message || 'Failed to create order');
+                }
+
+                const orderData = await orderResponse.json();
+                console.log('Order created:', orderData.orderId);
+                console.log('Amount:', orderData.amount / 100, 'INR');
+
+                // Hide loading modal
+                document.getElementById('paymentModal').classList.remove('active');
+
+                // Step 2: Configure Razorpay Checkout
+                const options = {
+                    key: orderData.key, // Razorpay Key ID from backend
+                    amount: orderData.amount, // Amount in paise
+                    currency: orderData.currency,
+                    name: 'SolutionHub',
+                    description: `Consultation with ${expert.name}`,
+                    image: 'logo.png', // Your logo (optional)
+                    order_id: orderData.orderId,
+                    prefill: {
+                        name: storedName,
+                        email: userEmail,
+                        contact: '' // Add phone if available
+                    },
+                    theme: {
+                        color: '#6366f1'
+                    },
+                    handler: async function(response) {
+                        // Step 3: Payment successful - verify on backend
+                        console.log('Payment successful, verifying...');
+                        console.log('Payment response:', response);
+                        await verifyPayment(response, expert);
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            console.log('Payment cancelled by user');
+                            alert('Payment was cancelled. Please try again to connect with the expert.');
+                        },
+                        escape: false,
+                        backdropclose: false
+                    },
+                    retry: {
+                        enabled: true,
+                        max_count: 3
+                    }
+                };
+
+                // Step 4: Open Razorpay Checkout
+                console.log('Opening Razorpay checkout...');
+                const razorpay = new Razorpay(options);
+                
+                razorpay.on('payment.failed', function(response) {
+                    console.error('Payment failed:', response.error);
+                    alert(`Payment failed: ${response.error.description}. Please try again.`);
+                });
+
+                razorpay.open();
+
+            } catch (error) {
+                console.error('Payment initiation error:', error);
+                document.getElementById('paymentModal').classList.remove('active');
+                alert(`Failed to initiate payment: ${error.message}\n\nCheck:\n1. Backend server is running\n2. You are logged in\n3. Razorpay keys are configured`);
+            }
+        }
+
+        // ==================== VERIFY PAYMENT ====================
+        async function verifyPayment(paymentResponse, expert) {
+            try {
+                document.getElementById('paymentModal').classList.add('active');
+                console.log('Verifying payment...');
+                console.log('Verification data:', {
+                    orderId: paymentResponse.razorpay_order_id,
+                    paymentId: paymentResponse.razorpay_payment_id
+                });
+
+                const verifyResponse = await fetch(`${API_BASE_URL}/verify-payment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        razorpay_order_id: paymentResponse.razorpay_order_id,
+                        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                        razorpay_signature: paymentResponse.razorpay_signature
+                    })
+                });
+
+                const verifyData = await verifyResponse.json();
+                document.getElementById('paymentModal').classList.remove('active');
+
+                if (verifyData.success) {
+                    console.log('Payment verified successfully');
+                    console.log('Verification result:', verifyData);
+
+                    // Store payment info
+                    localStorage.setItem('lastPaymentId', verifyData.paymentId);
+                    localStorage.setItem('lastOrderId', verifyData.orderId);
+
+                    alert(`✅ Payment successful! ₹${verifyData.amount}\nID: ${verifyData.paymentId}\n\nYou can now chat with ${expert.name}!`);
+
+                    // Redirect to chat/booking page
+                    location.href = `book-expert.html?email=${encodeURIComponent(expert.email)}&paymentId=${verifyData.paymentId}`;
+                } else {
+                    throw new Error(verifyData.message || 'Payment verification failed');
+                }
+            } catch (error) {
+                console.error('Verification error:', error);
+                document.getElementById('paymentModal').classList.remove('active');
+                alert(`Payment verification failed: ${error.message}\n\nPlease contact support with your payment details.`);
+            }
+        }
+
+        // ==================== AUTO LOAD ON PAGE READY ====================
+        window.addEventListener('load', () => {
+            console.log('Experts page loaded');
+            console.log('API Base URL:', API_BASE_URL);
+            console.log('User authenticated:', !!token);
+            loadExperts();
+        });
+
+        // Debug helper
+        window.debugPayment = function() {
+            console.log('=== PAYMENT DEBUG INFO ===');
+            console.log('API URL:', API_BASE_URL);
+            console.log('Token:', token ? 'Present' : 'Missing');
+            console.log('User Email:', userEmail);
+            console.log('User Name:', storedName);
+            console.log('Experts loaded:', allExperts.length);
+            console.log('==========================');
+            console.log('Tip: Type debugPayment() in console for debug info');
+        };
+    </script>
+</body>
+</html>

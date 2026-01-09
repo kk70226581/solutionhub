@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SolutionHub • Admin Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0a0f1e;
+            --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: linear-gradient(145deg, var(--bg-primary) 0%, #1e1b2f 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .login-container {
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .login-header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        .login-header p {
+            color: #9ca3af;
+            font-size: 1rem;
+        }
+        .form-group {
+            margin-bottom: 1.75rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            color: #f9fafb;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 1.25rem 1.5rem;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            background: rgba(255,255,255,0.05);
+            color: white;
+            font-size: 1rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+        }
+        .form-group input::placeholder {
+            color: #9ca3af;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 1.25rem;
+            background: var(--gradient);
+            border: none;
+            border-radius: 16px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(99,102,241,0.4);
+        }
+        .login-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(99,102,241,0.5);
+        }
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .message {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            text-align: center;
+            font-weight: 600;
+        }
+        .message.success { background: rgba(16,185,129,0.2); color: #10b981; }
+        .message.error { background: rgba(239,68,68,0.2); color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1><i class="fas fa-crown"></i> Admin Login</h1>
+            <p>Enter your admin secret: <strong>HIII</strong></p>
+        </div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="adminSecret"><i class="fas fa-lock"></i> Admin Secret</label>
+                <input type="password" id="adminSecret" placeholder="HIII" required>
+            </div>
+            
+            <button type="submit" class="login-btn" id="loginBtn">
+                <i class="fas fa-sign-in-alt"></i> Enter Dashboard
+            </button>
+            
+            <div id="message"></div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const secret = document.getElementById('adminSecret').value;
+            const btn = document.getElementById('loginBtn');
+            const msg = document.getElementById('message');
+            
+            // ✅ YOUR SECRET: HIII
+            if (secret !== 'HIII') {
+                msg.innerHTML = '<div class="message error">❌ Wrong secret! Use: HIII</div>';
+                return;
+            }
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
+            btn.disabled = true;
+            
+            try {
+                // 🔧 FIXED: Multiple cookie methods + headers
+                document.cookie = `adminToken=HIII; path=/; max-age=86400; SameSite=Lax`;
+                document.cookie = `adminToken=HIII; path=/admin.html; max-age=86400; SameSite=Lax`;
+                
+                // 🔧 Also set as header for direct API calls
+                fetch('/admin.html', {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'x-admin-token': 'HIII'
+                    }
+                }).then(() => {
+                    // ✅ REDIRECT AFTER 1 SECOND (cookie sync)
+                    setTimeout(() => {
+                        window.location.href = '/admin.html';
+                    }, 500);
+                });
+                
+                msg.innerHTML = '<div class="message success">✅ Redirecting to Dashboard...</div>';
+            } catch(err) {
+                msg.innerHTML = '<div class="message error">❌ Login failed</div>';
+                console.error('Login error:', err);
+            } finally {
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Enter Dashboard';
+                    btn.disabled = false;
+                }, 2000);
+            }
+        });
+    </script>
+</body>
+</html>

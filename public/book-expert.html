@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat with Expert | SolutionHub</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+:root {
+  --bg: #0a0c1a;
+  --card: #111827;
+  --glass: rgba(255,255,255,0.03);
+  --border: rgba(255,255,255,0.08);
+  --text: #f8fafc;
+  --muted: #cbd5e1;
+  --accent: #6366f1;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --radius: 20px;
+  --shadow: 0 25px 60px rgba(0,0,0,.45);
+  --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  background: linear-gradient(145deg, var(--bg) 0%, #020617 100%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* Header */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(10,12,26,.95);
+  backdrop-filter: blur(25px);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-inner {
+  max-width: 1400px;
+  margin: auto;
+  padding: 20px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  font-size: 28px;
+  font-weight: 800;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  cursor: pointer;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.user-avatar-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: white;
+}
+
+.back-btn {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  padding: 10px 20px;
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+  transition: all .3s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.back-btn:hover {
+  background: var(--gradient);
+  border-color: transparent;
+  transform: translateY(-2px);
+}
+
+/* Container */
+.container {
+  max-width: 1400px;
+  margin: 40px auto;
+  padding: 0 32px 60px;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 32px;
+}
+
+/* Expert Card */
+.expert-card {
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  height: fit-content;
+  position: sticky;
+  top: 100px;
+}
+
+.expert-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  display: block;
+  object-fit: cover;
+  border: 3px solid rgba(99,102,241,.3);
+}
+
+.avatar-fallback {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: var(--gradient);
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: 800;
+  color: white;
+}
+
+.expert-card h2 {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.expert-field {
+  text-align: center;
+  color: var(--accent);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.expert-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.info-item i {
+  width: 18px;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.launch-badge {
+  margin-top: 20px;
+  padding: 12px;
+  background: rgba(16,185,129,.15);
+  border: 1px solid rgba(16,185,129,.3);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.launch-badge strong {
+  color: var(--success);
+  font-size: 14px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.launch-badge small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Chat Section */
+.chat-section {
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+  min-height: 600px;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.chat-header h3 {
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--success);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
+
+.chat-box {
+  flex: 1;
+  background: rgba(0,0,0,.3);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.message {
+  max-width: 75%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  word-wrap: break-word;
+  font-size: 14px;
+  line-height: 1.6;
+  animation: messageSlide 0.3s ease;
+}
+
+@keyframes messageSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.me {
+  align-self: flex-end;
+  background: var(--gradient);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.message.other {
+  align-self: flex-start;
+  background: rgba(99,102,241,.15);
+  border: 1px solid rgba(99,102,241,.3);
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+
+.message-sender {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  opacity: .8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.message-time {
+  font-size: 10px;
+  opacity: .6;
+  margin-top: 4px;
+  text-align: right;
+}
+
+.chat-input-area {
+  padding: 20px;
+  background: rgba(0,0,0,.3);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+}
+
+.chat-input-area input {
+  flex: 1;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.05);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  transition: all .3s;
+}
+
+.chat-input-area input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(255,255,255,.08);
+}
+
+.send-btn {
+  background: var(--gradient);
+  border: none;
+  padding: 14px 24px;
+  border-radius: 12px;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.send-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 8px 20px rgba(99,102,241,.4);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--muted);
+  padding: 60px 20px;
+}
+
+.empty-state i {
+  font-size: 60px;
+  opacity: .3;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.empty-state h4 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.loading-messages {
+  text-align: center;
+  color: var(--muted);
+  padding: 40px 20px;
+  font-size: 14px;
+}
+
+.typing-indicator {
+  align-self: flex-start;
+  padding: 12px 16px;
+  background: rgba(99,102,241,.15);
+  border: 1px solid rgba(99,102,241,.3);
+  border-radius: 16px;
+  border-bottom-left-radius: 4px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 80px;
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-6px); }
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+  .container {
+    grid-template-columns: 1fr;
+    padding: 0 16px 40px;
+  }
+  
+  .expert-card {
+    position: relative;
+    top: 0;
+  }
+  
+  .chat-section {
+    height: 600px;
+    min-height: 500px;
+  }
+  
+  .user-info span {
+    display: none;
+  }
+  
+  .header-inner {
+    padding: 16px 20px;
+  }
+  
+  .brand {
+    font-size: 22px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand" onclick="location.href='/experts.html'">SolutionHub</div>
+    <div class="header-actions">
+      <div class="user-info">
+        <div class="user-avatar-small" id="userAvatarSmall">U</div>
+        <span id="loggedInUser">User</span>
+      </div>
+      <a href="/experts.html" class="back-btn">
+        <i class="fas fa-arrow-left"></i> Back
+      </a>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <!-- Expert Profile Sidebar -->
+  <div class="expert-card">
+    <div id="expertAvatar"></div>
+    <h2 id="expertName">Loading...</h2>
+    <div class="expert-field" id="expertField">---</div>
+    
+    <div class="expert-info">
+      <div class="info-item">
+        <i class="fas fa-briefcase"></i>
+        <span><span id="expertExp">0</span>+ years</span>
+      </div>
+      <div class="info-item">
+        <i class="fas fa-envelope"></i>
+        <span id="expertEmail" style="font-size: 12px;">---</span>
+      </div>
+      <div class="info-item">
+        <i class="fas fa-check-circle"></i>
+        <span style="color: var(--success);">Verified Expert</span>
+      </div>
+    </div>
+    
+    <div class="launch-badge">
+      <strong>🎉 Launch Offer</strong>
+      <small>Free consultations during launch period!</small>
+    </div>
+  </div>
+
+  <!-- Chat Section -->
+  <div class="chat-section">
+    <div class="chat-header">
+      <h3>
+        <i class="fas fa-comments"></i>
+        Live Chat
+      </h3>
+      <div class="chat-status">
+        <div class="status-dot"></div>
+        Connected
+      </div>
+    </div>
+    
+    <div class="chat-box">
+      <div class="chat-messages" id="chatMessages">
+        <div class="loading-messages">
+          <i class="fas fa-spinner fa-spin"></i> Loading messages...
+        </div>
+      </div>
+      
+      <div class="chat-input-area">
+        <input 
+          type="text" 
+          id="chatInput" 
+          placeholder="Type your message..." 
+          onkeypress="if(event.key==='Enter') sendMessage()"
+          oninput="handleTyping()"
+        >
+        <button class="send-btn" onclick="sendMessage()" id="sendBtn">
+          <i class="fas fa-paper-plane"></i>
+          Send
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============= AUTH & DATA =============
+const urlParams = new URLSearchParams(window.location.search);
+const expertEmail = urlParams.get('email');
+const clientEmail = localStorage.getItem('email');
+const clientName = localStorage.getItem('name') || localStorage.getItem('username') || clientEmail?.split('@')[0] || 'User';
+const token = localStorage.getItem('token');
+
+let expertData = null;
+let socket = null;
+let roomId = null;
+let typingTimeout = null;
+let isTyping = false;
+let displayedMessageIds = new Set();
+
+// Redirect if not logged in
+if (!token || !clientEmail) {
+  alert('Please login to chat with an expert');
+  location.href = '/login.html';
+}
+
+// Show logged in user
+document.getElementById('loggedInUser').textContent = clientName;
+document.getElementById('userAvatarSmall').textContent = clientName[0].toUpperCase();
+
+// ============= LOAD EXPERT DATA =============
+async function loadExpert() {
+  try {
+    console.log('📡 Loading expert:', expertEmail);
+    const res = await fetch(`/api/profile?email=${expertEmail}`);
+    expertData = await res.json();
+    
+    console.log('✅ Expert loaded:', expertData);
+    
+    document.getElementById('expertName').textContent = expertData.name || 'Expert';
+    document.getElementById('expertField').textContent = expertData.field || 'General Expert';
+    document.getElementById('expertExp').textContent = expertData.experience || 0;
+    document.getElementById('expertEmail').textContent = expertData.email || '---';
+    
+    // Avatar
+    const avatarContainer = document.getElementById('expertAvatar');
+    if (expertData.avatar) {
+      const imgSrc = expertData.avatar.includes('uploads') 
+        ? `/${expertData.avatar}` 
+        : `/uploads/photos/${expertData.avatar}`;
+      avatarContainer.innerHTML = `
+        <img src="${imgSrc}" alt="${expertData.name}" class="expert-avatar" 
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <div class="avatar-fallback" style="display:none;">
+          ${expertData.name ? expertData.name[0].toUpperCase() : 'E'}
+        </div>
+      `;
+    } else {
+      avatarContainer.innerHTML = `
+        <div class="avatar-fallback">
+          ${expertData.name ? expertData.name[0].toUpperCase() : 'E'}
+        </div>
+      `;
+    }
+    
+  } catch (err) {
+    console.error('❌ Error loading expert:', err);
+    alert('Failed to load expert details');
+    location.href = '/experts.html';
+  }
+}
+
+// ============= LOAD CHAT HISTORY =============
+async function loadChatHistory() {
+  try {
+    console.log('📜 Loading chat history...');
+    const res = await fetch(`/api/messages?room=${roomId}`);
+    const messages = await res.json();
+    
+    console.log('✅ Chat history loaded:', messages.length, 'messages');
+    
+    const messagesContainer = document.getElementById('chatMessages');
+    messagesContainer.innerHTML = '';
+    displayedMessageIds.clear();
+    
+    if (messages.length === 0) {
+      messagesContainer.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-comments"></i>
+          <h4>Start the conversation</h4>
+          <p>Send your first message below</p>
+        </div>
+      `;
+    } else {
+      messages.forEach(msg => displayMessage(msg, false));
+    }
+    
+  } catch (err) {
+    console.error('❌ Error loading chat history:', err);
+    document.getElementById('chatMessages').innerHTML = `
+      <div class="empty-state">
+        <i class="fas fa-exclamation-triangle"></i>
+        <h4>Could not load messages</h4>
+        <p>Start chatting to see messages here</p>
+      </div>
+    `;
+  }
+}
+
+// ============= CHAT SYSTEM =============
+function initializeChat() {
+  console.log('🚀 Initializing chat...');
+  
+  // Create unique room ID
+  roomId = [clientEmail, expertEmail].sort().join('_');
+  console.log('Room ID:', roomId);
+  
+  // Load chat history first
+  loadChatHistory();
+  
+  // Initialize Socket.io
+  socket = io();
+  
+  socket.on('connect', () => {
+    console.log('✅ Socket connected');
+    socket.emit('join_private', roomId);
+    socket.emit('user_online', { email: clientEmail, name: clientName, role: 'client' });
+  });
+  
+  socket.on('receive_message', (data) => {
+    console.log('📨 Message received:', data);
+    
+    // DON'T display echo - skip if message is from current user
+    if (data.author === clientEmail) {
+      console.log('⏭️ Skipping echo from self');
+      return;
+    }
+    
+    displayMessage(data, true);
+  });
+  
+  socket.on('user_typing', (data) => {
+    if (data.room === roomId && data.author !== clientEmail) {
+      showTypingIndicator();
+    }
+  });
+  
+  socket.on('user_stopped_typing', (data) => {
+    if (data.room === roomId) {
+      hideTypingIndicator();
+    }
+  });
+  
+  socket.on('connect_error', (err) => {
+    console.error('❌ Socket error:', err);
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('⚠️ Socket disconnected');
+  });
+}
+
+function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const btn = document.getElementById('sendBtn');
+  const message = input.value.trim();
+  
+  if (!message || !socket) return;
+  
+  btn.disabled = true;
+  
+  const messageData = {
+    room: roomId,
+    author: clientEmail,
+    authorRole: 'client',
+    message: message
+  };
+  
+  console.log('📤 Sending message:', messageData);
+  
+  // Display message IMMEDIATELY (don't wait for echo)
+  displayMessage({
+    author: clientEmail,
+    message: message,
+    createdAt: new Date()
+  }, true);
+  
+  socket.emit('send_private_message', messageData);
+  socket.emit('stop_typing', { room: roomId });
+  
+  input.value = '';
+  
+  setTimeout(() => {
+    btn.disabled = false;
+    input.focus();
+  }, 300);
+}
+
+function displayMessage(data, isNew = false) {
+  const messagesContainer = document.getElementById('chatMessages');
+  
+  // Remove empty/loading state
+  const emptyState = messagesContainer.querySelector('.empty-state, .loading-messages');
+  if (emptyState) emptyState.remove();
+  
+  // Create unique message ID to prevent duplicates
+  const messageId = `${data.author}_${data.message}_${data.createdAt || Date.now()}`;
+  
+  if (displayedMessageIds.has(messageId)) {
+    console.log('⏭️ Skipping duplicate message');
+    return;
+  }
+  displayedMessageIds.add(messageId);
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.className = `message ${data.author === clientEmail ? 'me' : 'other'}`;
+  messageDiv.dataset.messageId = messageId;
+  
+  const isMe = data.author === clientEmail;
+  const senderName = isMe ? 'You' : (expertData?.name || 'Expert');
+  
+  const timestamp = data.createdAt ? new Date(data.createdAt).toLocaleTimeString('en-IN', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  }) : new Date().toLocaleTimeString('en-IN', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  
+  messageDiv.innerHTML = `
+    <div class="message-sender">${senderName}</div>
+    ${escapeHtml(data.message)}
+    <div class="message-time">${timestamp}</div>
+  `;
+  
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function handleTyping() {
+  if (!socket || !roomId) return;
+  
+  if (!isTyping) {
+    isTyping = true;
+    socket.emit('typing', { room: roomId, name: clientName, author: clientEmail });
+  }
+  
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    isTyping = false;
+    socket.emit('stop_typing', { room: roomId });
+  }, 1000);
+}
+
+function showTypingIndicator() {
+  const messagesContainer = document.getElementById('chatMessages');
+  
+  let indicator = document.getElementById('typingIndicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'typingIndicator';
+    indicator.className = 'typing-indicator';
+    indicator.innerHTML = `
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    `;
+    messagesContainer.appendChild(indicator);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  }
+}
+
+function hideTypingIndicator() {
+  const indicator = document.getElementById('typingIndicator');
+  if (indicator) indicator.remove();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ============= AUTO LOAD =============
+window.addEventListener('load', () => {
+  console.log('🚀 Chat page loaded');
+  if (!expertEmail) {
+    alert('No expert selected');
+    location.href = '/experts.html';
+    return;
+  }
+  loadExpert();
+  initializeChat();
+});
+
+// Cleanup
+window.addEventListener('beforeunload', () => {
+  if (socket) socket.disconnect();
+});
+
+console.log('✅ Client chat ready');
+</script>
+
+</body>
+</html>
