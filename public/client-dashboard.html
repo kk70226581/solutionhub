@@ -1,1748 +1,1248 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>SolutionHub Premium Client Dashboard</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-    <meta name="theme-color" content="#0a0a1a">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@lucide/lucide@latest"></script>
-    <style>
-        :root {
-            /* Premium Color System */
-            --bg-primary: #0a0a1a;
-            --bg-gradient: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
-            --glass-1: rgba(255,255,255,0.06);
-            --glass-2: rgba(255,255,255,0.1);
-            --glass-3: rgba(255,255,255,0.15);
-            --border-glass: rgba(255,255,255,0.12);
-            --text-1: #f8fafc;
-            --text-2: #e2e8f0;
-            --text-3: #cbd5e1;
-            --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-            --accent-primary: #6366f1;
-            --accent-success: #10b981;
-            --radius-xs: 12px;
-            --radius-sm: 16px;
-            --radius-md: 24px;
-            --radius-lg: 32px;
-            --shadow-1: 0 8px 32px rgba(0,0,0,0.35);
-            --shadow-2: 0 20px 60px rgba(0,0,0,0.45);
-            --shadow-glass: 0 25px 50px -12px rgba(0,0,0,0.5);
-            --transition-1: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-2: 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        html, body {
-            height: 100%;
-            font-family: 'Inter', 'Plus Jakarta Sans', system-ui, sans-serif;
-            background: var(--bg-gradient);
-            color: var(--text-1);
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            scroll-behavior: smooth;
-        }
-
-        body {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        /* Premium Header */
-        .header {
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(25px);
-            background: rgba(10, 10, 26, 0.98);
-            border-bottom: 1px solid var(--border-glass);
-            padding: 0 12px;
-        }
-
-        .header-inner {
-            height: 64px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            max-width: 1400px;
-            margin: 0 auto;
-            gap: 12px;
-        }
-
-        .logo-section {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .logo {
-            width: 42px;
-            height: 42px;
-            border-radius: var(--radius-md);
-            background: var(--accent-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 18px;
-            color: white;
-            box-shadow: var(--shadow-1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .logo::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
-            transform: translateX(-100%);
-            transition: transform 0.6s;
-        }
-
-        .logo:hover::before {
-            transform: translateX(100%);
-        }
-
-        .brand-text h1 {
-            font-size: 20px;
-            font-weight: 800;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin: 0;
-            line-height: 1.1;
-        }
-
-        .brand-tag {
-            font-size: 11px;
-            color: var(--text-3);
-            font-weight: 500;
-        }
-
-        .menu-toggle {
-            display: none;
-        }
-
-        .mobile-menu-btn {
-            display: flex;
-            width: 44px;
-            height: 44px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-glass);
-            background: var(--glass-2);
-            color: var(--text-3);
-            cursor: pointer;
-            transition: all var(--transition-1);
-            flex-shrink: 0;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .mobile-menu-btn:hover {
-            background: var(--glass-3);
-            color: var(--text-1);
-        }
-
-        .nav-primary {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: rgba(10, 10, 26, 0.98);
-            backdrop-filter: blur(25px);
-            border-top: 1px solid var(--border-glass);
-            flex-direction: column;
-            padding: 16px;
-            gap: 12px;
-            z-index: 99;
-        }
-
-        .nav-primary.mobile-open {
-            display: flex;
-        }
-
-        #mobile-menu-toggle:checked ~ .nav-primary {
-            display: flex;
-        }
-
-        .nav-btn {
-            padding: 16px 20px;
-            border-radius: var(--radius-sm);
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-3);
-            border: 1px solid transparent;
-            background: transparent;
-            cursor: pointer;
-            transition: all var(--transition-1);
-            position: relative;
-            overflow: hidden;
-            white-space: nowrap;
-            width: 100%;
-            justify-content: flex-start;
-            min-width: auto;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .nav-btn::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: var(--accent-gradient);
-            opacity: 0;
-            transition: opacity var(--transition-1);
-        }
-
-        .nav-btn:hover {
-            color: white;
-            border-color: rgba(255,255,255,0.2);
-            transform: translateY(-2px);
-        }
-
-        .nav-btn:hover::before {
-            opacity: 0.1;
-        }
-
-        .nav-btn.active {
-            background: var(--accent-gradient);
-            color: white;
-            box-shadow: var(--shadow-1);
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        .search-container {
-            position: relative;
-            width: 180px;
-            flex-shrink: 0;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 12px 16px 12px 40px;
-            border-radius: 999px;
-            border: 1px solid var(--border-glass);
-            background: var(--glass-2);
-            color: var(--text-1);
-            font-size: 14px;
-            backdrop-filter: blur(10px);
-            transition: all var(--transition-1);
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-            transform: translateY(-1px);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-3);
-            width: 16px;
-            height: 16px;
-        }
-
-        .action-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-glass);
-            background: var(--glass-2);
-            color: var(--text-3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all var(--transition-1);
-            backdrop-filter: blur(10px);
-            flex-shrink: 0;
-        }
-
-        .action-btn:hover {
-            background: var(--glass-3);
-            color: var(--text-1);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-1);
-        }
-
-        .avatar-small {
-            width: 28px;
-            height: 28px;
-            border-radius: var(--radius-sm);
-            background: var(--accent-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 13px;
-            color: white;
-        }
-
-        .expert-btn {
-            padding: 12px 20px;
-            border-radius: var(--radius-md);
-            background: var(--accent-gradient);
-            color: white;
-            font-weight: 600;
-            font-size: 13px;
-            border: none;
-            cursor: pointer;
-            box-shadow: var(--shadow-1);
-            transition: all var(--transition-2);
-            white-space: nowrap;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .expert-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-2);
-        }
-
-        .main-content {
-            flex: 1 1 auto;
-            padding: 20px 12px 280px 12px;
-            max-width: 1400px;
-            margin: 0 auto;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            z-index: 1;
-            width: 100%;
-        }
-
-        .page {
-            display: none;
-            animation: fadeIn 0.4s ease-out;
-        }
-
-        .page.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 20px;
-            margin-bottom: 32px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border-glass);
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .page-title-group h1 {
-            font-size: 28px;
-            font-weight: 800;
-            margin: 0 0 8px 0;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            line-height: 1.2;
-        }
-
-        .page-subtitle {
-            font-size: 16px;
-            color: var(--text-3);
-            margin: 0;
-            font-weight: 400;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: clamp(16px, 4vw, 24px);
-            margin-bottom: 48px;
-        }
-
-        .stat-item {
-            background: var(--glass-2);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-lg);
-            padding: 28px;
-            position: relative;
-            overflow: hidden;
-            transition: all var(--transition-2);
-            cursor: default;
-        }
-
-        .stat-item::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--accent-gradient);
-            transform: scaleX(0);
-            transition: transform var(--transition-1);
-        }
-
-        .stat-item:hover {
-            transform: translateY(-8px);
-            box-shadow: var(--shadow-2);
-        }
-
-        .stat-item:hover::before {
-            transform: scaleX(1);
-        }
-
-        .stat-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-3);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }
-
-        .stat-value {
-            font-size: 40px;
-            font-weight: 800;
-            margin-bottom: 12px;
-            background: var(--text-1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .stat-description {
-            color: var(--text-3);
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        /* AI Chat Container - ENHANCED */
-        .ai-chat-container {
-            background: linear-gradient(145deg, rgba(26,26,46,0.95), rgba(10,10,26,0.95));
-            border: 2px solid var(--border-glass);
-            border-radius: var(--radius-lg);
-            padding: 20px;
-            height: 550px;
-            max-height: 65vh;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 30px 70px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
-            backdrop-filter: blur(30px);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .ai-chat-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--accent-gradient);
-        }
-
-        .ai-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid var(--border-glass);
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .ai-title {
-            font-size: 18px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .ai-model-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
-            background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2));
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--accent-primary);
-            border: 1px solid rgba(99, 102, 241, 0.4);
-            backdrop-filter: blur(10px);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            border-radius: var(--radius-md);
-            background: linear-gradient(180deg, rgba(0,0,0,0.4), rgba(0,0,0,0.5));
-            margin-bottom: 16px;
-            scrollbar-width: thin;
-            scrollbar-color: var(--accent-primary) rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .messages-container::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .messages-container::-webkit-scrollbar-track {
-            background: rgba(0,0,0,0.2);
-            border-radius: 4px;
-        }
-
-        .messages-container::-webkit-scrollbar-thumb {
-            background: var(--accent-gradient);
-            border-radius: 4px;
-        }
-
-        .messages-container::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #7c3aed, #a78bfa);
-        }
-
-        .message {
-            padding: 14px 18px;
-            border-radius: 18px;
-            margin-bottom: 14px;
-            max-width: 85%;
-            font-size: 14px;
-            line-height: 1.6;
-            animation: messageSlideIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            word-wrap: break-word;
-            position: relative;
-        }
-
-        @keyframes messageSlideIn {
-            from { opacity: 0; transform: translateY(20px) scale(0.96); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .message.bot {
-            background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15));
-            border: 1px solid rgba(99,102,241,0.3);
-            margin-left: 0;
-            margin-right: auto;
-            border-radius: 18px 18px 18px 4px;
-        }
-
-        .message.bot::before {
-            content: '🤖';
-            position: absolute;
-            left: -32px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 20px;
-        }
-
-        .message.user {
-            background: var(--accent-gradient);
-            color: white;
-            margin-left: auto;
-            margin-right: 0;
-            border-radius: 18px 18px 4px 18px;
-            box-shadow: 0 6px 20px rgba(99,102,241,0.4);
-        }
-
-        .chat-input-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .input-section {
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
-
-        .chat-input {
-            flex: 1;
-            padding: 14px 18px;
-            border-radius: 20px;
-            border: 2px solid var(--border-glass);
-            background: rgba(255,255,255,0.05);
-            color: var(--text-1);
-            font-size: 14px;
-            outline: none;
-            resize: none;
-            min-height: 20px;
-            max-height: 100px;
-            transition: all var(--transition-1);
-            backdrop-filter: blur(10px);
-            font-family: inherit;
-        }
-
-        .chat-input:focus {
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2), 0 4px 12px rgba(99,102,241,0.3);
-            background: rgba(255,255,255,0.08);
-        }
-
-        .chat-input::placeholder {
-            color: var(--text-3);
-        }
-
-        .send-btn {
-            width: 46px;
-            height: 46px;
-            border-radius: 50%;
-            border: none;
-            background: var(--accent-gradient);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all var(--transition-2);
-            box-shadow: 0 4px 16px rgba(99,102,241,0.4);
-            flex-shrink: 0;
-        }
-
-        .send-btn:hover {
-            transform: scale(1.1) rotate(5deg);
-            box-shadow: 0 6px 24px rgba(99,102,241,0.6);
-        }
-
-        .send-btn:active {
-            transform: scale(0.95);
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-        }
-
-        .quick-btn {
-            padding: 10px 14px;
-            border-radius: 12px;
-            border: 1px solid var(--border-glass);
-            background: rgba(255,255,255,0.05);
-            color: var(--text-3);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all var(--transition-1);
-            backdrop-filter: blur(10px);
-            white-space: nowrap;
-            text-align: center;
-        }
-
-        .quick-btn:hover {
-            border-color: var(--accent-primary);
-            background: rgba(99,102,241,0.15);
-            color: var(--text-1);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(99,102,241,0.3);
-        }
-
-        .quick-btn:active {
-            transform: translateY(0);
-        }
-
-        .content-split {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-            margin-top: 40px;
-        }
-
-        .premium-card {
-            background: var(--glass-2);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-lg);
-            padding: 32px;
-            box-shadow: var(--shadow-glass);
-            transition: all var(--transition-2);
-            height: 100%;
-        }
-
-        .premium-card:hover {
-            transform: translateY(-6px);
-            box-shadow: var(--shadow-2);
-        }
-
-        .expert-title {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-
-        .expert-price {
-            font-size: 32px;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--accent-success), #34d399);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin: 12px 0;
-        }
-
-        .expert-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            margin-top: 24px;
-        }
-
-        /* Profile Hero */
-        .profile-hero {
-            background: linear-gradient(145deg, var(--glass-2), var(--glass-1));
-            border: 1px solid var(--border-glass);
-            border-radius: var(--radius-lg);
-            padding: 32px 24px;
-            margin-bottom: 32px;
-            backdrop-filter: blur(25px);
-            box-shadow: var(--shadow-glass);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .profile-hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--accent-gradient);
-        }
-
-        .profile-header {
-            display: grid;
-            grid-template-columns: 100px 1fr;
-            gap: 24px;
-            align-items: center;
-            margin-bottom: 32px;
-        }
-
-        .avatar-xl {
-            width: 100px;
-            height: 100px;
-            border-radius: var(--radius-lg);
-            background: var(--accent-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 40px;
-            color: white;
-            box-shadow: var(--shadow-2);
-            position: relative;
-            z-index: 2;
-        }
-
-        .avatar-xl::after {
-            content: '';
-            position: absolute;
-            inset: 4px;
-            border-radius: var(--radius-lg);
-            background: var(--bg-primary);
-            z-index: -1;
-        }
-
-        .profile-details h2 {
-            font-size: 26px;
-            font-weight: 800;
-            margin: 0 0 8px 0;
-            line-height: 1.2;
-        }
-
-        .profile-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            margin: 24px 0;
-        }
-
-        .profile-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-2);
-            font-size: 15px;
-        }
-
-        .profile-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-            margin-bottom: 32px;
-        }
-
-        .profile-stat {
-            text-align: center;
-            padding: 20px 16px;
-            background: var(--glass-1);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--border-glass);
-        }
-
-        .stat-number {
-            font-size: 28px;
-            font-weight: 800;
-            color: var(--accent-primary);
-            margin-bottom: 4px;
-        }
-
-        .profile-actions {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-
-        /* Footer */
-        .footer {
-            flex-shrink: 0;
-            margin-top: auto;
-            position: relative;
-            z-index: 2;
-            background: linear-gradient(180deg, rgba(10,10,26,0.98) 0%, rgba(26,26,46,0.98) 100%);
-            border-top: 1px solid var(--border-glass);
-            backdrop-filter: blur(25px);
-            padding: 40px 16px 24px;
-        }
-
-        .footer-content {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .footer-top {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 32px;
-            margin-bottom: 32px;
-            text-align: center;
-        }
-
-        .footer-brand {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .footer-logo {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-direction: column;
-        }
-
-        .footer-logo .logo {
-            width: 44px;
-            height: 44px;
-            font-size: 18px;
-        }
-
-        .footer-brand h3 {
-            font-size: 24px;
-            font-weight: 800;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .footer-description {
-            color: var(--text-3);
-            line-height: 1.7;
-            font-size: 14px;
-            max-width: 400px;
-            margin: 0 auto;
-        }
-
-        .social-links {
-            display: flex;
-            gap: 14px;
-            justify-content: center;
-        }
-
-        .social-link {
-            width: 42px;
-            height: 42px;
-            border-radius: var(--radius-md);
-            background: var(--glass-2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-3);
-            text-decoration: none;
-            transition: all var(--transition-1);
-            backdrop-filter: blur(10px);
-        }
-
-        .social-link:hover {
-            background: var(--accent-primary);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-1);
-        }
-
-        .footer-section {
-            text-align: center;
-        }
-
-        .footer-section h4 {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            color: var(--text-1);
-        }
-
-        .footer-links {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .footer-link {
-            color: var(--text-3);
-            text-decoration: none;
-            font-size: 14px;
-            transition: all var(--transition-1);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .footer-link:hover {
-            color: var(--text-1);
-            transform: translateX(4px);
-        }
-
-        .footer-bottom {
-            padding-top: 32px;
-            border-top: 1px solid var(--border-glass);
-            text-align: center;
-            color: var(--text-3);
-        }
-
-        .footer-bottom p {
-            margin: 0 0 12px 0;
-            font-size: 13px;
-        }
-
-        .footer-badges {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .badge {
-            padding: 8px 14px;
-            background: var(--glass-2);
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 600;
-            border: 1px solid var(--border-glass);
-            backdrop-filter: blur(10px);
-            width: 100%;
-            max-width: 280px;
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            left: 24px;
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 18px 24px;
-            border-radius: var(--radius-lg);
-            color: white;
-            font-weight: 600;
-            z-index: 1000;
-            transform: translateY(100px);
-            opacity: 0;
-            transition: all var(--transition-1);
-            box-shadow: var(--shadow-2);
-            backdrop-filter: blur(20px);
-        }
-
-        .toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        .toast.success {
-            background: linear-gradient(135deg, var(--accent-success), #34d399);
-        }
-
-        .toast.info {
-            background: var(--accent-gradient);
-        }
-
-        /* Desktop Enhancements */
-        @media (min-width: 769px) {
-            .header-inner {
-                height: 70px;
-                padding: 0 16px;
-                gap: 16px;
-            }
-
-            .logo {
-                width: 48px;
-                height: 48px;
-                font-size: 20px;
-            }
-
-            .brand-text h1 {
-                font-size: 22px;
-            }
-
-            .nav-primary {
-                display: flex !important;
-                position: static;
-                background: transparent;
-                border-top: none;
-                flex-direction: row;
-                padding: 8px 0;
-                overflow-x: auto;
-                max-width: 400px;
-                gap: 8px;
-            }
-
-            .nav-btn {
-                width: auto;
-                min-width: 100px;
-                padding: 12px 20px;
-            }
-
-            .mobile-menu-btn {
-                display: none;
-            }
-
-            .search-container {
-                width: 280px;
-            }
-
-            .action-btn {
-                width: 44px;
-                height: 44px;
-            }
-
-            .avatar-small {
-                width: 32px;
-                height: 32px;
-                font-size: 14px;
-            }
-
-            .main-content {
-                padding: 24px 16px 300px 16px;
-            }
-
-            .page-title-group h1 {
-                font-size: 36px;
-            }
-
-            .page-header {
-                flex-direction: row;
-                align-items: flex-start;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                gap: 24px;
-            }
-
-            .ai-chat-container {
-                height: 580px;
-                padding: 32px;
-            }
-
-            .content-split {
-                grid-template-columns: 2fr 1fr;
-                gap: 32px;
-            }
-
-            .profile-hero {
-                padding: 40px 32px;
-            }
-
-            .profile-header {
-                grid-template-columns: 120px 1fr;
-                gap: 32px;
-            }
-
-            .avatar-xl {
-                width: 120px;
-                height: 120px;
-                font-size: 48px;
-            }
-
-            .profile-details h2 {
-                font-size: 32px;
-            }
-
-            .profile-stats {
-                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            }
-
-            .profile-actions {
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 16px;
-            }
-
-            .quick-actions {
-                flex-direction: row;
-                flex-wrap: wrap;
-            }
-
-            .quick-btn {
-                width: auto;
-            }
-
-            .footer-top {
-                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-                gap: 40px;
-                text-align: left;
-            }
-
-            .footer-brand {
-                align-items: flex-start;
-            }
-
-            .footer-logo {
-                flex-direction: row;
-            }
-
-            .footer-links {
-                align-items: flex-start;
-            }
-
-            .footer-badges {
-                flex-direction: row;
-                justify-content: center;
-                flex-wrap: wrap;
-            }
-
-            .badge {
-                width: auto;
-            }
-        }
-
-        @media (min-width: 1200px) {
-            .stats-grid {
-                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            }
-        }
-
-        @media (max-width: 480px) {
-            .main-content {
-                padding: 16px 12px 260px 12px;
-            }
-
-            .header-actions {
-                flex-direction: column;
-                gap: 6px;
-            }
-
-            .search-container {
-                width: 160px;
-            }
-
-            .expert-btn {
-                padding: 10px 16px;
-                font-size: 12px;
-            }
-
-            .ai-chat-container {
-                padding: 20px;
-                height: 450px;
-            }
-
-            .profile-hero {
-                padding: 24px 20px;
-            }
-
-            .footer-top {
-                gap: 24px;
-            }
-        }
-    </style>
+  <meta charset="utf-8">
+  <title>Solvenut Client Dashboard</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#020617">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@lucide/lucide@latest"></script>
+
+  <style>
+    :root{
+      --brand-1:#10b981;
+      --brand-2:#14b8a6;
+      --accent:#f59e0b;
+      --bg:#020617;
+      --card:#020617;
+      --muted:#94a3b8;
+      --text:#f9fafb;
+      --border:rgba(148,163,184,0.35);
+      --border-soft:rgba(148,163,184,0.25);
+      --error:#ef4444;
+      --success:#22c55e;
+      --radius-sm:14px;
+      --radius-md:20px;
+      --radius-lg:26px;
+      --transition-1:200ms cubic-bezier(.4,0,.2,1);
+      --transition-2:320ms cubic-bezier(.25,.46,.45,.94);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{
+      height:100%;
+      font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:
+        radial-gradient(circle at 0 0,rgba(16,185,129,0.18),transparent 45%),
+        radial-gradient(circle at 100% 100%,rgba(245,158,11,0.12),transparent 55%),
+        #020617;
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      scroll-behavior:smooth;
+      overflow-x:hidden;
+    }
+    body{display:flex;flex-direction:column;min-height:100vh}
+
+    a{color:inherit;text-decoration:none}
+
+    .shell{
+      max-width:1120px;
+      margin:0 auto;
+      padding:0 16px;
+      width:100%;
+    }
+
+    /* HEADER – SIMPLE, MOBILE FIRST */
+    header{
+      position:sticky;
+      top:0;
+      z-index:40;
+      background:rgba(2,6,23,0.98);
+      border-bottom:1px solid rgba(148,163,184,0.35);
+      backdrop-filter:blur(16px);
+    }
+    .header-inner{
+      height:60px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .logo-wrap{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      cursor:pointer;
+      flex-shrink:0;
+    }
+    .logo-mark{
+      width:34px;height:34px;
+      border-radius:12px;
+      background:linear-gradient(135deg,var(--brand-1),var(--brand-2));
+      display:grid;place-items:center;
+      font-size:18px;
+      box-shadow:0 10px 30px rgba(16,185,129,0.6);
+    }
+    .logo-text{font-weight:800;font-size:17px;letter-spacing:.02em}
+    .logo-text span:last-child{color:var(--accent)}
+
+    nav.desktop{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex:1;
+      justify-content:center;
+    }
+    .nav-btn{
+      border:none;
+      background:transparent;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:600;
+      padding:6px 14px;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      cursor:pointer;
+      border:1px solid transparent;
+      transition:all var(--transition-1);
+      white-space:nowrap;
+    }
+    .nav-btn:hover{
+      color:var(--text);
+      border-color:rgba(148,163,184,0.45);
+      background:rgba(15,23,42,0.95);
+    }
+    .nav-btn.active{
+      background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
+      color:#ecfdf5;
+      border-color:transparent;
+      box-shadow:0 10px 28px rgba(16,185,129,0.55);
+    }
+
+    .header-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-shrink:0;
+    }
+    .search-wrap{
+      position:relative;
+      width:170px;
+    }
+    .search-input{
+      width:100%;
+      padding:7px 12px 7px 30px;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,0.55);
+      background:rgba(15,23,42,0.96);
+      color:var(--text);
+      font-size:13px;
+      outline:none;
+      transition:all var(--transition-1);
+    }
+    .search-input::placeholder{color:var(--muted)}
+    .search-input:focus{
+      border-color:var(--brand-1);
+      box-shadow:0 0 0 3px rgba(16,185,129,0.3);
+    }
+    .search-icon{
+      position:absolute;
+      left:9px;top:50%;
+      transform:translateY(-50%);
+      width:15px;height:15px;
+      color:var(--muted);
+    }
+
+    .icon-btn{
+      width:32px;height:32px;
+      border-radius:11px;
+      border:1px solid rgba(148,163,184,0.55);
+      background:rgba(15,23,42,0.96);
+      color:var(--muted);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition:all var(--transition-1);
+      flex-shrink:0;
+    }
+    .icon-btn:hover{
+      background:#020617;
+      color:var(--text);
+      box-shadow:0 8px 22px rgba(15,23,42,0.9);
+      transform:translateY(-1px);
+    }
+
+    .expert-cta{
+      border:none;
+      border-radius:13px;
+      background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
+      color:#ecfdf5;
+      font-size:12px;
+      font-weight:700;
+      padding:7px 12px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      cursor:pointer;
+      box-shadow:0 10px 28px rgba(16,185,129,0.6);
+      transition:all var(--transition-2);
+      white-space:nowrap;
+    }
+    .expert-cta:hover{
+      transform:translateY(-1px);
+      box-shadow:0 14px 36px rgba(16,185,129,0.8);
+    }
+
+    .avatar-pill{
+      width:28px;height:28px;
+      border-radius:11px;
+      background:linear-gradient(135deg,var(--brand-1),var(--brand-2));
+      display:grid;place-items:center;
+      font-size:13px;font-weight:700;
+      color:#ecfdf5;
+    }
+
+    .mobile-toggle{
+      display:none;
+      border:none;
+      background:transparent;
+      color:var(--text);
+      font-size:22px;
+      cursor:pointer;
+    }
+
+    .mobile-drawer{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(2,6,23,0.97);
+      backdrop-filter:blur(18px);
+      z-index:50;
+      padding:18px 16px 20px;
+      flex-direction:column;
+      gap:10px;
+    }
+    .mobile-drawer.open{display:flex}
+    .mobile-drawer .nav-btn{
+      width:100%;
+      justify-content:flex-start;
+      border-radius:12px;
+      border:1px solid rgba(148,163,184,0.45);
+      background:rgba(15,23,42,0.96);
+    }
+
+    @media(max-width:820px){
+      nav.desktop{display:none}
+      .search-wrap{display:none}
+      .mobile-toggle{display:inline-flex}
+    }
+
+    /* MAIN CARD */
+    main{
+      flex:1;
+      width:100%;
+      display:flex;
+      justify-content:center;
+      padding:22px 0 30px;
+    }
+    .dash-card{
+      width:100%;
+      max-width:1120px;
+      background:radial-gradient(circle at 0 0,rgba(15,23,42,0.96),rgba(15,23,42,0.96));
+      border-radius:22px;
+      border:1px solid var(--border);
+      box-shadow:0 28px 80px rgba(15,23,42,0.96);
+      padding:18px 14px 20px;
+    }
+
+    .page{display:none;animation:fadeIn .22s ease-out}
+    .page.active{display:block}
+    @keyframes fadeIn{
+      from{opacity:0;transform:translateY(8px)}
+      to{opacity:1;transform:translateY(0)}
+    }
+
+    .page-header{
+      margin-bottom:14px;
+      padding-bottom:10px;
+      border-bottom:1px solid rgba(148,163,184,0.35);
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .page-header-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .page-title{
+      font-size:21px;
+      font-weight:800;
+      background:linear-gradient(135deg,var(--brand-1),var(--brand-2),var(--accent));
+      -webkit-background-clip:text;
+      color:transparent;
+    }
+    .page-sub{
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    /* HOME: VALUE STRIP */
+    .story-grid{
+      display:grid;
+      grid-template-columns:2fr 1.6fr;
+      gap:12px;
+      margin-bottom:14px;
+    }
+    @media(max-width:880px){
+      .story-grid{grid-template-columns:1fr}
+    }
+    .story-card{
+      border-radius:var(--radius-md);
+      border:1px solid var(--border);
+      background:rgba(8,16,32,0.96);
+      padding:12px 11px;
+    }
+    .story-card h3{
+      font-size:14px;
+      font-weight:700;
+      margin-bottom:4px;
+    }
+    .story-card p{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+    .pill-list{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:6px;
+    }
+    .pill{
+      font-size:11px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid var(--border-soft);
+      color:var(--muted);
+    }
+
+    /* STATS */
+    .stats-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+      gap:12px;
+      margin-bottom:16px;
+    }
+    .stat{
+      border-radius:18px;
+      border:1px solid var(--border);
+      background:rgba(10,18,40,0.98);
+      padding:11px 11px 9px;
+    }
+    .stat-label{
+      font-size:11px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      margin-bottom:3px;
+    }
+    .stat-value{
+      font-size:23px;
+      font-weight:800;
+      margin-bottom:3px;
+    }
+    .stat-desc{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    /* AI CHAT LAYOUT – CLEAN APP STYLE */
+    .ai-layout{
+      display:grid;
+      grid-template-columns:minmax(0,1.9fr) minmax(0,1.35fr);
+      gap:14px;
+      align-items:flex-start;
+    }
+    @media(max-width:880px){
+      .ai-layout{grid-template-columns:1fr}
+    }
+
+    .ai-shell{
+      border-radius:var(--radius-lg);
+      border:1px solid var(--border);
+      background:
+        radial-gradient(circle at 0 0,rgba(16,185,129,0.18),transparent 55%),
+        rgba(3,7,18,0.97);
+      padding:13px 11px 11px;
+      display:flex;
+      flex-direction:column;
+      min-height:320px;
+      max-height:520px;
+      overflow:hidden;
+      position:relative;
+    }
+    .ai-shell::before{
+      content:'';
+      position:absolute;inset:0;
+      border-radius:inherit;
+      pointer-events:none;
+      box-shadow:inset 0 0 0 1px rgba(15,23,42,0.7);
+    }
+
+    .ai-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      margin-bottom:7px;
+      position:relative;
+      z-index:1;
+    }
+    .ai-title-row{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .ai-avatar{
+      width:26px;height:26px;
+      border-radius:999px;
+      background:linear-gradient(135deg,var(--brand-1),var(--brand-2));
+      display:grid;place-items:center;
+      font-size:14px;
+    }
+    .ai-name{font-size:14px;font-weight:700}
+    .ai-caption{font-size:11px;color:var(--muted)}
+    .ai-badge{
+      font-size:10px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(34,197,94,0.6);
+      color:#bbf7d0;
+      background:rgba(22,101,52,0.4);
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      white-space:nowrap;
+    }
+
+    .messages{
+      flex:1;
+      border-radius:16px;
+      border:1px solid rgba(15,23,42,0.96);
+      background:rgba(6,12,30,0.98);
+      padding:9px;
+      margin-bottom:7px;
+      overflow-y:auto;
+      scrollbar-width:thin;
+      scrollbar-color:var(--brand-1) transparent;
+      position:relative;
+      z-index:1;
+    }
+    .messages::-webkit-scrollbar{width:6px}
+    .messages::-webkit-scrollbar-thumb{
+      background:linear-gradient(180deg,var(--brand-1),var(--brand-2));
+      border-radius:999px;
+    }
+
+    .chat-msg{
+      max-width:86%;
+      padding:9px 11px;
+      border-radius:15px;
+      font-size:13px;
+      line-height:1.6;
+      margin-bottom:7px;
+      word-wrap:break-word;
+      box-shadow:0 8px 22px rgba(15,23,42,0.95);
+      animation:msgIn .2s ease-out;
+    }
+    @keyframes msgIn{
+      from{opacity:0;transform:translateY(6px) scale(.98)}
+      to{opacity:1;transform:translateY(0) scale(1)}
+    }
+    .chat-msg.bot{
+      margin-right:auto;
+      background:#020617;
+      border:1px solid rgba(148,163,184,0.6);
+    }
+    .chat-msg.user{
+      margin-left:auto;
+      background:linear-gradient(135deg,var(--brand-1),var(--brand-2));
+      color:#ecfdf5;
+      border-radius:15px 15px 4px 15px;
+    }
+
+    .ai-input-wrap{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      position:relative;
+      z-index:1;
+    }
+    .ai-input-row{
+      display:flex;
+      gap:7px;
+      align-items:flex-end;
+    }
+    .ai-input{
+      flex:1;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,0.6);
+      background:rgba(15,23,42,0.98);
+      color:var(--text);
+      font-size:13px;
+      padding:8px 11px;
+      min-height:20px;
+      max-height:86px;
+      resize:none;
+      outline:none;
+      transition:all var(--transition-1);
+    }
+    .ai-input::placeholder{color:var(--muted)}
+    .ai-input:focus{
+      border-color:var(--brand-1);
+      box-shadow:0 0 0 3px rgba(16,185,129,0.35);
+      background:#020617;
+    }
+
+    .send-btn{
+      width:38px;height:38px;
+      border-radius:999px;
+      border:none;
+      background:linear-gradient(135deg,var(--brand-1),var(--brand-2));
+      color:#ecfdf5;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      box-shadow:0 12px 30px rgba(16,185,129,0.8);
+      transition:all var(--transition-2);
+      flex-shrink:0;
+    }
+    .send-btn:hover{
+      transform:translateY(-1px) scale(1.04);
+      box-shadow:0 16px 40px rgba(16,185,129,0.9);
+    }
+    .send-btn:active{transform:scale(.96)}
+
+    .quick-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .quick-btn{
+      font-size:11px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(148,163,184,0.6);
+      background:#020617;
+      color:var(--muted);
+      cursor:pointer;
+      transition:all var(--transition-1);
+      white-space:nowrap;
+    }
+    .quick-btn:hover{
+      border-color:var(--brand-1);
+      color:var(--text);
+      background:rgba(16,185,129,0.13);
+    }
+
+    /* RIGHT PANE – SIMPLE INFO */
+    .value-card{
+      border-radius:var(--radius-lg);
+      border:1px solid var(--border);
+      background:rgba(6,12,30,0.98);
+      padding:12px 11px 11px;
+    }
+    .value-head{font-size:14px;font-weight:700;margin-bottom:4px}
+    .value-sub{font-size:12px;color:var(--muted);margin-bottom:7px}
+    .value-list{font-size:12px;color:var(--muted);list-style:none;padding:0;margin:0}
+    .value-list li{display:flex;gap:6px;margin-bottom:4px}
+    .value-list span:first-child{color:#bbf7d0}
+
+    /* AI FULL PAGE */
+    .ai-full{
+      border-radius:var(--radius-lg);
+      border:1px solid var(--border);
+      background:rgba(6,12,30,0.98);
+      padding:13px 11px 11px;
+      max-width:900px;
+      margin:0 auto;
+      display:flex;
+      flex-direction:column;
+      min-height:360px;
+    }
+    .ai-full .messages{min-height:240px;max-height:500px}
+
+    /* PROFILE */
+    .profile-hero{
+      border-radius:var(--radius-lg);
+      border:1px solid var(--border);
+      background:
+        radial-gradient(circle at 0 0,rgba(16,185,129,0.18),transparent 60%),
+        rgba(6,12,30,0.98);
+      padding:14px 12px 14px;
+      margin-bottom:14px;
+    }
+    .profile-head{
+      display:grid;
+      grid-template-columns:64px minmax(0,1fr);
+      gap:12px;
+      align-items:center;
+      margin-bottom:12px;
+    }
+    .avatar-xl{
+      width:64px;height:64px;
+      border-radius:21px;
+      background:linear-gradient(135deg,var(--brand-1),var(--brand-2));
+      display:grid;place-items:center;
+      font-size:26px;font-weight:800;
+      color:#ecfdf5;
+      box-shadow:0 18px 40px rgba(16,185,129,0.75);
+    }
+    .profile-name{font-size:18px;font-weight:800;margin-bottom:2px}
+    .profile-meta{
+      font-size:12px;
+      color:var(--muted);
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+    }
+
+    .profile-stats{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+      gap:9px;
+      margin-bottom:10px;
+    }
+    .profile-stat{
+      border-radius:13px;
+      border:1px solid var(--border-soft);
+      background:rgba(8,16,32,0.98);
+      padding:8px 8px;
+      text-align:center;
+    }
+    .p-num{
+      font-size:17px;
+      font-weight:800;
+      color:var(--brand-1);
+      margin-bottom:2px;
+    }
+    .p-label{
+      font-size:11px;
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.06em;
+    }
+
+    .profile-actions{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+      gap:8px;
+    }
+    .profile-btn{
+      border-radius:13px;
+      border:none;
+      padding:8px 9px;
+      font-size:12px;
+      font-weight:700;
+      display:flex;
+      align-items:center;
+      gap:7px;
+      cursor:pointer;
+      color:#f9fafb;
+      background:linear-gradient(135deg,#0f172a,#020617);
+      transition:all var(--transition-2);
+    }
+    .profile-btn:hover{
+      transform:translateY(-1px);
+      box-shadow:0 14px 36px rgba(15,23,42,0.9);
+    }
+
+    .sec-strip{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+      gap:10px;
+    }
+    .sec-card{
+      border-radius:13px;
+      border:1px solid var(--border-soft);
+      background:rgba(8,16,32,0.98);
+      padding:9px 9px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .sec-card h4{font-size:13px;font-weight:700;margin-bottom:4px;color:var(--text)}
+
+    footer{
+      margin-top:auto;
+      border-top:1px solid rgba(148,163,184,0.35);
+      padding:16px 14px 14px;
+      font-size:11px;
+      color:var(--muted);
+      text-align:center;
+      background:rgba(2,6,23,0.97);
+    }
+
+    .toast{
+      position:fixed;
+      bottom:18px;
+      left:50%;
+      transform:translate(-50%,40px);
+      padding:9px 13px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:600;
+      color:#ecfdf5;
+      background:linear-gradient(135deg,var(--brand-1),var(--brand-2));
+      box-shadow:0 18px 40px rgba(16,185,129,0.85);
+      opacity:0;
+      transition:all var(--transition-2);
+      z-index:60;
+      max-width:90%;
+      text-align:center;
+    }
+    .toast.show{transform:translate(-50%,0);opacity:1}
+    .toast.info{background:linear-gradient(135deg,#0ea5e9,#6366f1)}
+    .toast.error{background:linear-gradient(135deg,#ef4444,#b91c1c)}
+
+    @media(max-width:640px){
+      .dash-card{padding:16px 11px}
+      .page-title{font-size:19px}
+      .stats-grid{grid-template-columns:1fr}
+      .ai-shell{min-height:300px}
+      .profile-head{grid-template-columns:56px minmax(0,1fr)}
+      .avatar-xl{width:56px;height:56px;font-size:23px}
+    }
+  </style>
 </head>
 <body>
-    <header class="header">
-        <div class="header-inner">
-            <div class="logo-section" onclick="location.href='/'">
-                <div class="logo">SH</div>
-                <div class="brand-text">
-                    <h1>SolutionHub</h1>
-                    <div class="brand-tag">AI + Human Expertise</div>
-                </div>
-            </div>
-            
-            <input type="checkbox" id="mobile-menu-toggle" class="menu-toggle">
-            <label for="mobile-menu-toggle" class="mobile-menu-btn" title="Menu">
-                <i data-lucide="menu"></i>
-            </label>
-            
-            <nav class="nav-primary" aria-label="Primary Navigation">
-                <button class="nav-btn active" data-target="home" onclick="openSection('home', event)">
-                    <i data-lucide="layout-dashboard" style="width:18px;height:18px"></i>
-                    Dashboard
-                </button>
-                <button class="nav-btn" data-target="ai" onclick="openSection('ai', event)">
-                    <i data-lucide="cpu" style="width:18px;height:18px"></i>
-                    AI Assistant
-                </button>
-                <button class="nav-btn" data-target="profile" onclick="openSection('profile', event)">
-                    <i data-lucide="user" style="width:18px;height:18px"></i>
-                    Profile
-                </button>
-            </nav>
+<header>
+  <div class="shell header-inner">
+    <div class="logo-wrap" onclick="location.href='index.html'">
+      <div class="logo-mark">🥜</div>
+      <div class="logo-text">Solve<span>nut</span></div>
+    </div>
 
-            <div class="header-actions">
-                <div class="search-container">
-                    <i data-lucide="search" class="search-icon"></i>
-                    <input class="search-input" id="globalSearch" placeholder="Search experts..." type="text">
-                </div>
-                <button class="action-btn" id="notifications" title="Notifications">
-                    <i data-lucide="bell"></i>
-                </button>
-                <button class="expert-btn" onclick="goToExpertsPage()">
-                    <i data-lucide="user-plus" style="width:16px;height:16px"></i>
-                    Expert
-                </button>
-                <button class="action-btn" id="profileBtn" title="Profile">
-                    <div class="avatar-small" id="headerAvatar">U</div>
-                </button>
+    <nav class="desktop" aria-label="Main navigation">
+      <button class="nav-btn active" data-target="home" onclick="openSection('home',event)">
+        <i data-lucide="layout-dashboard" style="width:16px;height:16px"></i>
+        Dashboard
+      </button>
+      <button class="nav-btn" data-target="ai" onclick="openSection('ai',event)">
+        <i data-lucide="cpu" style="width:16px;height:16px"></i>
+        AI Assistant
+      </button>
+      <button class="nav-btn" data-target="profile" onclick="openSection('profile',event)">
+        <i data-lucide="user" style="width:16px;height:16px"></i>
+        Profile
+      </button>
+    </nav>
+
+    <div class="header-actions">
+      <div class="search-wrap">
+        <i data-lucide="search" class="search-icon"></i>
+        <input id="globalSearch" class="search-input" type="text" placeholder="Search experts...">
+      </div>
+      <button class="icon-btn" id="notifications" title="Notifications">
+        <i data-lucide="bell" style="width:17px;height:17px"></i>
+      </button>
+      <button class="expert-cta" onclick="goToExpertsPage()">
+        <i data-lucide="user-plus" style="width:15px;height:15px"></i>
+        Talk to expert
+      </button>
+      <button class="icon-btn" id="profileBtn" title="Profile">
+        <div class="avatar-pill" id="headerAvatar">U</div>
+      </button>
+      <button class="mobile-toggle" id="mobileToggle" aria-label="Open menu">
+        <i data-lucide="menu"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobileDrawer" class="mobile-drawer" aria-hidden="true">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="logo-wrap" onclick="location.href='index.html'">
+        <div class="logo-mark">🥜</div>
+        <div class="logo-text">Solve<span>nut</span></div>
+      </div>
+      <button class="mobile-toggle" id="closeDrawer" aria-label="Close menu">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <button class="nav-btn active" data-target="home" onclick="openSection('home',event)">
+      <i data-lucide="layout-dashboard" style="width:18px;height:18px"></i>
+      Dashboard
+    </button>
+    <button class="nav-btn" data-target="ai" onclick="openSection('ai',event)">
+      <i data-lucide="cpu" style="width:18px;height:18px"></i>
+      AI Assistant
+    </button>
+    <button class="nav-btn" data-target="profile" onclick="openSection('profile',event)">
+      <i data-lucide="user" style="width:18px;height:18px"></i>
+      Profile
+    </button>
+    <button class="expert-cta" style="width:100%;justify-content:center;margin-top:6px;" onclick="goToExpertsPage()">
+      <i data-lucide="user-plus" style="width:16px;height:16px"></i>
+      Book human expert
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="shell">
+    <div class="dash-card">
+      <!-- HOME -->
+      <section id="home" class="page active">
+        <div class="page-header">
+          <div class="page-header-top">
+            <div>
+              <div class="page-title">Welcome back, <span id="displayName">User</span></div>
+              <p class="page-sub">Affordable expert advice, when you need it most.</p>
             </div>
+          </div>
         </div>
-    </header>
 
-    <main class="main-content">
-        <section id="home" class="page active">
-            <div class="page-header">
-                <div class="page-title-group">
-                    <h1>Welcome back, <span id="displayName">User</span></h1>
-                    <p class="page-subtitle">Your premium AI-powered technical solution center</p>
-                </div>
+        <div class="story-grid">
+          <div class="story-card">
+            <h3>Why Solvenut exists</h3>
+            <p>
+              AI is fast but generic, offline experts are expensive, and Google or Quora often miss personal, situational doubts.
+              Solvenut gives you verified humans for practical answers at micro prices.
+            </p>
+            <div class="pill-list">
+              <span class="pill">Human‑first</span>
+              <span class="pill">Trust & accountability</span>
+              <span class="pill">Chat • Voice • Video</span>
+              <span class="pill">Micro‑consultations (5–10 mins)</span>
             </div>
-
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-label">Account Balance</div>
-                    <div class="stat-value" id="balance">$0.00</div>
-                    <div class="stat-description">Add funds for premium expert sessions</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">AI Credits</div>
-                    <div class="stat-value" id="tokens">∞</div>
-                    <div class="stat-description">Unlimited premium AI diagnostics</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Active Sessions</div>
-                    <div class="stat-value" id="reqCount">0</div>
-                    <div class="stat-description">Live conversations and requests</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">System Status</div>
-                    <div class="stat-value" id="systemStatus">Optimal</div>
-                    <div class="stat-description">Premium infrastructure active</div>
-                </div>
+          </div>
+          <div class="story-card">
+            <h3>Where we can help</h3>
+            <p>
+              Technical, medical (non‑emergency), exams, career, relationships, money, law awareness, home repair, gadgets,
+              freelancing, small business and more – all in one place.
+            </p>
+            <div class="pill-list">
+              <span class="pill">Doctors (non‑emergency)</span>
+              <span class="pill">Software & DevOps</span>
+              <span class="pill">Teachers & NEET mentors</span>
+              <span class="pill">Career & interview</span>
+              <span class="pill">Relationship & family</span>
+              <span class="pill">Freelancing & small business</span>
             </div>
-
-            <div class="content-split">
-                <div class="ai-chat-container">
-                    <div class="ai-header">
-                        <div class="ai-title">
-                            <span style="font-size:26px">🤖</span>
-                            Premium AI Assistant
-                        </div>
-                        <div class="ai-model-badge" id="aiModelBadge">GPT-4o Premium</div>
-                    </div>
-                    <div class="messages-container" id="aiMessages" aria-live="polite">
-                        <div class="message bot" style="margin: 60px auto 0; text-align: center; max-width: 500px; opacity: 0.9">
-                            Premium AI ready! Describe your technical challenge and receive enterprise-grade solutions.<br>
-                            Quick actions below for instant help.
-                        </div>
-                    </div>
-                    <div class="chat-input-container">
-                        <div class="input-section">
-                            <textarea class="chat-input" id="aiInput" placeholder="Describe your technical challenge... (Enter to send)" rows="1" 
-                                oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,140)+'px'" 
-                                onkeydown="handleAIInput(event)"></textarea>
-                        </div>
-                        <div class="action-buttons">
-                            <button class="action-btn" id="sendBtn" onclick="askAI()" title="Send">
-                                <i data-lucide="send" style="width:18px;height:18px"></i>
-                            </button>
-                            <button class="action-btn" onclick="goToExpertsPage()" title="Expert">
-                                <i data-lucide="user" style="width:18px;height:18px"></i>
-                            </button>
-                        </div>
-                        <div class="quick-actions">
-                            <button class="quick-btn" onclick="quickPrompt('Debug this production error')">Debug Error</button>
-                            <button class="quick-btn" onclick="quickPrompt('Performance optimization strategy')">Performance</button>
-                            <button class="quick-btn" onclick="quickPrompt('System architecture review')">Architecture</button>
-                            <button class="quick-btn" onclick="quickPrompt('Production health check')">Health Check</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="premium-card">
-                    <div class="expert-title">Premium Experts On-Demand</div>
-                    <div class="expert-price">from $99/min</div>
-                    <p style="color: var(--text-3); margin-bottom: 24px; line-height: 1.6;">
-                        Verified senior engineers available 24/7 across 50+ domains
-                    </p>
-                    <div class="expert-actions">
-                        <button class="expert-btn" onclick="goToExpertsPage('programming')">
-                            <i data-lucide="code" style="width:16px;height:16px"></i>
-                            Senior Developers
-                        </button>
-                        <button class="expert-btn" onclick="goToExpertsPage('devops')">
-                            <i data-lucide="server" style="width:16px;height:16px"></i>
-                            DevOps Architects
-                        </button>
-                        <button class="expert-btn" onclick="goToExpertsPage('architecture')">
-                            <i data-lucide="layers" style="width:16px;height:16px"></i>
-                            System Architects
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="ai" class="page">
-            <div class="page-header">
-                <div class="page-title-group">
-                    <h1>Premium AI Assistant</h1>
-                    <p class="page-subtitle">Full-screen mode for complex problem solving</p>
-                </div>
-                <button class="expert-btn" onclick="goToExpertsPage()">
-                    Need Senior Engineer? <i data-lucide="user-plus" style="width:16px;height:16px"></i>
-                </button>
-            </div>
-            <div class="ai-chat-container" style="height: 700px; max-width: 900px; margin: 0 auto;">
-                <div class="messages-container" id="aiMessagesLarge"></div>
-                <div class="chat-input-container">
-                    <div class="input-section">
-                        <textarea class="chat-input" id="aiInputLarge" placeholder="Continue conversation..." rows="1"></textarea>
-                        <button class="action-btn" onclick="askAI(true)">
-                            <i data-lucide="send"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="profile" class="page">
-            <div class="page-header">
-                <div class="page-title-group">
-                    <h1>Premium Profile</h1>
-                    <p class="page-subtitle">Manage account, billing & enterprise features</p>
-                </div>
-                <button class="expert-btn" onclick="logout()" style="background: linear-gradient(135deg, #ef4444, #dc2626)">
-                    Sign Out <i data-lucide="log-out" style="width:16px;height:16px"></i>
-                </button>
-            </div>
-
-            <div class="profile-hero">
-                <div class="profile-header">
-                    <div class="avatar-xl" id="profileAvatar">U</div>
-                    <div class="profile-details">
-                        <h2 id="profileName">User Name</h2>
-                        <div class="profile-meta">
-                            <div class="profile-meta-item">
-                                <i data-lucide="mail" style="width:16px;height:16px"></i>
-                                <span id="profileEmailText">user@example.com</span>
-                            </div>
-                            <div class="profile-meta-item">
-                                <i data-lucide="calendar" style="width:16px;height:16px"></i>
-                                <span>Member since 2025</span>
-                            </div>
-                            <div class="profile-meta-item">
-                                <i data-lucide="shield" style="width:16px;height:16px"></i>
-                                <span>Premium Plan</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="profile-stats">
-                    <div class="profile-stat">
-                        <div class="stat-number" id="profileSessions">127</div>
-                        <div class="stat-label">Sessions</div>
-                    </div>
-                    <div class="profile-stat">
-                        <div class="stat-number">4.9</div>
-                        <div class="stat-label">Rating</div>
-                    </div>
-                    <div class="profile-stat">
-                        <div class="stat-number">50+</div>
-                        <div class="stat-label">Domains</div>
-                    </div>
-                    <div class="profile-stat">
-                        <div class="stat-number">$5,247</div>
-                        <div class="stat-label">Spent</div>
-                    </div>
-                </div>
-                <div class="profile-actions">
-                    <button class="expert-btn" onclick="editProfile()" style="background: var(--accent-gradient)">
-                        <i data-lucide="edit" style="width:18px;height:18px"></i>
-                        Edit Profile
-                    </button>
-                    <button class="expert-btn" onclick="billingSettings()" style="background: linear-gradient(135deg, var(--accent-success), #34d399)">
-                        <i data-lucide="credit-card" style="width:18px;height:18px"></i>
-                        Billing
-                    </button>
-                    <button class="expert-btn" onclick="securitySettings()" style="background: linear-gradient(135deg, #f59e0b, #fbbf24)">
-                        <i data-lucide="shield-check" style="width:18px;height:18px"></i>
-                        Security
-                    </button>
-                    <button class="expert-btn" onclick="usageAnalytics()" style="background: linear-gradient(135deg, #8b5cf6, #a78bfa)">
-                        <i data-lucide="bar-chart-3" style="width:18px;height:18px"></i>
-                        Analytics
-                    </button>
-                </div>
-            </div>
-
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-label">API Access</div>
-                    <div class="stat-value">Active</div>
-                    <div class="stat-description">Enterprise API ready for integration</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Team Seats</div>
-                    <div class="stat-value">5/10</div>
-                    <div class="stat-description">Add team members for collaboration</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Support Tier</div>
-                    <div class="stat-value">Priority</div>
-                    <div class="stat-description">24/7 dedicated support channel</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Next Billing</div>
-                    <div class="stat-value">Feb 15</div>
-                    <div class="stat-description">$9,999 Annual Premium</div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-top">
-                <div class="footer-brand">
-                    <div class="footer-logo">
-                        <div class="logo" style="background: var(--accent-gradient)">SH</div>
-                        <h3>SolutionHub</h3>
-                    </div>
-                    <p class="footer-description">
-                        Enterprise-grade AI diagnostics + verified human experts across 50+ technical domains. 
-                        Instant solutions for production issues, architecture reviews, and performance optimization.
-                    </p>
-                    <div class="social-links">
-                        <a href="#" class="social-link" title="LinkedIn" aria-label="LinkedIn"><i data-lucide="linkedin"></i></a>
-                        <a href="#" class="social-link" title="Twitter" aria-label="Twitter"><i data-lucide="twitter"></i></a>
-                        <a href="#" class="social-link" title="GitHub" aria-label="GitHub"><i data-lucide="github"></i></a>
-                        <a href="#" class="social-link" title="Discord" aria-label="Discord"><i data-lucide="disc"></i></a>
-                    </div>
-                </div>
-                <div class="footer-section">
-                    <h4>Product</h4>
-                    <div class="footer-links">
-                        <a href="#" class="footer-link"><i data-lucide="cpu" style="width:16px;height:16px"></i>AI Assistant</a>
-                        <a href="#" class="footer-link"><i data-lucide="user-plus" style="width:16px;height:16px"></i>Expert Network</a>
-                        <a href="#" class="footer-link"><i data-lucide="shield" style="width:16px;height:16px"></i>Enterprise</a>
-                        <a href="#" class="footer-link"><i data-lucide="zap" style="width:16px;height:16px"></i>API Access</a>
-                    </div>
-                </div>
-                <div class="footer-section">
-                    <h4>Company</h4>
-                    <div class="footer-links">
-                        <a href="#" class="footer-link"><i data-lucide="users" style="width:16px;height:16px"></i>About Us</a>
-                        <a href="#" class="footer-link"><i data-lucide="award" style="width:16px;height:16px"></i>Careers</a>
-                        <a href="#" class="footer-link"><i data-lucide="globe" style="width:16px;height:16px"></i>Blog</a>
-                        <a href="#" class="footer-link"><i data-lucide="mail" style="width:16px;height:16px"></i>Contact</a>
-                    </div>
-                </div>
-                <div class="footer-section">
-                    <h4>Support</h4>
-                    <div class="footer-links">
-                        <a href="#" class="footer-link"><i data-lucide="help-circle" style="width:16px;height:16px"></i>Help Center</a>
-                        <a href="#" class="footer-link"><i data-lucide="shield-check" style="width:16px;height:16px"></i>Security</a>
-                        <a href="#" class="footer-link"><i data-lucide="file-text" style="width:16px;height:16px"></i>Privacy Policy</a>
-                        <a href="#" class="footer-link"><i data-lucide="scale" style="width:16px;height:16px"></i>Terms of Service</a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 SolutionHub Global Inc. All rights reserved. Serving 50+ countries</p>
-                <div class="footer-badges">
-                    <div class="badge">
-                        <i data-lucide="shield" style="width:14px;height:14px; margin-right:4px; display:inline"></i>
-                        Enterprise Grade Security
-                    </div>
-                    <div class="badge">
-                        <i data-lucide="globe" style="width:14px;height:14px; margin-right:4px; display:inline"></i>
-                        Global Network
-                    </div>
-                    <div class="badge">
-                        <i data-lucide="zap" style="width:14px;height:14px; margin-right:4px; display:inline"></i>
-                        24/7 Availability
-                    </div>
-                </div>
-            </div>
+          </div>
         </div>
-    </footer>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-label">Wallet</div>
+            <div class="stat-value" id="balance">₹0.00</div>
+            <div class="stat-desc">Use this for micro‑sessions with experts.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">AI credits</div>
+            <div class="stat-value" id="tokens">∞</div>
+            <div class="stat-desc">Unlimited AI clarification and summaries.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Questions handled</div>
+            <div class="stat-value" id="reqCount">0</div>
+            <div class="stat-desc">Count of doubts explored via AI + humans.</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">System status</div>
+            <div class="stat-value" id="systemStatus">Optimal</div>
+            <div class="stat-desc">Servers, AI and expert network are healthy.</div>
+          </div>
+        </div>
 
-            const state = {
-                username: localStorage.getItem('username') || 'User',
-                email: localStorage.getItem('email') || 'user@example.com',
-                token: localStorage.getItem('token') || null,
-                requestsCounter: parseInt(localStorage.getItem('reqCount')) || 0
-            };
+        <!-- AI chat app style -->
+        <div class="ai-layout">
+          <div class="ai-shell">
+            <div class="ai-top">
+              <div class="ai-title-row">
+                <div class="ai-avatar">🤖</div>
+                <div>
+                  <div class="ai-name">Solvenut AI – First pass</div>
+                  <div class="ai-caption">AI cleans your question before a human expert joins.</div>
+                </div>
+              </div>
+              <div class="ai-badge" id="aiModelBadge">GPT‑4o Premium</div>
+            </div>
 
-            function updateUI() {
-                const initial = state.username.charAt(0).toUpperCase();
-                document.getElementById('headerAvatar').textContent = initial;
-                document.getElementById('profileAvatar').textContent = initial;
-                document.getElementById('displayName').textContent = state.username;
-                document.getElementById('profileEmailText').textContent = state.email;
-                document.getElementById('profileName').textContent = state.username;
-                document.getElementById('reqCount').textContent = state.requestsCounter;
-            }
+            <div class="messages" id="aiMessages" aria-live="polite">
+              <div class="chat-msg bot" style="margin:26px auto 0;max-width:440px;text-align:center;">
+                Tell Solvenut what you are stuck on. AI will:
+                <br>• Structure your doubt
+                <br>• Ask for missing details
+                <br>• Prepare it for the right expert.
+              </div>
+            </div>
 
-            window.openSection = function(id, event) {
-                if (event) event.preventDefault();
-                document.querySelectorAll('.nav-btn').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.target === id);
-                });
-                document.querySelectorAll('.page').forEach(page => {
-                    page.classList.remove('active');
-                });
-                document.getElementById(id).classList.add('active');
-                closeMobileMenu();
-                if (window.innerWidth < 768) {
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-            };
+            <div class="ai-input-wrap">
+              <div class="ai-input-row">
+                <textarea id="aiInput"
+                          class="ai-input"
+                          placeholder="Describe your doubt, issue or situation… (Enter to send)"
+                          rows="1"
+                          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,86)+'px'"
+                          onkeydown="handleAIInput(event)"></textarea>
+                <button class="send-btn" id="sendBtn" onclick="askAI()">
+                  <i data-lucide="send" style="width:18px;height:18px"></i>
+                </button>
+              </div>
+              <div class="quick-row">
+                <button class="quick-btn" onclick="quickPrompt('Help me frame this medical (non‑emergency) question better: ')">Medical (non‑emergency)</button>
+                <button class="quick-btn" onclick="quickPrompt('Help me describe this programming / bug clearly: ')">Programming / bug</button>
+                <button class="quick-btn" onclick="quickPrompt('I need guidance for exams or career. Help me frame it: ')">Exam / career</button>
+                <button class="quick-btn" onclick="quickPrompt('I have a personal / family / relationship question. Keep it anonymous and structured: ')">Personal & anonymous</button>
+              </div>
+            </div>
+          </div>
 
-            window.closeMobileMenu = function() {
-                document.querySelector('.nav-primary').classList.remove('mobile-open');
-                document.getElementById('mobile-menu-toggle').checked = false;
-            };
+          <div class="value-card">
+            <div class="value-head">What happens after AI?</div>
+            <div class="value-sub">
+              Solvenut only brings a human expert when needed – so you pay the minimum and still get accountability.
+            </div>
+            <ul class="value-list">
+              <li><span>①</span><span>AI clarifies and structures your doubt.</span></li>
+              <li><span>②</span><span>Best expert (category, language, price) is suggested.</span></li>
+              <li><span>③</span><span>You choose chat / voice / video and micro‑pay (5–10 min or full session).</span></li>
+              <li><span>④</span><span>AI summarises expert advice and next steps in your history vault.</span></li>
+            </ul>
 
-            function adjustFooterPadding() {
-                const footer = document.querySelector('.footer');
-                if (footer) {
-                    const footerHeight = footer.offsetHeight;
-                    const mainContent = document.querySelector('.main-content');
-                    mainContent.style.paddingBottom = Math.max(280, footerHeight + 40) + 'px';
-                }
-            }
+            <div style="margin-top:9px;border-top:1px solid var(--border-soft);padding-top:7px;font-size:11px;color:var(--muted);">
+              Vision: <strong style="font-weight:700;">A world where no one is confused, helpless, or forced to overpay just to get the right advice.</strong>
+            </div>
+          </div>
+        </div>
+      </section>
 
-            window.askAI = async function(fullscreen = false) {
-                const inputId = fullscreen ? 'aiInputLarge' : 'aiInput';
-                const messagesId = fullscreen ? 'aiMessagesLarge' : 'aiMessages';
-                const input = document.getElementById(inputId);
-                const messages = document.getElementById(messagesId);
-                const prompt = input.value.trim();
-                if (!prompt) return;
+      <!-- AI FOCUS PAGE -->
+      <section id="ai" class="page">
+        <div class="page-header">
+          <div class="page-header-top">
+            <div>
+              <div class="page-title">Solvenut AI + Humans</div>
+              <p class="page-sub">Long chats, deep debugging or multi‑step planning.</p>
+            </div>
+            <button class="expert-cta" onclick="goToExpertsPage()">
+              When AI is not enough
+              <i data-lucide="user-plus" style="width:16px;height:16px"></i>
+            </button>
+          </div>
+        </div>
 
-                const userMsg = document.createElement('div');
-                userMsg.className = 'message user';
-                userMsg.textContent = prompt;
-                messages.appendChild(userMsg);
-                input.value = '';
-                input.style.height = 'auto';
-                messages.scrollTop = messages.scrollHeight;
+        <div class="ai-full">
+          <div class="messages" id="aiMessagesLarge"></div>
+          <div class="ai-input-wrap" style="margin-top:7px;">
+            <div class="ai-input-row">
+              <textarea id="aiInputLarge"
+                        class="ai-input"
+                        placeholder="Continue chatting with Solvenut about this problem…"
+                        rows="1"
+                        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,86)+'px'"
+                        onkeydown="handleAIInput(event,true)"></textarea>
+              <button class="send-btn" onclick="askAI(true)">
+                <i data-lucide="send" style="width:18px;height:18px"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-                state.requestsCounter++;
-                localStorage.setItem('reqCount', state.requestsCounter);
-                document.getElementById('reqCount').textContent = state.requestsCounter;
+      <!-- PROFILE -->
+      <section id="profile" class="page">
+        <div class="page-header">
+          <div class="page-header-top">
+            <div>
+              <div class="page-title">Your Solvenut account</div>
+              <p class="page-sub">Manage identity, languages, trust and pricing.</p>
+            </div>
+            <button class="expert-cta" style="background:linear-gradient(135deg,#ef4444,#b91c1c)" onclick="logout()">
+              Sign out
+              <i data-lucide="log-out" style="width:16px;height:16px"></i>
+            </button>
+          </div>
+        </div>
 
-                const thinking = document.createElement('div');
-                thinking.className = 'message bot';
-                thinking.innerHTML = '<em>Premium AI thinking deeply...</em>';
-                messages.appendChild(thinking);
-                messages.scrollTop = messages.scrollHeight;
+        <div class="profile-hero">
+          <div class="profile-head">
+            <div class="avatar-xl" id="profileAvatar">U</div>
+            <div>
+              <div class="profile-name" id="profileName">User Name</div>
+              <div class="profile-meta">
+                <span id="profileEmailText">user@example.com</span>
+                <span>• Member since 2025</span>
+                <span>• Prefers chat + Hindi</span>
+              </div>
+            </div>
+          </div>
 
-                try {
-                    const body = { prompt };
-                    const params = new URLSearchParams(location.search);
-                    if (params.get('domain')) body.domain = params.get('domain');
-                    
-                    const res = await fetch('/api/ai/ask', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...(state.token ? { 'Authorization': `Bearer ${state.token}` } : {})
-                        },
-                        body: JSON.stringify(body)
-                    });
-                    const data = await res.json();
-                    thinking.remove();
+          <div class="profile-stats">
+            <div class="profile-stat">
+              <div class="p-num" id="profileSessions">0</div>
+              <div class="p-label">Total sessions</div>
+            </div>
+            <div class="profile-stat">
+              <div class="p-num">4.9</div>
+              <div class="p-label">Avg rating</div>
+            </div>
+            <div class="profile-stat">
+              <div class="p-num">15</div>
+              <div class="p-label">Saved solutions</div>
+            </div>
+            <div class="profile-stat">
+              <div class="p-num">3</div>
+              <div class="p-label">Follow‑up credits</div>
+            </div>
+          </div>
 
-                    const aiMsg = document.createElement('div');
-                    aiMsg.className = 'message bot';
-                    aiMsg.innerHTML = data.answer || 'No response received';
-                    messages.appendChild(aiMsg);
-                    showToast('Premium AI response ready!', 'success');
+          <div class="profile-actions">
+            <button class="profile-btn" onclick="editProfile()">
+              <i data-lucide="edit-3" style="width:16px;height:16px"></i>
+              Edit profile & languages
+            </button>
+            <button class="profile-btn" style="background:linear-gradient(135deg,#22c55e,#16a34a)" onclick="billingSettings()">
+              <i data-lucide="credit-card" style="width:16px;height:16px"></i>
+              Wallet & subscriptions
+            </button>
+            <button class="profile-btn" style="background:linear-gradient(135deg,#0ea5e9,#6366f1)" onclick="securitySettings()">
+              <i data-lucide="shield-check" style="width:16px;height:16px"></i>
+              Security & anonymity
+            </button>
+            <button class="profile-btn" style="background:linear-gradient(135deg,#a855f7,#ec4899)" onclick="usageAnalytics()">
+              <i data-lucide="bar-chart-3" style="width:16px;height:16px"></i>
+              Problem history vault
+            </button>
+          </div>
+        </div>
 
-                    if (data.shouldEscalate) {
-                        setTimeout(() => showToast('Consider Premium Expert for implementation', 'info'), 500);
-                    }
-                } catch (error) {
-                    thinking.innerHTML = 'Connection failed';
-                    showToast('Network error. Please try again.', 'error');
-                }
-                messages.scrollTop = messages.scrollHeight;
-            };
+        <div class="sec-strip">
+          <div class="sec-card">
+            <h4>Trust & verification</h4>
+            <p>Experts are document‑verified, rated, and tracked for performance. You always see success tags, pricing and languages before booking.</p>
+          </div>
+          <div class="sec-card">
+            <h4>Pricing & refunds</h4>
+            <p>Pay‑per‑minute or per session with clear pricing. If a case is unresolved or low‑quality, credits can be returned based on policy.</p>
+          </div>
+          <div class="sec-card">
+            <h4>Anonymous mode</h4>
+            <p>For sensitive topics (mental wellness, relationships, health awareness), you can hide your name and still get accountable, human answers.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
 
-            window.handleAIInput = function(event, fullscreen = false) {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    askAI(fullscreen);
-                }
-            };
+<footer>
+  “Solvenut connects you to real experts for real solutions—instantly, affordably, and human‑first.”
+</footer>
 
-            window.quickPrompt = function(text) {
-                const input = document.getElementById('aiInput');
-                input.value = text;
-                input.focus();
-                input.style.height = 'auto';
-                input.style.height = input.scrollHeight + 'px';
-                setTimeout(askAI, 200);
-            };
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
 
-            window.goToExpertsPage = function(domain) {
-                const url = domain ? `expert.html?domain=${encodeURIComponent(domain)}` : 'expert.html';
-                window.location.href = url;
-            };
+    const state = {
+      username: localStorage.getItem('username') || 'User',
+      email: localStorage.getItem('email') || 'user@example.com',
+      token: localStorage.getItem('token') || null,
+      requestsCounter: parseInt(localStorage.getItem('reqCount')) || 0
+    };
 
-            window.showToast = function(message, type = 'info') {
-                const toast = document.createElement('div');
-                toast.className = `toast ${type}`;
-                toast.textContent = message;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.classList.add('show'), 50);
-                setTimeout(() => toast.classList.remove('show'), 4000);
-                setTimeout(() => toast.remove(), 4300);
-            };
+    const mobileToggle = document.getElementById('mobileToggle');
+    const closeDrawer = document.getElementById('closeDrawer');
+    const drawer = document.getElementById('mobileDrawer');
 
-            async function refreshTelemetry() {
-                try {
-                    const res = await fetch('/api/system/health');
-                    if (!res.ok) return;
-                    const data = await res.json();
-                    document.getElementById('balance').textContent = 
-                        data.account_balance ? parseFloat(data.account_balance).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '$0.00';
-                    document.getElementById('tokens').textContent = data.tokens_remaining ?? '∞';
-                    document.getElementById('systemStatus').textContent = data.status === 'healthy' ? 'Optimal' : 'Checking...';
-                    document.getElementById('aiModelBadge').textContent = data.model || 'GPT-4o Premium';
-                } catch (e) {
-                    console.warn('Telemetry update failed', e);
-                }
-            }
+    mobileToggle.addEventListener('click', () => {
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden','false');
+    });
+    closeDrawer.addEventListener('click', () => closeMobileMenu());
+    document.addEventListener('click', e => {
+      if (!e.target.closest('header')) closeMobileMenu();
+    });
 
-            window.editProfile = function() { showToast('Premium profile editor launching...'); };
-            window.billingSettings = function() { showToast('Premium billing dashboard opening...'); };
-            window.securitySettings = function() { showToast('Enterprise security center loading...'); };
-            window.usageAnalytics = function() { showToast('Usage analytics dashboard opening...'); };
-            window.logout = function() {
-                if (confirm('Sign out from Premium SolutionHub?')) {
-                    localStorage.clear();
-                    location.href = 'index.html';
-                }
-            };
+    function updateUI() {
+      const initial = state.username.charAt(0).toUpperCase();
+      document.getElementById('headerAvatar').textContent = initial;
+      document.getElementById('profileAvatar').textContent = initial;
+      document.getElementById('displayName').textContent = state.username;
+      document.getElementById('profileEmailText').textContent = state.email;
+      document.getElementById('profileName').textContent = state.username;
+      document.getElementById('reqCount').textContent = state.requestsCounter;
+    }
 
-            document.addEventListener('keydown', function(e) {
-                if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-                    e.preventDefault();
-                    document.getElementById('globalSearch').focus();
-                }
-            });
+    window.openSection = function (id, event) {
+      if (event) event.preventDefault();
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.target === id);
+      });
+      document.querySelectorAll('.page').forEach(page => {
+        page.classList.toggle('active', page.id === id);
+      });
+      closeMobileMenu();
+      if (window.innerWidth < 768) window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.header-inner')) {
-                    closeMobileMenu();
-                }
-            });
+    window.closeMobileMenu = function () {
+      drawer.classList.remove('open');
+      drawer.setAttribute('aria-hidden','true');
+    };
 
-            window.addEventListener('resize', adjustFooterPadding);
-            adjustFooterPadding();
+    window.askAI = async function (fullscreen = false) {
+      const inputId = fullscreen ? 'aiInputLarge' : 'aiInput';
+      const messagesId = fullscreen ? 'aiMessagesLarge' : 'aiMessages';
+      const input = document.getElementById(inputId);
+      const messages = document.getElementById(messagesId);
+      const prompt = input.value.trim();
+      if (!prompt) return;
 
-            updateUI();
-            openSection('home');
-            refreshTelemetry();
-            setInterval(refreshTelemetry, 20000);
+      const userMsg = document.createElement('div');
+      userMsg.className = 'chat-msg user';
+      userMsg.textContent = prompt;
+      messages.appendChild(userMsg);
+      input.value = '';
+      input.style.height = 'auto';
+      messages.scrollTop = messages.scrollHeight;
 
-            if (state.email && state.email !== 'user@example.com') {
-                fetch(`/api/profile?email=${encodeURIComponent(state.email)}`)
-                    .then(r => r.ok ? r.json() : Promise.reject())
-                    .then(data => {
-                        if (data.name) {
-                            state.username = data.name;
-                            updateUI();
-                        }
-                    }).catch(() => {});
-            }
+      state.requestsCounter++;
+      localStorage.setItem('reqCount', state.requestsCounter);
+      document.getElementById('reqCount').textContent = state.requestsCounter;
+
+      const thinking = document.createElement('div');
+      thinking.className = 'chat-msg bot';
+      thinking.innerHTML = '<em>Solvenut AI is thinking…</em>';
+      messages.appendChild(thinking);
+      messages.scrollTop = messages.scrollHeight;
+
+      try {
+        const body = { prompt };
+        const params = new URLSearchParams(location.search);
+        if (params.get('domain')) body.domain = params.get('domain');
+
+        const res = await fetch('/api/ai/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(state.token ? { 'Authorization': `Bearer ${state.token}` } : {})
+          },
+          body: JSON.stringify(body)
         });
-    </script>
+        const data = await res.json();
+        thinking.remove();
+
+        const aiMsg = document.createElement('div');
+        aiMsg.className = 'chat-msg bot';
+        aiMsg.innerHTML = data.answer || 'No response received';
+        messages.appendChild(aiMsg);
+        messages.scrollTop = messages.scrollHeight;
+        showToast('AI answer ready','success');
+
+        if (data.shouldEscalate) {
+          setTimeout(() => showToast('AI suggests talking to a human expert for this case.', 'info'), 600);
+        }
+      } catch (err) {
+        thinking.innerHTML = 'Network error. Please try again.';
+        showToast('Network error. Please try again.','error');
+      }
+    };
+
+    window.handleAIInput = function (event, fullscreen = false) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        askAI(fullscreen);
+      }
+    };
+
+    window.quickPrompt = function (text) {
+      const input = document.getElementById('aiInput');
+      input.value = text;
+      input.focus();
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 86) + 'px';
+      setTimeout(() => askAI(false), 200);
+    };
+
+    window.goToExpertsPage = function (domain) {
+      const url = domain ? `expert.html?domain=${encodeURIComponent(domain)}` : 'expert.html';
+      window.location.href = url;
+    };
+
+    window.showToast = function (message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = 'toast ' + type;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.classList.add('show'), 20);
+      setTimeout(() => toast.classList.remove('show'), 3800);
+      setTimeout(() => toast.remove(), 4200);
+    };
+
+    async function refreshTelemetry() {
+      try {
+        const res = await fetch('/api/system/health');
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById('balance').textContent =
+          data.account_balance
+            ? '₹' + parseFloat(data.account_balance).toLocaleString('en-IN',{minimumFractionDigits:2})
+            : '₹0.00';
+        document.getElementById('tokens').textContent = data.tokens_remaining ?? '∞';
+        document.getElementById('systemStatus').textContent =
+          data.status === 'healthy' ? 'Optimal' : 'Checking…';
+        document.getElementById('aiModelBadge').textContent = data.model || 'GPT‑4o Premium';
+      } catch(e){
+        console.warn('Telemetry failed',e);
+      }
+    }
+
+    window.editProfile = function () { showToast('Profile editing coming soon'); };
+    window.billingSettings = function () { showToast('Opening billing & wallet'); };
+    window.securitySettings = function () { showToast('Security & anonymity settings coming soon'); };
+    window.usageAnalytics = function () { showToast('Problem history vault coming soon'); };
+    window.logout = function () {
+      if (confirm('Sign out from Solvenut?')) {
+        localStorage.clear();
+        location.href = 'index.html';
+      }
+    };
+
+    document.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const el = document.getElementById('globalSearch');
+        if (el) el.focus();
+      }
+    });
+
+    updateUI();
+    openSection('home');
+    refreshTelemetry();
+    setInterval(refreshTelemetry,20000);
+
+    if (state.email && state.email !== 'user@example.com') {
+      fetch(`/api/profile?email=${encodeURIComponent(state.email)}`)
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(data => {
+          if (data.name) {
+            state.username = data.name;
+            updateUI();
+          }
+        }).catch(()=>{});
+    }
+  });
+</script>
 </body>
 </html>

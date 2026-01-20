@@ -1,548 +1,610 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>SolutionHub | Professional Signup</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8" />
+  <title>Solvenut | Expert Signup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-<style>
-:root{
-  --primary:#6366f1;
-  --primary-hover:#7c3aed;
-  --bg:#0a0c1a;
-  --card:#111827;
-  --input:#1f2937;
-  --text:#ffffff;
-  --muted:#cbd5e1;
-  --error:#ef4444;
-  --success:#10b981;
-  --border:rgba(255,255,255,0.1);
-}
+  <style>
+    :root{
+      --brand-1:#10b981;
+      --brand-2:#14b8a6;
+      --accent:#f59e0b;
+      --bg:#0a0f1e;
+      --card:rgba(15,23,42,0.95);
+      --muted:#94a3b8;
+      --text:#f8fafc;
+      --border:rgba(148,163,184,0.45);
+      --shadow-soft:0 28px 80px rgba(15,23,42,0.95);
+      --error:#ef4444;
+      --success:#10b981;
+      --max-width:1200px;
+    }
 
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-  font-family:'Plus Jakarta Sans', Arial, sans-serif;
-}
+    *{box-sizing:border-box;margin:0;padding:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    body{
+      min-height:100vh;
+      background:radial-gradient(circle at 0% 0%,rgba(16,185,129,0.22) 0%,transparent 45%),
+                 radial-gradient(circle at 100% 100%,rgba(245,158,11,0.16) 0%,transparent 48%),
+                 #020617;
+      display:flex;flex-direction:column;
+      color:var(--text);-webkit-font-smoothing:antialiased;
+      padding:0;
+    }
+    a{color:inherit;text-decoration:none}
 
-body{
-  min-height:100vh;
-  background:linear-gradient(145deg, var(--bg) 0%, #020617 100%);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:var(--text);
-  padding:40px 20px;
-}
+    .container{max-width:var(--max-width);margin:0 auto;padding:0 20px}
 
-.container{
-  width:100%;
-  max-width:700px;
-  background:var(--card);
-  padding:40px;
-  border-radius:24px;
-  box-shadow:0 25px 60px rgba(0,0,0,.6);
-  border:1px solid var(--border);
-}
+    header{
+      position:sticky;top:0;z-index:1000;
+      background:linear-gradient(180deg,rgba(10,15,30,0.96),rgba(10,15,30,0.88));
+      border-bottom:1px solid rgba(255,255,255,0.06);
+      backdrop-filter:blur(14px);
+    }
+    .header-inner{
+      display:flex;align-items:center;justify-content:space-between;
+      gap:16px;padding:14px 20px;
+    }
+    .logo{display:flex;align-items:center;gap:10px;cursor:pointer}
+    .logo .mark{
+      width:38px;height:38px;border-radius:11px;
+      background:linear-gradient(135deg,var(--brand-1),var(--brand-2));
+      display:grid;place-items:center;font-size:20px;
+    }
+    .logo .txt{font-weight:800;font-size:19px}
+    .logo .txt .nut{color:var(--accent)}
 
-.header{
-  text-align:center;
-  margin-bottom:32px;
-}
+    nav.desktop{display:flex;gap:22px;align-items:center}
+    nav.desktop a{
+      font-size:14px;font-weight:600;color:var(--muted);
+      padding:6px 10px;border-radius:8px;
+      transition:all .2s;
+    }
+    nav.desktop a:hover{color:var(--text);background:rgba(15,23,42,0.7)}
 
-.header h2{
-  font-size:32px;
-  font-weight:800;
-  margin-bottom:8px;
-  background:linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-}
+    .actions{display:flex;gap:10px;align-items:center}
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 14px;border-radius:12px;
+      border:0;cursor:pointer;font-weight:700;
+      font-size:13px;transition:all .22s;
+    }
+    .btn-primary{
+      background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
+      color:#fff;box-shadow:0 10px 32px rgba(16,185,129,0.45);
+    }
+    .btn-ghost{
+      background:transparent;
+      border:1px solid rgba(148,163,184,0.45);
+      color:var(--text);
+    }
+    .btn-ghost:hover{
+      background:rgba(15,23,42,0.8);
+      border-color:rgba(148,163,184,0.8);
+    }
 
-.header p{
-  color:var(--muted);
-  font-size:15px;
-}
+    .nav-user-pill{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 12px;border-radius:999px;
+      background:rgba(15,23,42,0.92);
+      border:1px solid rgba(148,163,184,0.7);
+      color:var(--muted);font-size:13px;
+      max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .nav-logout{
+      border:0;background:transparent;
+      color:#f97373;font-size:12px;cursor:pointer;
+    }
 
-.form-section{
-  margin-bottom:28px;
-}
+    .mobile-toggle{
+      display:none;border:0;background:transparent;
+      color:var(--text);font-size:22px;cursor:pointer;
+    }
+    .mobile-drawer{
+      position:fixed;inset:0;
+      background:linear-gradient(180deg,rgba(10,15,30,0.98),rgba(10,15,30,0.96));
+      z-index:1500;transform:translateY(-100%);
+      transition:transform .3s ease;
+      display:flex;flex-direction:column;
+      padding:26px;backdrop-filter:blur(10px);
+    }
+    .mobile-drawer.open{transform:none}
+    .mobile-drawer a{
+      padding:13px 0;font-size:16px;
+      border-bottom:1px solid rgba(148,163,184,0.25);
+      color:var(--muted);font-weight:600;
+    }
 
-.section-title{
-  font-size:18px;
-  font-weight:700;
-  color:var(--text);
-  margin-bottom:16px;
-  padding-bottom:8px;
-  border-bottom:2px solid var(--primary);
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
+    @media(max-width:768px){
+      nav.desktop{display:none}
+      .mobile-toggle{display:inline-flex}
+    }
 
-.section-title i{
-  color:var(--primary);
-}
+    main{
+      flex:1;display:flex;align-items:center;
+      justify-content:center;padding:34px 20px 40px;
+    }
 
-.form-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:16px;
-}
+    .expert-card{
+      width:100%;max-width:1000px;
+      background:var(--card);
+      border-radius:22px;
+      border:1px solid var(--border);
+      box-shadow:var(--shadow-soft);
+      padding:26px 24px 24px;
+    }
 
-.form-group{
-  margin-bottom:16px;
-}
+    .header-top{
+      text-align:left;margin-bottom:18px;
+    }
+    .header-top h2{
+      font-size:24px;font-weight:800;
+      margin-bottom:6px;
+      background:linear-gradient(135deg,var(--brand-1) 0%,var(--brand-2) 40%,var(--accent) 100%);
+      -webkit-background-clip:text;background-clip:text;
+      color:transparent;
+    }
+    .header-top p{
+      color:var(--muted);font-size:13px;
+    }
 
-label{
-  display:block;
-  margin-bottom:8px;
-  font-size:14px;
-  font-weight:600;
-  color:var(--muted);
-}
+    .form-section{
+      margin-top:20px;padding-top:16px;
+      border-top:1px solid rgba(148,163,184,0.35);
+    }
+    .section-title{
+      font-size:15px;font-weight:700;
+      margin-bottom:14px;display:flex;
+      align-items:center;gap:8px;color:var(--text);
+    }
+    .section-title i{color:var(--brand-1)}
 
-label.required::after{
-  content:" *";
-  color:var(--error);
-}
+    .form-row{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:16px;
+    }
+    .form-group{margin-bottom:14px}
+    label{
+      display:block;margin-bottom:6px;
+      font-size:13px;font-weight:600;
+      color:var(--muted);
+    }
+    label.required::after{
+      content:" *";color:var(--error);
+    }
 
-input, select, textarea{
-  width:100%;
-  padding:12px 16px;
-  border-radius:12px;
-  border:1px solid var(--border);
-  background:var(--input);
-  color:var(--text);
-  font-size:14px;
-  font-family:'Plus Jakarta Sans', Arial, sans-serif;
-  transition:all .3s ease;
-}
+    input, select, textarea{
+      width:100%;padding:11px 13px;
+      border-radius:12px;border:1px solid rgba(148,163,184,0.55);
+      background:#020617cc;color:var(--text);
+      font-size:14px;transition:.22s;
+    }
+    input:focus, select:focus, textarea:focus{
+      outline:none;border-color:var(--brand-1);
+      box-shadow:0 0 0 3px rgba(16,185,129,0.28);
+    }
+    textarea{resize:vertical;min-height:90px}
 
-input:focus, select:focus, textarea:focus{
-  outline:none;
-  border-color:var(--primary);
-  box-shadow:0 0 0 3px rgba(99,102,241,.1);
-}
+    .price-input{position:relative}
+    .price-input::before{
+      content:"₹";position:absolute;
+      left:13px;top:50%;
+      transform:translateY(-50%);
+      color:var(--muted);font-weight:700;
+    }
+    .price-input input{padding-left:28px}
 
-textarea{
-  resize:vertical;
-  min-height:100px;
-}
+    .file-input-wrapper{position:relative;display:inline-block;width:100%}
+    .file-input-wrapper input[type="file"]{
+      position:absolute;left:-9999px;
+    }
+    .file-input-label{
+      display:flex;align-items:center;justify-content:center;
+      gap:8px;padding:12px;
+      background:#020617cc;
+      border:2px dashed rgba(148,163,184,0.6);
+      border-radius:12px;cursor:pointer;
+      color:var(--muted);font-size:13px;
+      font-weight:600;transition:.22s;
+    }
+    .file-input-label i{color:var(--brand-1)}
+    .file-input-label:hover{
+      border-color:var(--brand-1);
+      background:rgba(16,185,129,0.06);
+    }
+    .file-name{
+      margin-top:6px;font-size:12px;
+      color:var(--success);font-weight:600;
+    }
+    small{
+      display:block;margin-top:4px;
+      font-size:11px;color:var(--muted);
+    }
 
-.file-input-wrapper{
-  position:relative;
-  overflow:hidden;
-  display:inline-block;
-  width:100%;
-}
+    button{
+      width:100%;margin-top:18px;
+      padding:13px 0;border:none;
+      border-radius:14px;
+      background:linear-gradient(90deg,var(--brand-1),var(--brand-2));
+      color:#fff;font-size:15px;
+      font-weight:800;cursor:pointer;
+      transition:.22s;
+      box-shadow:0 12px 34px rgba(16,185,129,0.55);
+    }
+    button:hover{
+      transform:translateY(-1px);
+      box-shadow:0 16px 42px rgba(16,185,129,0.6);
+    }
+    button:disabled{opacity:0.6;cursor:not-allowed;transform:none}
 
-.file-input-wrapper input[type="file"]{
-  position:absolute;
-  left:-9999px;
-}
+    .msg{
+      margin-top:16px;padding:10px 12px;
+      text-align:center;font-size:13px;
+      font-weight:600;border-radius:12px;
+      display:none;
+    }
+    .msg.show{display:block}
+    .msg.error{
+      background:rgba(239,68,68,0.1);
+      color:var(--error);border:1px solid var(--error);
+    }
+    .msg.success{
+      background:rgba(16,185,129,0.1);
+      color:var(--success);border:1px solid var(--success);
+    }
 
-.file-input-label{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:10px;
-  padding:14px 16px;
-  background:var(--input);
-  border:2px dashed var(--border);
-  border-radius:12px;
-  cursor:pointer;
-  transition:all .3s ease;
-  color:var(--muted);
-  font-weight:600;
-}
+    .footer{
+      margin-top:18px;padding-top:14px;
+      border-top:1px solid rgba(148,163,184,0.35);
+      text-align:center;font-size:12px;
+      color:var(--muted);
+    }
+    .footer a{color:var(--accent);font-weight:600}
 
-.file-input-label:hover{
-  border-color:var(--primary);
-  background:rgba(99,102,241,.05);
-}
-
-.file-input-label i{
-  font-size:20px;
-  color:var(--primary);
-}
-
-.file-name{
-  display:block;
-  margin-top:8px;
-  font-size:12px;
-  color:var(--success);
-  font-weight:600;
-}
-
-small{
-  display:block;
-  margin-top:6px;
-  color:var(--muted);
-  font-size:12px;
-}
-
-.price-input{
-  position:relative;
-}
-
-.price-input::before{
-  content:"₹";
-  position:absolute;
-  left:16px;
-  top:50%;
-  transform:translateY(-50%);
-  color:var(--muted);
-  font-weight:700;
-  font-size:16px;
-}
-
-.price-input input{
-  padding-left:32px;
-}
-
-button{
-  width:100%;
-  margin-top:24px;
-  padding:16px;
-  background:linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border:none;
-  border-radius:14px;
-  color:#fff;
-  font-size:16px;
-  font-weight:700;
-  cursor:pointer;
-  transition:all .3s ease;
-  box-shadow:0 8px 25px rgba(99,102,241,.4);
-}
-
-button:hover{
-  transform:translateY(-2px);
-  box-shadow:0 12px 35px rgba(99,102,241,.6);
-}
-
-button:disabled{
-  opacity:0.6;
-  cursor:not-allowed;
-  transform:none;
-}
-
-.msg{
-  margin-top:20px;
-  padding:12px 16px;
-  text-align:center;
-  font-size:14px;
-  font-weight:600;
-  border-radius:12px;
-  display:none;
-}
-
-.msg.show{
-  display:block;
-}
-
-.error{
-  background:rgba(239,68,68,.1);
-  color:var(--error);
-  border:1px solid var(--error);
-}
-
-.success{
-  background:rgba(16,185,129,.1);
-  color:var(--success);
-  border:1px solid var(--success);
-}
-
-.footer{
-  text-align:center;
-  margin-top:24px;
-  padding-top:24px;
-  border-top:1px solid var(--border);
-}
-
-.footer a{
-  color:var(--primary);
-  text-decoration:none;
-  font-weight:600;
-  transition:color .3s ease;
-}
-
-.footer a:hover{
-  color:var(--primary-hover);
-}
-
-@media (max-width:768px){
-  .form-row{
-    grid-template-columns:1fr;
-  }
-  .container{
-    padding:28px 24px;
-  }
-}
-</style>
+    @media(max-width:768px){
+      .form-row{grid-template-columns:1fr}
+      main{padding:26px 16px 34px}
+      .expert-card{padding:22px 18px}
+    }
+  </style>
 </head>
-
 <body>
-
-<div class="container">
-  <div class="header">
-    <h2>Join as a Professional Expert</h2>
-    <p>Share your expertise and connect with clients worldwide</p>
-  </div>
-
-  <form id="proSignupForm" enctype="multipart/form-data">
-    
-    <!-- Personal Information -->
-    <div class="form-section">
-      <div class="section-title">
-        <i class="fas fa-user"></i>
-        Personal Information
-      </div>
-      
-      <div class="form-row">
-        <div class="form-group">
-          <label for="name" class="required">Full Name</label>
-          <input id="name" type="text" name="name" placeholder="John Doe" required />
-        </div>
-
-        <div class="form-group">
-          <label for="email" class="required">Email Address</label>
-          <input id="email" type="email" name="email" placeholder="john@example.com" required />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="password" class="required">Password</label>
-        <input id="password" type="password" name="password" placeholder="Minimum 6 characters" minlength="6" required />
-      </div>
+<header>
+  <div class="container header-inner">
+    <div class="logo" onclick="location.href='index.html'">
+      <div class="mark">🥜</div>
+      <div class="txt">Solve<span class="nut">nut</span></div>
     </div>
 
-    <!-- Professional Details -->
-    <div class="form-section">
-      <div class="section-title">
-        <i class="fas fa-briefcase"></i>
-        Professional Details
-      </div>
+    <nav class="desktop">
+      <a href="index.html#categories">Categories</a>
+      <a href="index.html#how">How It Works</a>
+      <a href="index.html#features">Features</a>
+      <a href="experts.html">Find Experts</a>
+    </nav>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="field" class="required">Domain/Field</label>
-          <select id="field" name="field" required>
-            <option value="">Select your domain</option>
-            <option value="Programming">Programming</option>
-            <option value="DevOps">DevOps & Cloud</option>
-            <option value="Academics">Academics & Teaching</option>
-            <option value="Medical">Medical & Healthcare</option>
-            <option value="Engineering">Engineering</option>
-            <option value="Business">Business & Management</option>
-            <option value="Career">Career Counseling</option>
-            <option value="Legal">Legal & Law</option>
-            <option value="Finance">Finance & Accounting</option>
-            <option value="Design">Design & Creative</option>
-            <option value="Marketing">Marketing & Sales</option>
-          </select>
-        </div>
+    <div class="actions" id="navAuth"></div>
 
-        <div class="form-group">
-          <label for="experience" class="required">Years of Experience</label>
-          <input id="experience" type="number" name="experience" min="0" max="50" placeholder="5" required />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="headline" class="required">Professional Headline</label>
-        <input id="headline" type="text" name="headline" placeholder="Senior Full Stack Developer | React & Node.js Expert" maxlength="100" required />
-        <small>A short tagline that describes your expertise (max 100 characters)</small>
-      </div>
-
-      <div class="form-group">
-        <label for="summary" class="required">Professional Summary</label>
-        <textarea id="summary" name="summary" placeholder="Describe your expertise, skills, and what you can help clients with..." maxlength="500" required></textarea>
-        <small>Detailed description of your background and services (max 500 characters)</small>
-      </div>
-
-      <div class="form-group">
-        <label for="linkedin">LinkedIn Profile</label>
-        <input id="linkedin" type="url" name="linkedin" placeholder="https://linkedin.com/in/yourprofile" />
-        <small>Optional: Add your LinkedIn profile URL</small>
-      </div>
-    </div>
-
-    <!-- Pricing -->
-    <div class="form-section">
-      <div class="section-title">
-        <i class="fas fa-rupee-sign"></i>
-        Consultation Fee
-      </div>
-
-      <div class="form-group">
-        <label for="price" class="required">Consultation Fee (per session)</label>
-        <div class="price-input">
-          <input id="price" type="number" name="price" min="100" max="10000" placeholder="500" required />
-        </div>
-        <small>Set your fee in INR (₹100 - ₹10,000 per session)</small>
-      </div>
-    </div>
-
-    <!-- Documents -->
-    <div class="form-section">
-      <div class="section-title">
-        <i class="fas fa-file-upload"></i>
-        Documents & Verification
-      </div>
-
-      <div class="form-group">
-        <label for="photo" class="required">Profile Photo</label>
-        <div class="file-input-wrapper">
-          <input id="photo" type="file" name="photo" accept="image/jpeg,image/png,image/jpg" required />
-          <label for="photo" class="file-input-label">
-            <i class="fas fa-camera"></i>
-            <span>Choose Profile Photo</span>
-          </label>
-        </div>
-        <span id="photoName" class="file-name"></span>
-        <small>Upload a professional photo (JPG, PNG - Max 5MB)</small>
-      </div>
-
-      <div class="form-group">
-        <label for="resume" class="required">Resume/CV</label>
-        <div class="file-input-wrapper">
-          <input id="resume" type="file" name="resume" accept=".pdf" required />
-          <label for="resume" class="file-input-label">
-            <i class="fas fa-file-pdf"></i>
-            <span>Choose Resume (PDF)</span>
-          </label>
-        </div>
-        <span id="resumeName" class="file-name"></span>
-        <small>Upload your resume in PDF format (Max 5MB)</small>
-      </div>
-    </div>
-
-    <button type="submit" id="submitBtn">
-      <i class="fas fa-user-plus"></i> Register as Professional Expert
+    <button class="mobile-toggle" id="mobileToggle" aria-expanded="false" aria-controls="mobileDrawer">
+      <i class="fa-solid fa-bars"></i>
     </button>
-  </form>
-
-  <div id="message" class="msg"></div>
-
-  <div class="footer">
-    <small>Already registered? <a href="/login.html">Login Here</a></small>
   </div>
+</header>
+
+<div id="mobileDrawer" class="mobile-drawer" role="dialog" aria-modal="true" aria-hidden="true" style="display:none">
+  <button id="closeDrawer" style="align-self:flex-end;background:transparent;border:0;color:var(--text);font-size:24px;padding:6px;cursor:pointer">
+    <i class="fa-solid fa-xmark"></i>
+  </button>
+  <a href="index.html#categories">Categories</a>
+  <a href="index.html#how">How It Works</a>
+  <a href="index.html#features">Features</a>
+  <a href="experts.html">Find Experts</a>
 </div>
 
+<main>
+  <div class="container">
+    <div class="expert-card">
+      <div class="header-top">
+        <h2>Join Solvenut as an expert</h2>
+        <p>Share your knowledge, earn per session, and help people make better decisions every day.</p>
+      </div>
+
+      <form id="proSignupForm" enctype="multipart/form-data">
+        <!-- Personal -->
+        <div class="form-section">
+          <div class="section-title">
+            <i class="fas fa-user"></i>
+            Personal details
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name" class="required">Full name</label>
+              <input id="name" type="text" name="name" placeholder="Your full name" required />
+            </div>
+            <div class="form-group">
+              <label for="email" class="required">Email address</label>
+              <input id="email" type="email" name="email" placeholder="you@example.com" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="password" class="required">Password</label>
+            <input id="password" type="password" name="password" placeholder="Minimum 6 characters" minlength="6" required />
+          </div>
+        </div>
+
+        <!-- Professional -->
+        <div class="form-section">
+          <div class="section-title">
+            <i class="fas fa-briefcase"></i>
+            Professional profile
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="field" class="required">Domain / field</label>
+              <select id="field" name="field" required>
+                <option value="">Select your domain</option>
+                <option value="Programming">Programming</option>
+                <option value="DevOps">DevOps & Cloud</option>
+                <option value="Academics">Academics & Teaching</option>
+                <option value="Medical">Medical & Healthcare</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Business">Business & Management</option>
+                <option value="Career">Career Counseling</option>
+                <option value="Legal">Legal & Law</option>
+                <option value="Finance">Finance & Accounting</option>
+                <option value="Design">Design & Creative</option>
+                <option value="Marketing">Marketing & Sales</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="experience" class="required">Years of experience</label>
+              <input id="experience" type="number" name="experience" min="0" max="50" placeholder="5" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="headline" class="required">Professional headline</label>
+            <input id="headline" type="text" name="headline" placeholder="Senior Full‑Stack Developer | React & Node.js" maxlength="100" required />
+            <small>A short tagline about your expertise (max 100 characters)</small>
+          </div>
+          <div class="form-group">
+            <label for="summary" class="required">Professional summary</label>
+            <textarea id="summary" name="summary" placeholder="Describe your experience, skills, and what you can help Solvenut clients with..." maxlength="500" required></textarea>
+            <small>Detailed summary of your background and services (max 500 characters)</small>
+          </div>
+          <div class="form-group">
+            <label for="linkedin">LinkedIn profile (optional)</label>
+            <input id="linkedin" type="url" name="linkedin" placeholder="https://linkedin.com/in/yourprofile" />
+            <small>Add your LinkedIn URL to help us verify your profile faster</small>
+          </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="form-section">
+          <div class="section-title">
+            <i class="fas fa-rupee-sign"></i>
+            Consultation fee
+          </div>
+          <div class="form-group">
+            <label for="price" class="required">Consultation fee (per session)</label>
+            <div class="price-input">
+              <input id="price" type="number" name="price" min="100" max="10000" placeholder="500" required />
+            </div>
+            <small>Set your fee in INR (₹100 – ₹10,000 per session). You can change this later.</small>
+          </div>
+        </div>
+
+        <!-- Documents -->
+        <div class="form-section">
+          <div class="section-title">
+            <i class="fas fa-file-upload"></i>
+            Documents & verification
+          </div>
+          <div class="form-group">
+            <label for="photo" class="required">Profile photo</label>
+            <div class="file-input-wrapper">
+              <input id="photo" type="file" name="photo" accept="image/jpeg,image/png,image/jpg" required />
+              <label for="photo" class="file-input-label">
+                <i class="fas fa-camera"></i>
+                <span>Choose profile photo</span>
+              </label>
+            </div>
+            <span id="photoName" class="file-name"></span>
+            <small>Upload a clear, professional photo (JPG/PNG, max 5MB).</small>
+          </div>
+          <div class="form-group">
+            <label for="resume" class="required">Resume / CV (PDF)</label>
+            <div class="file-input-wrapper">
+              <input id="resume" type="file" name="resume" accept=".pdf" required />
+              <label for="resume" class="file-input-label">
+                <i class="fas fa-file-pdf"></i>
+                <span>Choose resume (PDF)</span>
+              </label>
+            </div>
+            <span id="resumeName" class="file-name"></span>
+            <small>Upload your latest resume in PDF format (max 5MB).</small>
+          </div>
+        </div>
+
+        <button type="submit" id="submitBtn">
+          <i class="fas fa-user-plus"></i> Apply as Solvenut expert
+        </button>
+      </form>
+
+      <div id="message" class="msg"></div>
+
+      <div class="footer">
+        Already have an account? <a href="login.html">Log in</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="container" style="padding:0 0 20px;margin-top:6px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid rgba(148,163,184,0.35);padding-top:14px;">
+    <div>© 2026 Solvenut. Experts are manually reviewed before going live.</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;">
+      <a href="#" style="color:var(--muted)">Privacy</a>
+      <a href="#" style="color:var(--muted)">Terms</a>
+      <a href="#" style="color:var(--muted)">Support</a>
+    </div>
+  </div>
+</footer>
+
 <script>
-const form = document.getElementById("proSignupForm");
-const msg = document.getElementById("message");
-const submitBtn = document.getElementById("submitBtn");
+  // Auth state + auto-redirect if already logged in as expert
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  const storedName =
+    localStorage.getItem('name') ||
+    localStorage.getItem('username') ||
+    (localStorage.getItem('email') ? localStorage.getItem('email').split('@')[0] : null);
 
-// File input handling
-document.getElementById("photo").addEventListener("change", function(e) {
-  const fileName = e.target.files[0]?.name || "";
-  document.getElementById("photoName").textContent = fileName ? `✓ ${fileName}` : "";
-});
+  const navAuth = document.getElementById('navAuth');
 
-document.getElementById("resume").addEventListener("change", function(e) {
-  const fileName = e.target.files[0]?.name || "";
-  document.getElementById("resumeName").textContent = fileName ? `✓ ${fileName}` : "";
-});
-
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  msg.textContent = "";
-  msg.className = "msg";
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
-
-  const formData = new FormData(form);
-
-  // Validation
-  const photo = document.getElementById("photo").files[0];
-  const resume = document.getElementById("resume").files[0];
-
-  if (photo && photo.size > 5 * 1024 * 1024) {
-    msg.textContent = "Photo size must be less than 5MB";
-    msg.classList.add("error", "show");
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register as Professional Expert';
-    return;
-  }
-
-  if (resume && resume.size > 5 * 1024 * 1024) {
-    msg.textContent = "Resume size must be less than 5MB";
-    msg.classList.add("error", "show");
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register as Professional Expert';
-    return;
-  }
-
-  try {
-    console.log('📤 Submitting professional signup...');
-    
-    const res = await fetch("/api/pro-signup", {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await res.json();
-    console.log('📥 Response:', data);
-
-    if (data.success) {
-      msg.classList.add("success", "show");
-      msg.innerHTML = '<i class="fas fa-check-circle"></i> Registration successful! Redirecting to login...';
-      
-      setTimeout(() => {
-        window.location.href = "/login.html";
-      }, 2000);
-    } else {
-      msg.classList.add("error", "show");
-      msg.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${data.error || "Signup failed. Please try again."}`;
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register as Professional Expert';
+  function logout(){
+    if(confirm('Logout from this device?')){
+      localStorage.clear();
+      location.href = 'login.html';
     }
-  } catch (err) {
-    console.error('❌ Signup error:', err);
-    msg.classList.add("error", "show");
-    msg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Server error. Please try again later.';
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Register as Professional Expert';
   }
-});
+  window.logout = logout;
 
-// Character counter for textarea
-document.getElementById("summary").addEventListener("input", function(e) {
-  const maxLength = 500;
-  const currentLength = e.target.value.length;
-  const small = e.target.nextElementSibling;
-  small.textContent = `${currentLength}/${maxLength} characters`;
-  
-  if (currentLength > maxLength * 0.9) {
-    small.style.color = "var(--warning)";
-  } else {
-    small.style.color = "var(--muted)";
+  function handleExistingSession(){
+    if(token && role){
+      const dashUrl = role === 'expert' ? 'expert-dashboard.html' : 'client-dashboard.html';
+      window.location.replace(dashUrl);
+    }
   }
-});
 
-// Character counter for headline
-document.getElementById("headline").addEventListener("input", function(e) {
-  const maxLength = 100;
-  const currentLength = e.target.value.length;
-  const small = e.target.nextElementSibling;
-  small.textContent = `${currentLength}/${maxLength} characters`;
-  
-  if (currentLength > maxLength * 0.9) {
-    small.style.color = "var(--warning)";
-  } else {
-    small.style.color = "var(--muted)";
+  function renderNavAuth(){
+    if(token && role){
+      const dashUrl = role === 'expert' ? 'expert-dashboard.html' : 'client-dashboard.html';
+      navAuth.innerHTML = `
+        <div class="nav-user-pill">
+          <i class="fa-regular fa-circle-user"></i>
+          <span>${storedName || 'User'}</span>
+        </div>
+        <a class="btn btn-ghost" href="${dashUrl}" style="font-size:13px;padding:6px 12px">Dashboard</a>
+        <button class="nav-logout" onclick="logout()">Logout</button>
+      `;
+    }else{
+      navAuth.innerHTML = `
+        <a class="btn btn-ghost" href="login.html">Log in</a>
+      `;
+    }
   }
-});
 
-console.log('✅ Professional signup page loaded');
+  // Mobile nav
+  const mobileToggle = document.getElementById('mobileToggle');
+  const mobileDrawer = document.getElementById('mobileDrawer');
+  const closeDrawer = document.getElementById('closeDrawer');
+
+  function openDrawer(){
+    mobileDrawer.style.display = 'flex';
+    setTimeout(()=> mobileDrawer.classList.add('open'), 20);
+    mobileDrawer.setAttribute('aria-hidden','false');
+    mobileToggle.setAttribute('aria-expanded','true');
+  }
+  function closeMobile(){
+    mobileDrawer.classList.remove('open');
+    mobileDrawer.setAttribute('aria-hidden','true');
+    mobileToggle.setAttribute('aria-expanded','false');
+    setTimeout(()=> mobileDrawer.style.display='none', 260);
+  }
+  mobileToggle?.addEventListener('click', openDrawer);
+  closeDrawer?.addEventListener('click', closeMobile);
+
+  // File labels
+  document.getElementById("photo").addEventListener("change", function(e) {
+    const fileName = e.target.files[0]?.name || "";
+    document.getElementById("photoName").textContent = fileName ? `✓ ${fileName}` : "";
+  });
+  document.getElementById("resume").addEventListener("change", function(e) {
+    const fileName = e.target.files[0]?.name || "";
+    document.getElementById("resumeName").textContent = fileName ? `✓ ${fileName}` : "";
+  });
+
+  const form = document.getElementById("proSignupForm");
+  const msg = document.getElementById("message");
+  const submitBtn = document.getElementById("submitBtn");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    msg.textContent = "";
+    msg.className = "msg";
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting your application…';
+
+    const formData = new FormData(form);
+    const photo = document.getElementById("photo").files[0];
+    const resume = document.getElementById("resume").files[0];
+
+    if (photo && photo.size > 5 * 1024 * 1024) {
+      msg.textContent = "Photo size must be less than 5MB";
+      msg.classList.add("error","show");
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Apply as Solvenut expert';
+      return;
+    }
+
+    if (resume && resume.size > 5 * 1024 * 1024) {
+      msg.textContent = "Resume size must be less than 5MB";
+      msg.classList.add("error","show");
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Apply as Solvenut expert';
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/pro-signup", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        msg.classList.add("success","show");
+        msg.innerHTML = '<i class="fas fa-check-circle"></i> Application submitted! Redirecting to login…';
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 2000);
+      } else {
+        msg.classList.add("error","show");
+        msg.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${data.error || "Signup failed. Please try again."}`;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Apply as Solvenut expert';
+      }
+    } catch (err) {
+      msg.classList.add("error","show");
+      msg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Server error. Please try again later.';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Apply as Solvenut expert';
+    }
+  });
+
+  // Character counters
+  document.getElementById("summary").addEventListener("input", function(e) {
+    const maxLength = 500;
+    const currentLength = e.target.value.length;
+    const small = e.target.nextElementSibling;
+    small.textContent = `${currentLength}/${maxLength} characters`;
+  });
+
+  document.getElementById("headline").addEventListener("input", function(e) {
+    const maxLength = 100;
+    const currentLength = e.target.value.length;
+    const small = e.target.nextElementSibling;
+    small.textContent = `${currentLength}/${maxLength} characters`;
+  });
+
+  handleExistingSession();
+  renderNavAuth();
 </script>
-
 </body>
 </html>

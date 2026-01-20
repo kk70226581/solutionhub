@@ -1317,7 +1317,7 @@ footer {
             </div>
         </section>
 
-        <!-- COMPLETELY REDESIGNED CHAT -->
+        <!-- CHAT -->
         <section id="chat" class="section">
             <div class="chat-wrapper">
                 <div class="chat-container">
@@ -1567,7 +1567,6 @@ fetch(`/api/profile?email=${email}`)
     .catch(err => console.error('❌ Profile error:', err));
 
 // ============= COMPLETE CHAT SYSTEM =============
-
 async function loadAllConversations() {
     console.log('📥 Loading conversations...');
     
@@ -1665,23 +1664,17 @@ function handleIncomingMessage(data) {
     
     updateClientLastMessage(clientEmail, data.message);
     
-    // DON'T display echo - skip if message is from current user and we're in active chat
     if (activeClient === clientEmail && data.author === email) {
-        // Skip displaying - already displayed when sent
         socket.emit('mark_as_read', { room: data.room });
     } else if (activeClient === clientEmail) {
         displayMessage(data);
         scrollToBottom();
-        
-        // Mark as read
         socket.emit('mark_as_read', { room: data.room });
     } else {
-        // Increment unread
         unreadCounts[clientEmail] = (unreadCounts[clientEmail] || 0) + 1;
         updateClientUnread(clientEmail);
         updateTotalUnread();
         
-        // Show notification
         if (Notification.permission === 'granted') {
             new Notification('New message from ' + clientEmail.split('@')[0], {
                 body: data.message.substring(0, 60),
@@ -1699,11 +1692,9 @@ function getOtherEmail(room) {
 function addClientToList(clientEmail, room, lastMessage = '', timestamp = null) {
     const clientsList = document.getElementById('clientsList');
     
-    // Remove if already exists
     const existing = document.querySelector(`[data-email="${clientEmail}"]`);
     if (existing) existing.remove();
     
-    // Remove empty state
     const emptyState = clientsList.querySelector('.empty-state');
     if (emptyState) emptyState.remove();
     
@@ -1751,7 +1742,6 @@ function updateClientLastMessage(clientEmail, message) {
         timeEl.textContent = 'Just now';
     }
     
-    // Move to top
     const clientsList = document.getElementById('clientsList');
     clientsList.insertBefore(item, clientsList.firstChild);
 }
@@ -1810,12 +1800,10 @@ async function openChat(clientEmail) {
     activeClient = clientEmail;
     const room = clientRooms[clientEmail];
     
-    // Reset unread
     unreadCounts[clientEmail] = 0;
     updateClientUnread(clientEmail);
     updateTotalUnread();
     
-    // Update active state
     document.querySelectorAll('.client-item').forEach(i => i.classList.remove('active'));
     const item = document.querySelector(`[data-email="${clientEmail}"]`);
     if (item) item.classList.add('active');
@@ -1824,11 +1812,9 @@ async function openChat(clientEmail) {
     const initial = clientName.charAt(0).toUpperCase();
     const isOnline = onlineUsers.has(clientEmail);
     
-    // Hide empty state
     const emptyState = document.getElementById('chatEmpty');
     if (emptyState) emptyState.style.display = 'none';
     
-    // Build chat UI
     const chatMain = document.getElementById('chatMain');
     chatMain.innerHTML = `
         <button class="toggle-sidebar-btn" onclick="toggleChatSidebar()">
@@ -1874,10 +1860,8 @@ async function openChat(clientEmail) {
     
     lucide.createIcons();
     
-    // Join room
     socket.emit('join_private', room);
     
-    // Load messages
     try {
         const res = await fetch(`/api/messages?room=${room}`);
         if (!res.ok) throw new Error('Failed');
@@ -1896,7 +1880,6 @@ async function openChat(clientEmail) {
     
     document.getElementById('messageInput').focus();
     
-    // Close sidebar on mobile
     if (window.innerWidth <= 968) {
         toggleChatSidebar(false);
     }
@@ -1964,7 +1947,6 @@ function sendMessage() {
     
     console.log('📤 Sending:', messageData);
     
-    // Display message immediately (don't wait for echo)
     displayMessage({
         author: email,
         message: message,
