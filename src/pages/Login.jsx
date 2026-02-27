@@ -3,17 +3,22 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/Login.css';
 
+// ✅ Base API root from Vite env (e.g. VITE_API_BASE=https://solutionhub66.onrender.com)
+const API = import.meta.env.VITE_API_BASE;
+
 const Login = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
+  const hasWindow = typeof window !== 'undefined';
+
+  const token = hasWindow ? localStorage.getItem('token') : null;
+  const role = hasWindow ? localStorage.getItem('role') : null;
   const storedName =
-    localStorage.getItem('name') ||
-    localStorage.getItem('username') ||
-    (localStorage.getItem('email')
+    (hasWindow && localStorage.getItem('name')) ||
+    (hasWindow && localStorage.getItem('username')) ||
+    (hasWindow && localStorage.getItem('email')
       ? localStorage.getItem('email').split('@')[0]
       : null);
 
@@ -26,6 +31,7 @@ const Login = () => {
   }, [token, role, navigate]);
 
   const handleLogout = () => {
+    if (!hasWindow) return;
     if (window.confirm('Logout from this device?')) {
       localStorage.clear();
       navigate('/login', { replace: true });
@@ -46,7 +52,7 @@ const Login = () => {
     const originalText = 'Sign in';
 
     try {
-      const res = await fetch('/api/login', {
+      const res = await fetch(`${API}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -55,10 +61,12 @@ const Login = () => {
       const data = await res.json();
 
       if (data.success) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('username', data.name);
-        localStorage.setItem('email', data.email);
-        localStorage.setItem('role', data.role || 'client');
+        if (hasWindow) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('username', data.name);
+          localStorage.setItem('email', data.email);
+          localStorage.setItem('role', data.role || 'client');
+        }
 
         const target =
           data.role === 'expert' ? '/expert-dashboard' : '/client-dashboard';

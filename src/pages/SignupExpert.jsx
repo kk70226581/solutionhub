@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/SignupExpert.css';
 
+// ✅ Backend base URL, e.g. VITE_API_BASE=https://solutionhub66.onrender.com
+const API = import.meta.env.VITE_API_BASE;
+
 const SignupExpert = () => {
   const navigate = useNavigate();
 
@@ -11,16 +14,18 @@ const SignupExpert = () => {
   const [message, setMessage] = useState({ text: '', type: '' }); // type: 'success' | 'error' | ''
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
+  const hasWindow = typeof window !== 'undefined';
+
+  const token = hasWindow ? localStorage.getItem('token') : null;
+  const role = hasWindow ? localStorage.getItem('role') : null;
   const storedName =
-    localStorage.getItem('name') ||
-    localStorage.getItem('username') ||
-    (localStorage.getItem('email')
+    (hasWindow && localStorage.getItem('name')) ||
+    (hasWindow && localStorage.getItem('username')) ||
+    (hasWindow && localStorage.getItem('email')
       ? localStorage.getItem('email').split('@')[0]
       : null);
 
-  const dashUrl = role === 'expert' ? '/expert-dashboard.html' : '/client-dashboard.html';
+  const dashUrl = role === 'expert' ? '/expert-dashboard' : '/client-dashboard';
 
   // redirect if already logged in
   useEffect(() => {
@@ -30,9 +35,10 @@ const SignupExpert = () => {
   }, [token, role, dashUrl, navigate]);
 
   const handleLogout = () => {
+    if (!hasWindow) return;
     if (window.confirm('Logout from this device?')) {
       localStorage.clear();
-      navigate('/login.html', { replace: true });
+      navigate('/login', { replace: true });
     }
   };
 
@@ -69,7 +75,7 @@ const SignupExpert = () => {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/pro-signup', {
+      const res = await fetch(`${API}/api/pro-signup`, {
         method: 'POST',
         body: formData,
       });
@@ -82,7 +88,7 @@ const SignupExpert = () => {
           type: 'success',
         });
         setTimeout(() => {
-          navigate('/login.html');
+          navigate('/login');
         }, 2000);
       } else {
         setMessage({
@@ -143,7 +149,7 @@ const SignupExpert = () => {
                 </button>
               </>
             ) : (
-              <Link className="btn btn-ghost" to="/login.html">
+              <Link className="btn btn-ghost" to="/login">
                 Log in
               </Link>
             )}
@@ -209,7 +215,11 @@ const SignupExpert = () => {
               </p>
             </div>
 
-            <form id="proSignupForm" onSubmit={handleSubmit} encType="multipart/form-data">
+            <form
+              id="proSignupForm"
+              onSubmit={handleSubmit}
+              encType="multipart/form-data"
+            >
               {/* Personal */}
               <div className="form-section">
                 <div className="section-title">
@@ -310,7 +320,9 @@ const SignupExpert = () => {
                     maxLength={100}
                     required
                   />
-                  <small>A short tagline about your expertise (max 100 characters)</small>
+                  <small>
+                    A short tagline about your expertise (max 100 characters)
+                  </small>
                 </div>
                 <div className="form-group">
                   <label htmlFor="summary" className="required">
@@ -323,7 +335,10 @@ const SignupExpert = () => {
                     maxLength={500}
                     required
                   ></textarea>
-                  <small>Detailed summary of your background and services (max 500 characters)</small>
+                  <small>
+                    Detailed summary of your background and services (max 500
+                    characters)
+                  </small>
                 </div>
                 <div className="form-group">
                   <label htmlFor="linkedin">LinkedIn profile (optional)</label>
@@ -333,7 +348,9 @@ const SignupExpert = () => {
                     name="linkedin"
                     placeholder="https://linkedin.com/in/yourprofile"
                   />
-                  <small>Add your LinkedIn URL to help us verify your profile faster</small>
+                  <small>
+                    Add your LinkedIn URL to help us verify your profile faster
+                  </small>
                 </div>
               </div>
 
@@ -359,7 +376,8 @@ const SignupExpert = () => {
                     />
                   </div>
                   <small>
-                    Set your fee in INR (₹100 – ₹10,000 per session). You can change this later.
+                    Set your fee in INR (₹100 – ₹10,000 per session). You can
+                    change this later.
                   </small>
                 </div>
               </div>
@@ -389,7 +407,9 @@ const SignupExpert = () => {
                     </label>
                   </div>
                   {photoName && <span className="file-name">{photoName}</span>}
-                  <small>Upload a clear, professional photo (JPG/PNG, max 5MB).</small>
+                  <small>
+                    Upload a clear, professional photo (JPG/PNG, max 5MB).
+                  </small>
                 </div>
                 <div className="form-group">
                   <label htmlFor="resume" className="required">
@@ -410,14 +430,17 @@ const SignupExpert = () => {
                     </label>
                   </div>
                   {resumeName && <span className="file-name">{resumeName}</span>}
-                  <small>Upload your latest resume in PDF format (max 5MB).</small>
+                  <small>
+                    Upload your latest resume in PDF format (max 5MB).
+                  </small>
                 </div>
               </div>
 
               <button type="submit" id="submitBtn" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
-                    <i className="fas fa-spinner fa-spin"></i> Submitting your application…
+                    <i className="fas fa-spinner fa-spin"></i> Submitting your
+                    application…
                   </>
                 ) : (
                   <>
@@ -441,7 +464,7 @@ const SignupExpert = () => {
             </div>
 
             <div className="footer">
-              Already have an account? <Link to="/login.html">Log in</Link>
+              Already have an account? <Link to="/login">Log in</Link>
             </div>
           </div>
         </div>
@@ -450,7 +473,9 @@ const SignupExpert = () => {
       {/* PAGE FOOTER */}
       <footer className="page-footer">
         <div className="container footer-inner">
-          <div>© 2026 Solvenut. Experts are manually reviewed before going live.</div>
+          <div>
+            © 2026 Solvenut. Experts are manually reviewed before going live.
+          </div>
           <div className="footer-links">
             <a href="#">Privacy</a>
             <a href="#">Terms</a>

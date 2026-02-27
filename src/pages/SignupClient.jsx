@@ -3,17 +3,22 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/SignupClient.css';
 
+// ✅ Base API root from Vite env (e.g. VITE_API_BASE=https://solutionhub66.onrender.com)
+const API = import.meta.env.VITE_API_BASE;
+
 const SignupClient = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
+  const hasWindow = typeof window !== 'undefined';
+
+  const token = hasWindow ? localStorage.getItem('token') : null;
+  const role = hasWindow ? localStorage.getItem('role') : null;
   const storedName =
-    localStorage.getItem('name') ||
-    localStorage.getItem('username') ||
-    (localStorage.getItem('email')
+    (hasWindow && localStorage.getItem('name')) ||
+    (hasWindow && localStorage.getItem('username')) ||
+    (hasWindow && localStorage.getItem('email')
       ? localStorage.getItem('email').split('@')[0]
       : null);
 
@@ -27,6 +32,7 @@ const SignupClient = () => {
   }, [token, role, dashUrl, navigate]);
 
   const handleLogout = () => {
+    if (!hasWindow) return;
     if (window.confirm('Logout from this device?')) {
       localStorage.clear();
       navigate('/login', { replace: true });
@@ -45,7 +51,7 @@ const SignupClient = () => {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/register', {
+      const res = await fetch(`${API}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
@@ -61,7 +67,8 @@ const SignupClient = () => {
 
       const btn = document.getElementById('signupBtn');
       if (btn) {
-        btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Account created!';
+        btn.innerHTML =
+          '<i class="fa-solid fa-circle-check"></i> Account created!';
       }
       setTimeout(() => {
         navigate('/login');
@@ -175,21 +182,21 @@ const SignupClient = () => {
                 Create your <span>client account</span>
               </h1>
               <p>
-                Ask verified human experts about health, money, studies, relationships, and
-                more—anytime you feel stuck.
+                Ask verified human experts about health, money, studies,
+                relationships, and more—anytime you feel stuck.
               </p>
               <div className="info-points">
                 <span>
-                  <i className="fa-solid fa-circle-check"></i> One account to talk to any expert on
-                  Solvenut
+                  <i className="fa-solid fa-circle-check"></i> One account to
+                  talk to any expert on Solvenut
                 </span>
                 <span>
-                  <i className="fa-solid fa-circle-check"></i> Pay only for the minutes you actually
-                  use
+                  <i className="fa-solid fa-circle-check"></i> Pay only for the
+                  minutes you actually use
                 </span>
                 <span>
-                  <i className="fa-solid fa-circle-check"></i> Your chats and call notes are
-                  securely stored
+                  <i className="fa-solid fa-circle-check"></i> Your chats and
+                  call notes are securely stored
                 </span>
               </div>
             </section>
@@ -197,7 +204,10 @@ const SignupClient = () => {
             <section className="auth-form-side">
               <div className="form-header">
                 <h2>Sign up as client</h2>
-                <p>It takes less than a minute. You can delete your account anytime.</p>
+                <p>
+                  It takes less than a minute. You can delete your account
+                  anytime.
+                </p>
               </div>
 
               <form id="signupForm" autoComplete="on" onSubmit={handleSubmit}>
@@ -247,7 +257,9 @@ const SignupClient = () => {
                 </div>
 
                 <div className="input-group">
-                  <label htmlFor="interest">Main category you care about</label>
+                  <label htmlFor="interest">
+                    Main category you care about
+                  </label>
                   <div className="input-wrapper">
                     <i className="fa-solid fa-layer-group"></i>
                     <select id="interest" name="interest" defaultValue="">
@@ -269,13 +281,15 @@ const SignupClient = () => {
                   id="signupBtn"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? 'Creating your account…' : 'Create my Solvenut account'}
+                  {isSubmitting
+                    ? 'Creating your account…'
+                    : 'Create my Solvenut account'}
                 </button>
               </form>
 
               <div className="terms-note">
-                By signing up, you agree to Solvenut’s <a href="#">Terms</a> and{' '}
-                <a href="#">Privacy Policy</a>.
+                By signing up, you agree to Solvenut’s <a href="#">Terms</a>{' '}
+                and <a href="#">Privacy Policy</a>.
               </div>
               <div className="have-account">
                 Already have an account? <Link to="/login">Log in</Link>
@@ -288,7 +302,9 @@ const SignupClient = () => {
       {/* FOOTER */}
       <footer>
         <div className="container footer-row">
-          <div>© 2026 Solvenut. Making expert knowledge accessible and affordable.</div>
+          <div>
+            © 2026 Solvenut. Making expert knowledge accessible and affordable.
+          </div>
           <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
             <a href="#" style={{ color: 'var(--muted)' }}>
               Privacy

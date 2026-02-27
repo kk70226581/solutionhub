@@ -3,6 +3,10 @@ import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import '../styles/AdminDashboard.css';
 
+// ✅ STEP 1 — API base from env
+// e.g. VITE_API_BASE=https://solutionhub66.onrender.com
+const API = import.meta.env.VITE_API_BASE;
+
 const AdminDashboard = () => {
   const [allExperts, setAllExperts] = useState([]);
   const [activeTab, setActiveTab] = useState('pending');
@@ -18,15 +22,20 @@ const AdminDashboard = () => {
     src: '',
   });
 
-  // Socket: online experts
+  // ✅ STEP 2 — Socket: connect to backend origin
   useEffect(() => {
-    const socket = io();
+    if (!API) return; // optional guard
+    const socket = io(API, {
+      transports: ['websocket'],
+    });
+
     socket.on('online_users', users => {
       const count = Object.values(users || {}).filter(
         u => u.role === 'expert',
       ).length;
       setOnlineCount(count);
     });
+
     return () => socket.disconnect();
   }, []);
 
@@ -39,15 +48,15 @@ const AdminDashboard = () => {
     );
   };
 
-  // Fetch all expert lists and health
+  // ✅ STEP 3 — Fetch all expert lists and health using API base
   const loadData = async () => {
     setIsLoading(true);
     try {
       const [pRes, aRes, rRes, hRes] = await Promise.all([
-        fetch('/api/experts?status=pending'),
-        fetch('/api/experts?status=approved'),
-        fetch('/api/experts?status=rejected'),
-        fetch('/api/health'),
+        fetch(`${API}/api/experts?status=pending`),
+        fetch(`${API}/api/experts?status=approved`),
+        fetch(`${API}/api/experts?status=rejected`),
+        fetch(`${API}/api/health`),
       ]);
 
       const [p, a, r, h] = await Promise.all([
@@ -75,10 +84,10 @@ const AdminDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Update expert status
+  // ✅ STEP 3 (continued) — Update expert status with API base
   const updateStatus = async (email, status) => {
     try {
-      const res = await fetch('/api/admin/expert-status', {
+      const res = await fetch(`${API}/api/admin/expert-status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, status }),
@@ -96,12 +105,22 @@ const AdminDashboard = () => {
     }
   };
 
-  // Image modal
+  // ✅ STEP 4 — Image modal with absolute backend URL
+  const buildAvatarUrl = avatarPath => {
+    if (!avatarPath) return '';
+    // If backend already returns full URL, just return it
+    if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+      return avatarPath;
+    }
+    // Otherwise assume backend is serving at /uploads/... etc.
+    return `${API}/${avatarPath.replace(/^\/+/, '')}`;
+  };
+
   const openModal = expert => {
     if (!expert.avatar) return;
     setModal({
       isOpen: true,
-      src: `/${expert.avatar}`,
+      src: buildAvatarUrl(expert.avatar),
     });
   };
 
@@ -216,7 +235,7 @@ const AdminDashboard = () => {
                 >
                   {expert.avatar ? (
                     <img
-                      src={`/${expert.avatar}`}
+                      src={buildAvatarUrl(expert.avatar)}
                       className="admin-avatar-img"
                       alt={expert.name || 'Expert'}
                     />

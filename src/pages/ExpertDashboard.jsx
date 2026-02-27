@@ -10,6 +10,9 @@ import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import "../styles/ExpertDashboard.css";
 
+// ✅ Base API / socket origin, e.g. VITE_API_BASE=https://solutionhub66.onrender.com
+const API = import.meta.env.VITE_API_BASE;
+
 const ExpertDashboard = () => {
   const navigate = useNavigate();
 
@@ -101,12 +104,13 @@ const ExpertDashboard = () => {
     }
   };
 
+  // ✅ conversations via `${API}/api/...`
   const loadConversations = useCallback(async () => {
-    if (!expertEmail) return;
+    if (!expertEmail || !API) return;
     setLoadingConvos(true);
     try {
       const res = await fetch(
-        `/api/conversations?email=${encodeURIComponent(expertEmail)}`,
+        `${API}/api/conversations?email=${encodeURIComponent(expertEmail)}`,
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
@@ -136,11 +140,13 @@ const ExpertDashboard = () => {
     }
   }, [expertEmail, token, scrollConvosToBottom]);
 
+  // ✅ socket.io to backend origin
   useEffect(() => {
-    if (!expertEmail) return;
+    if (!expertEmail || !API) return;
 
-    const s = io({
+    const s = io(API, {
       auth: { token },
+      transports: ["websocket"],
     });
     socketRef.current = s;
 
@@ -258,6 +264,7 @@ const ExpertDashboard = () => {
     }
   };
 
+  // ✅ fallback POST uses `${API}/api/messages`
   const sendMessage = () => {
     if (!activeRoom || !inputValue.trim()) return;
     const text = inputValue.trim();
@@ -285,8 +292,8 @@ const ExpertDashboard = () => {
       socketRef.current.emit("send_private_message", payload);
       socketRef.current.emit("stop_typing", { room: activeRoom });
       isTypingRef.current = false;
-    } else {
-      fetch("/api/messages", {
+    } else if (API) {
+      fetch(`${API}/api/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

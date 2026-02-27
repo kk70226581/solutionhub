@@ -7,11 +7,8 @@ import {
 } from 'react-router-dom';
 import '../styles/Experts.css';
 
-// API base URL
-const API_BASE_URL =
-  window.location.hostname === 'localhost'
-    ? 'http://localhost:3000/api'
-    : '/api';
+// ✅ Use env-based API root, e.g. VITE_API_BASE=https://solutionhub66.onrender.com
+const API = import.meta.env.VITE_API_BASE;
 
 const FILTERS = [
   { id: 'all', label: 'All experts' },
@@ -48,7 +45,7 @@ const Experts = () => {
     const fetchExperts = async () => {
       try {
         setIsLoading(true);
-        const res = await fetch(`${API_BASE_URL}/experts?status=approved`);
+        const res = await fetch(`${API}/api/experts?status=approved`);
         if (!res.ok) throw new Error('Failed to load experts');
         const data = await res.json();
         setExperts(Array.isArray(data) ? data : []);
@@ -60,7 +57,7 @@ const Experts = () => {
       }
     };
 
-    fetchExperts();
+    if (API) fetchExperts();
   }, []);
 
   // Apply filters/search/sort
@@ -128,12 +125,13 @@ const Experts = () => {
     document.body.appendChild(script);
   }, []);
 
+  // ✅ Build photo URL from backend origin (API) instead of window.location
   const getPhotoUrl = expert => {
     const avatar = expert?.avatar;
-    if (!avatar) return null;
+    if (!avatar || !API) return null;
     if (avatar.startsWith('http')) return avatar;
-    const base = API_BASE_URL.replace('/api', '');
-    return `${base}/${avatar.startsWith('/') ? avatar.slice(1) : avatar}`;
+    const base = API; // e.g. https://solutionhub66.onrender.com
+    return `${base}/${avatar.replace(/^\/+/, '')}`;
   };
 
   // Razorpay payment flow
@@ -148,7 +146,7 @@ const Experts = () => {
     try {
       setIsProcessingPayment(true);
 
-      const orderRes = await fetch(`${API_BASE_URL}/create-order`, {
+      const orderRes = await fetch(`${API}/api/create-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -202,7 +200,7 @@ const Experts = () => {
       setIsProcessingPayment(true);
       const freshToken = localStorage.getItem('token');
 
-      const verifyRes = await fetch(`${API_BASE_URL}/verify-payment`, {
+      const verifyRes = await fetch(`${API}/api/verify-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

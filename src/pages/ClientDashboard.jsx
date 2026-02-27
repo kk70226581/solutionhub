@@ -1,3 +1,4 @@
+// src/pages/ClientDashboard.jsx
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -8,6 +9,9 @@ import {
   CalendarDays,
 } from 'lucide-react';
 import '../styles/ClientDashboard.css';
+
+// ✅ Ready for any future API calls
+// const API = import.meta.env.VITE_API_BASE;
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
@@ -139,7 +143,7 @@ const ClientDashboard = () => {
               <div className="client-hero-copy">
                 <p className="client-hero-kicker">Client dashboard</p>
                 <h1 className="client-hero-title">
-                  A calm, structured space for your **real** decisions.
+                  A calm, structured space for your real decisions.
                 </h1>
                 <p className="client-hero-sub">
                   This dashboard is where you track your context, keep your
@@ -409,7 +413,7 @@ const ClientDashboard = () => {
 
                 <ul className="client-working-list">
                   <li>
-                    You prefer **structured, actionable advice** over generic
+                    You prefer structured, actionable advice over generic
                     motivation or feel‑good pep talks.
                   </li>
                   <li>

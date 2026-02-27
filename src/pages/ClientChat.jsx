@@ -4,6 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import '../styles/ClientChat.css';
 
+// ✅ STEP 1 — API base from .env (same folder as package.json, restart dev server)
+const API = import.meta.env.VITE_API_BASE;
+
 const ClientChat = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,6 +90,16 @@ const ClientChat = () => {
     }, 2600);
   };
 
+  // Small helper for avatar URLs (backend domain + path)
+  const buildAvatarUrl = avatarPath => {
+    if (!avatarPath) return null;
+    if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
+      return avatarPath;
+    }
+    // normalize leading slash then prefix with API
+    return `${API}/${avatarPath.replace(/^\/+/, '')}`;
+  };
+
   // ===== LOAD EXPERT =====
   const loadExpert = useCallback(async () => {
     if (!expertEmail) {
@@ -96,7 +109,7 @@ const ClientChat = () => {
     }
     try {
       const res = await fetch(
-        `/api/profile?email=${encodeURIComponent(expertEmail)}`,
+        `${API}/api/profile?email=${encodeURIComponent(expertEmail)}`,
       );
       if (!res.ok) throw new Error('profile_fetch_failed');
       const data = await res.json();
@@ -121,7 +134,7 @@ const ClientChat = () => {
     setLoadingMessages(true);
     try {
       const res = await fetch(
-        `/api/messages?room=${encodeURIComponent(rid)}`,
+        `${API}/api/messages?room=${encodeURIComponent(rid)}`,
       );
       if (!res.ok) throw new Error('history_fetch_failed');
       const msgs = await res.json();
@@ -155,11 +168,15 @@ const ClientChat = () => {
   // ===== SOCKET SETUP =====
   useEffect(() => {
     if (!expertEmail || !clientEmail) return;
+    if (!API) return;
 
     const rid = [clientEmail, expertEmail].sort().join('_');
     setRoomId(rid);
 
-    const s = io(); // same-origin socket.io server
+    // ✅ connect socket to backend origin, not same-origin
+    const s = io(API, {
+      transports: ['websocket'],
+    });
 
     s.on('connect', () => {
       s.emit('join_private', rid);
@@ -202,6 +219,7 @@ const ClientChat = () => {
     s.on('connect_error', err => {
       // eslint-disable-next-line no-console
       console.error('Socket error', err);
+      showToast('Socket connection issue', true);
     });
 
     s.on('disconnect', () => {
@@ -281,11 +299,7 @@ const ClientChat = () => {
   // ===== RENDER =====
   const avatarInitial =
     (expert.name || 'E').trim()[0]?.toUpperCase() || 'E';
-  const expertAvatarSrc = expert.avatar
-    ? expert.avatar.includes('uploads')
-      ? `/${expert.avatar}`
-      : `/uploads/photos/${expert.avatar}`
-    : null;
+  const expertAvatarSrc = buildAvatarUrl(expert.avatar);
 
   return (
     <div className="client-chat-page">

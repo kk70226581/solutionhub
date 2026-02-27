@@ -9,8 +9,9 @@ const Home = () => {
   const innerRef = useRef(null);
 
   // simple auth detection
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const email = typeof window !== 'undefined' ? localStorage.getItem('email') : null;
+  const hasWindow = typeof window !== 'undefined';
+  const token = hasWindow ? localStorage.getItem('token') : null;
+  const email = hasWindow ? localStorage.getItem('email') : null;
   const isLoggedIn = !!token && !!email;
 
   // lock body scroll when mobile menu is open
@@ -53,6 +54,7 @@ const Home = () => {
 
   // logout handler
   const handleLogout = () => {
+    if (!hasWindow) return;
     localStorage.removeItem('token');
     localStorage.removeItem('email');
     localStorage.removeItem('name');
@@ -340,9 +342,6 @@ const Home = () => {
             </div>
           </section>
 
-          {/* HOW IT WORKS */}
-          {/* ... keep the rest of your sections exactly as you had them ... */}
-          {/* I’ll keep your existing markup unchanged from here down */}
           {/* HOW IT WORKS */}
           <section className="home-section">
             <div className="home-section-head">
