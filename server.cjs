@@ -791,7 +791,6 @@ app.post("/api/razorpay-webhook", async (req, res) => {
    AI CORE - PRODUCTION SAFE VERSION
 ============================================================ */
 
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 let activeModel = null;
 
