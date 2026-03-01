@@ -814,35 +814,63 @@ try {
 /* =============================
    AI ROUTE
 ============================= */
+/* ============================================================
+   GEMINI AI (Direct REST Version - Stable)
+============================================================ */
 
 app.post("/api/ai/ask", async (req, res) => {
   try {
-    if (!activeModel) {
-      return res.status(503).json({
-        error: "AI unavailable",
-        reason: "Model not initialized"
-      });
-    }
-
     const prompt = req.body?.prompt;
+
     if (!prompt) {
       return res.status(400).json({ error: "Prompt missing" });
     }
 
-    const result = await activeModel.generateContent(prompt);
-    const response = await result.response.text();
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: "GEMINI_API_KEY not set" });
+    }
 
-    res.json({ answer: response });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ]
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Gemini API error:", data);
+      return res.status(500).json({
+        error: "AI generation failed",
+        details: data
+      });
+    }
+
+    const answer =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "No response from AI.";
+
+    res.json({ answer });
 
   } catch (err) {
-    console.error("❌ AI generation error:", err.message);
-
+    console.error("AI generation error:", err.message);
     res.status(500).json({
       error: "AI generation failed",
       details: err.message
     });
   }
 });
+
+
 /* ============================================================
    SOCKET.IO - LIVE CHAT
 ============================================================ */
