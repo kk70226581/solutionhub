@@ -818,55 +818,74 @@ try {
    GEMINI AI (Direct REST Version - Stable)
 ============================================================ */
 
+// Replace your existing /api/ai/ask route with this block
+
+const fetch = require("node-fetch"); // if not already required at top
+
 app.post("/api/ai/ask", async (req, res) => {
   try {
-    const prompt = req.body?.prompt;
-
-    if (!prompt) {
-      return res.status(400).json({ error: "Prompt missing" });
+    const prompt = (req.body && (req.body.prompt || req.body.input || req.body.text)) || "";
+    if (!prompt || !String(prompt).trim()) {
+      return res.status(400).json({ error: "Missing prompt in request body (expected { prompt: '...' })" });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      console.error("GEMINI_API_KEY not set");
       return res.status(500).json({ error: "GEMINI_API_KEY not set" });
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: prompt }]
-            }
-          ]
-        })
-      }
-    );
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`;
 
-    const data = await response.json();
+    console.log("AI: calling Gemini ->", url);
 
-    if (!response.ok) {
-      console.error("Gemini API error:", data);
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        // minimal request shape for v1 generateContent
+        // adjust if your key needs other fields
+        prompt: {
+          // Single text input
+          text: prompt
+        }
+      }),
+    });
+
+    let body;
+    try {
+      body = await resp.json();
+    } catch (e) {
+      body = { _raw: await resp.text().catch(() => "(no body)") };
+    }
+
+    console.log("AI response status:", resp.status, resp.statusText);
+    console.log("AI response body:", JSON.stringify(body, null, 2));
+
+    if (!resp.ok) {
+      // Return full body to the frontend for debugging (safe for dev)
       return res.status(500).json({
         error: "AI generation failed",
-        details: data
+        status: resp.status,
+        details: body
       });
     }
 
+    // Try to extract the text from likely shapes
+    // Several possible response shapes exist — be tolerant
     const answer =
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "No response from AI.";
+      body?.candidates?.[0]?.content?.[0]?.text ||
+      body?.candidates?.[0]?.content?.parts?.[0]?.text ||
+      body?.candidates?.[0]?.content ||
+      body?.output?.[0]?.content?.[0]?.text ||
+      body?.result?.output?.[0]?.content?.[0]?.text ||
+      (typeof body === "string" ? body : JSON.stringify(body).slice(0, 4000));
 
-    res.json({ answer });
+    return res.json({ answer, meta: { status: resp.status } });
 
   } catch (err) {
-    console.error("AI generation error:", err.message);
-    res.status(500).json({
-      error: "AI generation failed",
-      details: err.message
-    });
+    console.error("AI generation exception:", err && err.stack ? err.stack : err);
+    return res.status(500).json({ error: "AI generation failed", details: String(err.message || err) });
   }
 });
 
