@@ -1,6 +1,7 @@
 /**
  * ============================================================
- * SOLUTIONHUB CORE v9.1 – FIXED RAZORPAY + OLD FRONTEND COMPAT ✅ + FIXED AI
+ * SOLUTIONHUB CORE v9.0 – COMPLETE WITH RAZORPAY + ENHANCED EXPERT PROFILES 💳✅
+ * Current Date: January 05, 2026
  * ============================================================
  */
 
@@ -18,7 +19,7 @@ const multer = require("multer");
 const fs = require("fs");
 const cookieParser = require("cookie-parser");
 const { Server } = require("socket.io");
-// const { GoogleGenerativeAI } = require("@google/generative-ai"); // REMOVED FROM USE
+// const { GoogleGenerativeAI } = require("@google/generative-ai"); // not used now
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 
@@ -27,8 +28,6 @@ const crypto = require("crypto");
 ============================================================ */
 const app = express();
 const server = http.createServer(app);
-
-// Socket.IO CORS = old behaviour (any origin)
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
@@ -39,67 +38,17 @@ const ADMIN_SECRET =
   process.env.ADMIN_SECRET || "your-super-secret-admin-key-2025-CHANGE-THIS";
 
 /* ============================================================
-   🔍 ENV DEBUG
-============================================================ */
-console.log("🔍 ENV CHECK:");
-console.log(
-  "RAZORPAY_KEY_ID:",
-  process.env.RAZORPAY_KEY_ID
-    ? process.env.RAZORPAY_KEY_ID.substring(0, 15) + "..."
-    : "❌ MISSING"
-);
-console.log(
-  "RAZORPAY_KEY_SECRET:",
-  process.env.RAZORPAY_KEY_SECRET ? "✅ LOADED" : "❌ MISSING"
-);
-console.log("MONGO_URI:", process.env.MONGO_URI ? "✅ LOADED" : "❌ MISSING");
-console.log(
-  "JWT_SECRET:",
-  process.env.JWT_SECRET ? "✅ LOADED" : "❌ MISSING"
-);
-console.log(
-  "GEMINI_API_KEY:",
-  process.env.GEMINI_API_KEY ? "✅ LOADED" : "❌ MISSING"
-);
-
-/* ============================================================
    🆕 RAZORPAY SETUP
 ============================================================ */
-let razorpay = null;
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_YOUR_KEY_ID",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "YOUR_KEY_SECRET",
+});
 
-try {
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-    throw new Error("Razorpay keys missing in .env");
-  }
-
-  razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID.trim(),
-    key_secret: process.env.RAZORPAY_KEY_SECRET.trim(),
-  });
-
-  console.log(
-    "💳 Razorpay initialized with key:",
-    process.env.RAZORPAY_KEY_ID.substring(0, 15) + "..."
-  );
-
-  (async () => {
-    try {
-      const testOrder = await razorpay.orders.create({
-        amount: 100,
-        currency: "INR",
-        receipt: "init_test_" + Date.now(),
-      });
-      console.log("✅ Razorpay test order created:", testOrder.id);
-    } catch (e) {
-      console.log(
-        "⚠️ Razorpay init test failed (can be ignored in dev):",
-        e.message
-      );
-    }
-  })();
-} catch (e) {
-  console.error("❌ Razorpay init error:", e.message);
-}
+console.log(
+  "💳 Razorpay initialized with key:",
+  (process.env.RAZORPAY_KEY_ID || "TEST_KEY").substring(0, 15) + "..."
+);
 
 /* ============================================================
    ENSURE UPLOAD DIRECTORIES
@@ -155,10 +104,7 @@ const adminAuth = async (req, res, next) => {
 mongoose
   .connect(process.env.MONGO_URI || "mongodb://localhost:27017/solutionhub")
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ MongoDB Error:", err);
-    process.exit(1);
-  });
+  .catch((err) => console.error("❌ MongoDB Error:", err));
 
 /* ============================================================
    SCHEMAS
@@ -298,7 +244,6 @@ app.post("/api/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // CLIENT
     const user = await User.findOne({ email: email.toLowerCase() });
     if (user && (await bcrypt.compare(password, user.password))) {
       const token = jwt.sign(
@@ -321,7 +266,6 @@ app.post("/api/login", async (req, res) => {
       });
     }
 
-    // EXPERT
     const expert = await Expert.findOne({ email: email.toLowerCase() });
     if (expert && (await bcrypt.compare(password, expert.password))) {
       const token = jwt.sign(
@@ -358,7 +302,7 @@ app.post("/api/login", async (req, res) => {
 });
 
 /* ============================================================
-   ROUTES - EXPERT SIGNUP
+   ROUTES - ENHANCED EXPERT SIGNUP
 ============================================================ */
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -479,7 +423,10 @@ app.post(
 app.get("/api/profile", async (req, res) => {
   try {
     const { email } = req.query;
-    if (!email) return res.status(400).json({ error: "Email required" });
+
+    if (!email) {
+      return res.status(400).json({ error: "Email required" });
+    }
 
     const user = await User.findOne({ email: email.toLowerCase() }).select(
       "-password"
@@ -504,11 +451,15 @@ app.get("/api/profile", async (req, res) => {
 app.get("/api/messages", async (req, res) => {
   try {
     const { room } = req.query;
-    if (!room) return res.status(400).json({ error: "Room ID required" });
+
+    if (!room) {
+      return res.status(400).json({ error: "Room ID required" });
+    }
 
     const messages = await Message.find({ room })
       .sort({ createdAt: 1 })
       .limit(100);
+
     res.json(messages);
   } catch (err) {
     console.error("❌ Error fetching messages:", err);
@@ -522,7 +473,10 @@ app.get("/api/messages", async (req, res) => {
 app.get("/api/conversations", async (req, res) => {
   try {
     const { email } = req.query;
-    if (!email) return res.status(400).json({ error: "Email required" });
+
+    if (!email) {
+      return res.status(400).json({ error: "Email required" });
+    }
 
     const messages = await Message.find({
       room: { $regex: email },
@@ -585,7 +539,9 @@ app.post("/api/admin/expert-status", adminAuth, async (req, res) => {
       { new: true }
     ).select("-password");
 
-    if (!expert) return res.status(404).json({ error: "Expert not found" });
+    if (!expert) {
+      return res.status(404).json({ error: "Expert not found" });
+    }
 
     res.json({
       success: true,
@@ -624,16 +580,15 @@ app.get("/api/health", adminAuth, (req, res) => {
 
 app.post("/api/create-order", authMiddleware, async (req, res) => {
   try {
-    if (!razorpay) {
-      return res.status(503).json({ error: "Payment gateway unavailable" });
-    }
-
     const { expertEmail, expertField } = req.body;
     const clientEmail = req.user.email;
     const clientName = req.user.name;
 
     const expert = await Expert.findOne({ email: expertEmail.toLowerCase() });
-    if (!expert) return res.status(404).json({ error: "Expert not found" });
+    if (!expert) {
+      return res.status(404).json({ error: "Expert not found" });
+    }
+
     if (expert.status !== "approved") {
       return res.status(400).json({ error: "Expert not approved yet" });
     }
@@ -673,7 +628,7 @@ app.post("/api/create-order", authMiddleware, async (req, res) => {
       orderId: order.id,
       amount: order.amount,
       currency: order.currency,
-      key: process.env.RAZORPAY_KEY_ID,
+      key: process.env.RAZORPAY_KEY_ID || "rzp_test_YOUR_KEY_ID",
       expertName: expert.name,
       expertField: expert.field,
     });
@@ -753,6 +708,7 @@ app.get("/api/payment-status/:paymentId", authMiddleware, async (req, res) => {
     const { paymentId } = req.params;
 
     const localPayment = await Payment.findOne({ paymentId });
+
     if (localPayment) {
       return res.json({
         success: true,
@@ -766,6 +722,7 @@ app.get("/api/payment-status/:paymentId", authMiddleware, async (req, res) => {
     }
 
     const payment = await razorpay.payments.fetch(paymentId);
+
     res.json({
       success: true,
       status: payment.status,
@@ -823,9 +780,6 @@ app.get("/api/my-payments", authMiddleware, async (req, res) => {
   }
 });
 
-/* ============================================================
-   RAZORPAY WEBHOOK (Optional)
-============================================================ */
 app.post("/api/razorpay-webhook", async (req, res) => {
   try {
     const webhookSignature = req.headers["x-razorpay-signature"];
@@ -877,10 +831,10 @@ app.post("/api/razorpay-webhook", async (req, res) => {
 });
 
 /* ============================================================
-   🤖 AI CORE – FIXED (NO activeModel, NO 503)
+   🤖 AI CORE – FIXED (NO 503 TO FRONTEND)
 ============================================================ */
 
-// Helper: call Gemini via REST
+// Helper to call Gemini via REST
 async function callGemini(prompt) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
@@ -898,7 +852,7 @@ async function callGemini(prompt) {
 
   const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(
     cleanModel
-  )}:generateContent?key=${key}`;[web:30]
+  )}:generateContent?key=${key}`;
 
   try {
     const resp = await fetch(url, {
@@ -956,9 +910,9 @@ app.post("/api/ai/ask", async (req, res) => {
       return res.json({ answer: result.answer });
     }
 
-    console.warn("Gemini failure:", result);[web:21][web:25]
+    console.warn("Gemini failure:", result);
 
-    // IMPORTANT: never send 503 to frontend; return graceful text
+    // IMPORTANT: never send 503 to frontend
     return res.json({
       answer:
         "Our AI service is temporarily overloaded or unavailable, but your question reached the server. Please try again later or talk to a human expert.",
@@ -974,7 +928,7 @@ app.post("/api/ai/ask", async (req, res) => {
 });
 
 /* ============================================================
-   SOCKET.IO - LIVE CHAT
+   SOCKET.IO - LIVE CHAT & EXPERTS
 ============================================================ */
 io.on("connection", (socket) => {
   console.log("🔌 Socket connected:", socket.id);
@@ -1066,13 +1020,21 @@ io.on("connection", (socket) => {
 ============================================================ */
 server.listen(PORT, () => {
   console.log(`\n🚀 ============================================`);
-  console.log(`🚀 SolutionHub v9.1 LIVE - FULL SYSTEM 🎉`);
+  console.log(`🚀 SolutionHub v9.0 LIVE - FULL SYSTEM 🎉`);
   console.log(`🚀 ============================================`);
   console.log(`📡 Server: http://localhost:${PORT}`);
   console.log(`💬 Socket.IO: Ready`);
-  console.log(`💳 Razorpay: ${razorpay ? "Enabled ✅" : "DISABLED ❌"}`);
   console.log(
-    `🤖 AI: ${process.env.GEMINI_API_KEY ? "Enabled (REST, no 503 to client)" : "Disabled"}`
+    `💳 Razorpay: ${
+      process.env.RAZORPAY_KEY_ID ? "Enabled ✅" : "TEST MODE"
+    }`
+  );
+  console.log(
+    `🤖 AI: ${
+      process.env.GEMINI_API_KEY
+        ? "Enabled (REST, no 503 to client)"
+        : "Disabled"
+    }`
   );
   console.log(
     `🔐 Admin Login: http://localhost:${PORT}/admin-login.html`
@@ -1082,7 +1044,9 @@ server.listen(PORT, () => {
   );
   console.log(`✅ Public Experts: http://localhost:${PORT}/experts.html`);
   console.log(`💬 Chat System: FULLY ENABLED`);
-  console.log(`💰 Payment System: ACTIVE (if Razorpay enabled)`);
+  console.log(`💰 Payment System: ACTIVE`);
+  console.log(`👥 Expert Profiles: ENHANCED`);
+  console.log(`📂 Expert Domains: 11 Categories`);
   console.log(
     `🔑 Admin Secret: ${ADMIN_SECRET.substring(0, 10)}...`
   );
