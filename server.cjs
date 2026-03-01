@@ -851,11 +851,11 @@ async function callGemini(prompt) {
       message: "GEMINI_API_KEY not set",
     };
   }
+const model = process.env.GEMINI_MODEL || "gemini-pro";
+const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+  model
+)}:generateContent?key=${key}`;
 
-  const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    model
-  )}:generateContent?key=${key}`;
 
   try {
     const resp = await fetch(url, {
