@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * SOLUTIONHUB CORE v9.0 – STABLE BACKEND (RAZORPAY + AI) 💳✅
+ * SOLUTIONHUB CORE v9.0 – STABLE BACKEND (RAZORPAY + GEMINI v1) 💳✅
  * ============================================================
  */
 
@@ -840,7 +840,7 @@ app.post("/api/razorpay-webhook", async (req, res) => {
 });
 
 /* ============================================================
-   AI CORE – USING GEMINI HTTP API
+   AI CORE – GEMINI v1 + gemini-2.5-flash
 ============================================================ */
 async function callGemini(prompt) {
   const key = process.env.GEMINI_API_KEY;
@@ -851,11 +851,12 @@ async function callGemini(prompt) {
       message: "GEMINI_API_KEY not set",
     };
   }
-const model = process.env.GEMINI_MODEL || "gemini-pro";
-const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-  model
-)}:generateContent?key=${key}`;
 
+  // FINAL FIX: v1 + gemini-2.5-flash
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(
+    model
+  )}:generateContent?key=${key}`;
 
   try {
     const resp = await fetch(url, {
@@ -896,6 +897,8 @@ const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURI
 app.get("/api/ai/debug", (req, res) => {
   res.json({
     hasKey: !!process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    base: "v1",
   });
 });
 
@@ -1034,7 +1037,7 @@ server.listen(PORT, () => {
   console.log(
     `🤖 AI: ${
       process.env.GEMINI_API_KEY
-        ? "Enabled (REST, safe fallback)"
+        ? "Enabled (v1, gemini-2.5-flash, safe fallback)"
         : "Disabled (no key)"
     }`
   );
