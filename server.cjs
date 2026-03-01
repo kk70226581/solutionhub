@@ -216,7 +216,11 @@ async function tryGenerateWithModel(modelName, prompt) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { ok: false, status: 500, body: { error: "GEMINI_API_KEY not set" } };
 
-  const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(modelName)}:generateContent?key=${key}`;
+const cleanModel = modelName.startsWith("models/")
+  ? modelName.replace("models/", "")
+  : modelName;
+
+const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(cleanModel)}:generateContent?key=${key}`;
 
   try {
     // Use the v1 request shape — this is tolerant and works for many keys
