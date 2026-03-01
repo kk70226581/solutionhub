@@ -1,328 +1,695 @@
-// src/pages/AdminDashboard.jsx
-import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
-import '../styles/AdminDashboard.css';
+// src/pages/ClientDashboard.jsx
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Briefcase,
+  CalendarDays,
+  MessageCircle,
+  LogOut,
+  User,
+  Sparkles,
+} from 'lucide-react';
+import '../styles/ClientDashboard.css';
+import ChatBot from '../components/ChatBot';
 
-// ✅ STEP 1 — API base from env
-// e.g. VITE_API_BASE=https://solutionhub66.onrender.com
-const API = import.meta.env.VITE_API_BASE;
+const ClientDashboard = () => {
+  const navigate = useNavigate();
 
-const AdminDashboard = () => {
-  const [allExperts, setAllExperts] = useState([]);
-  const [activeTab, setActiveTab] = useState('pending');
-  const [isLoading, setIsLoading] = useState(false);
-  const [onlineCount, setOnlineCount] = useState(0);
-  const [message, setMessage] = useState({
-    text: '',
-    type: '',
-    show: false,
+  // auth detection
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const email =
+    typeof window !== 'undefined' ? localStorage.getItem('email') : null;
+  const name =
+    typeof window !== 'undefined' ? localStorage.getItem('username') : null;
+
+  const isLoggedIn = !!token && !!email;
+
+  const [userData] = useState({
+    username: name || 'Client',
+    email: email || 'you@example.com',
+    phone: '+91-98765-43210',
+    location: 'Lucknow, Uttar Pradesh',
+    role: 'Client',
+    focusArea: 'Career & Side Projects',
+    reqCount:
+      typeof window !== 'undefined'
+        ? parseInt(localStorage.getItem('reqCount') || '0', 10) || 0
+        : 0,
   });
-  const [modal, setModal] = useState({
-    isOpen: false,
-    src: '',
-  });
 
-  // ✅ STEP 2 — Socket: connect to backend origin
-  useEffect(() => {
-    if (!API) return; // optional guard
-    const socket = io(API, {
-      transports: ['websocket'],
-    });
+  const memberSince = useMemo(() => '2025', []);
+  const usernameInitial =
+    userData.username?.trim()?.charAt(0)?.toUpperCase() || 'C';
 
-    socket.on('online_users', users => {
-      const count = Object.values(users || {}).filter(
-        u => u.role === 'expert',
-      ).length;
-      setOnlineCount(count);
-    });
+  const totalSessions = userData.reqCount;
+  const activeFocusAreas = 1;
 
-    return () => socket.disconnect();
-  }, []);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Toast helper
-  const showToast = (text, type) => {
-    setMessage({ text, type, show: true });
-    setTimeout(
-      () => setMessage(prev => ({ ...prev, show: false })),
-      4000,
-    );
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('email');
+    localStorage.removeItem('name');
+    localStorage.removeItem('username');
+    navigate('/login');
   };
 
-  // ✅ STEP 3 — Fetch all expert lists and health using API base
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const [pRes, aRes, rRes, hRes] = await Promise.all([
-        fetch(`${API}/api/experts?status=pending`),
-        fetch(`${API}/api/experts?status=approved`),
-        fetch(`${API}/api/experts?status=rejected`),
-        fetch(`${API}/api/health`),
-      ]);
+  const go = (path) => navigate(path);
 
-      const [p, a, r, h] = await Promise.all([
-        pRes.json(),
-        aRes.json(),
-        rRes.json(),
-        hRes.json(),
-      ]);
-
-      setAllExperts([...(p || []), ...(a || []), ...(r || [])]);
-      if (h && typeof h.onlineExperts === 'number') {
-        setOnlineCount(h.onlineExperts);
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to connect to backend', 'error');
-    } finally {
-      setIsLoading(false);
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    setMobileNavOpen(false);
   };
-
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 15000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // ✅ STEP 3 (continued) — Update expert status with API base
-  const updateStatus = async (email, status) => {
-    try {
-      const res = await fetch(`${API}/api/admin/expert-status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, status }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast(`Status updated to ${status}`, 'success');
-        loadData();
-      } else {
-        showToast(data.error || 'Update failed', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Update failed', 'error');
-    }
-  };
-
-  // ✅ STEP 4 — Image modal with absolute backend URL
-  const buildAvatarUrl = avatarPath => {
-    if (!avatarPath) return '';
-    // If backend already returns full URL, just return it
-    if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
-      return avatarPath;
-    }
-    // Otherwise assume backend is serving at /uploads/... etc.
-    return `${API}/${avatarPath.replace(/^\/+/, '')}`;
-  };
-
-  const openModal = expert => {
-    if (!expert.avatar) return;
-    setModal({
-      isOpen: true,
-      src: buildAvatarUrl(expert.avatar),
-    });
-  };
-
-  const closeModal = () =>
-    setModal(prev => ({ ...prev, isOpen: false }));
-
-  const filteredExperts =
-    activeTab === 'all'
-      ? allExperts
-      : allExperts.filter(e => e.status === activeTab);
 
   return (
-    <div className="admin-dashboard">
-      <div className="admin-shell">
-        {/* Header */}
-        <header className="admin-header">
-          <div className="admin-header-top">
-            <div>
-              <h1 className="admin-title">
-                <i className="fas fa-crown" />
-                <span>Solvenut Admin</span>
-              </h1>
-              <p className="admin-subtitle">
-                Review, approve, and monitor expert accounts in
-                real-time.
-              </p>
-            </div>
-            <button
-              className="admin-refresh-btn"
-              onClick={loadData}
-              disabled={isLoading}
-            >
-              <i
-                className={`fas ${
-                  isLoading ? 'fa-spinner fa-spin' : 'fa-sync-alt'
-                }`}
-              />
-              <span>{isLoading ? 'Refreshing…' : 'Refresh'}</span>
-            </button>
-          </div>
+    <div className="client-page">
+      <div className="client-ambient" />
 
-          {message.show && (
-            <div
-              className={`admin-toast admin-toast-${message.type}`}
-            >
-              {message.text}
-            </div>
-          )}
-        </header>
-
-        {/* Stats */}
-        <section className="admin-stats-grid">
-          <StatCard
-            num={onlineCount}
-            label="Live experts"
-            color="online"
-            icon="fa-circle"
-          />
-          <StatCard
-            num={allExperts.filter(e => e.status === 'pending').length}
-            label="Pending reviews"
-            color="pending"
-            icon="fa-clock"
-          />
-          <StatCard
-            num={allExperts.filter(e => e.status === 'approved').length}
-            label="Approved"
-            color="approved"
-            icon="fa-check-circle"
-          />
-          <StatCard
-            num={allExperts.length}
-            label="Total experts"
-            color="total"
-            icon="fa-users"
-          />
-        </section>
-
-        {/* Tabs */}
-        <section className="admin-tabs">
-          {['pending', 'approved', 'rejected', 'all'].map(tab => (
-            <button
-              key={tab}
-              className={`admin-tab-btn ${
-                activeTab === tab ? 'active' : ''
-              }`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab.toUpperCase()}
-            </button>
-          ))}
-        </section>
-
-        {/* Experts grid */}
-        <main className="admin-expert-grid">
-          {filteredExperts.length === 0 ? (
-            <div className="admin-empty">
-              <i className="fas fa-inbox" />
-              <p>No experts in this bucket.</p>
-            </div>
-          ) : (
-            filteredExperts.map(expert => (
-              <article
-                key={expert.email}
-                className={`admin-expert-card admin-expert-${expert.status}`}
-              >
-                <div className="admin-expert-banner" />
-                <button
-                  className="admin-avatar-container"
-                  onClick={() => openModal(expert)}
-                  type="button"
-                >
-                  {expert.avatar ? (
-                    <img
-                      src={buildAvatarUrl(expert.avatar)}
-                      className="admin-avatar-img"
-                      alt={expert.name || 'Expert'}
-                    />
-                  ) : (
-                    <div className="admin-avatar-fallback">
-                      <i className="fas fa-user-circle" />
-                    </div>
-                  )}
-                </button>
-
-                <div className="admin-expert-header">
-                  <h3 className="admin-expert-name">
-                    {expert.name || 'Unnamed expert'}
-                  </h3>
-                  <p className="admin-expert-field">
-                    {expert.field || 'No field specified'}
-                  </p>
-                  <p className="admin-expert-email">
-                    {expert.email}
-                  </p>
-                </div>
-
-                <div className="admin-expert-actions">
-                  <button
-                    className="admin-action-btn admin-approve-btn"
-                    onClick={() =>
-                      updateStatus(expert.email, 'approved')
-                    }
-                    disabled={expert.status === 'approved'}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    className="admin-action-btn admin-reject-btn"
-                    onClick={() =>
-                      updateStatus(expert.email, 'rejected')
-                    }
-                    disabled={expert.status === 'rejected'}
-                  >
-                    Reject
-                  </button>
-                </div>
-              </article>
-            ))
-          )}
-        </main>
-      </div>
-
-      {/* Image modal */}
-      {modal.isOpen && (
-        <div
-          className="admin-modal-backdrop"
-          onClick={closeModal}
-        >
-          <div
-            className="admin-modal"
-            onClick={e => e.stopPropagation()}
+      {/* HEADER */}
+      <header className="client-header" role="banner">
+        <div className="client-shell client-header-inner">
+          <button
+            className="client-logo"
+            onClick={() => go('/')}
+            aria-label="Go to Solvenut home"
           >
-            <img
-              src={modal.src}
-              alt="Expert"
-              className="admin-modal-image"
-            />
+            <div className="client-logo-mark" aria-hidden>
+              🥜
+            </div>
+            <div className="client-logo-text">
+              Solve<span className="client-logo-nut">nut</span>
+            </div>
+          </button>
+
+          {/* Desktop nav */}
+          <nav
+            className="client-nav client-nav-desktop"
+            aria-label="Dashboard navigation"
+          >
             <button
-              className="admin-modal-close"
-              onClick={closeModal}
-              type="button"
+              className="client-nav-link active"
+              onClick={() =>
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }
             >
-              <i className="fas fa-times" />
+              Overview
+            </button>
+            <button
+              className="client-nav-link"
+              onClick={() => scrollToSection('client-how-section')}
+            >
+              How to use
+            </button>
+            <button
+              className="client-nav-link"
+              onClick={() => scrollToSection('client-profile-section')}
+            >
+              Profile
+            </button>
+          </nav>
+
+          <div className="client-nav-actions">
+            <button
+              className="client-btn client-btn-ghost client-nav-secondary-action"
+              onClick={() => go('/experts')}
+            >
+              Browse experts
+            </button>
+
+            {isLoggedIn ? (
+              <button
+                className="client-btn client-btn-primary client-nav-primary-action"
+                onClick={handleLogout}
+              >
+                <LogOut size={16} />
+                <span className="client-nav-primary-label">Logout</span>
+              </button>
+            ) : (
+              <button
+                className="client-btn client-btn-primary client-nav-primary-action"
+                onClick={() => go('/login')}
+              >
+                <User size={16} />
+                <span className="client-nav-primary-label">Log in</span>
+              </button>
+            )}
+
+            {/* Mobile menu toggle */}
+            <button
+              className="client-nav-toggle"
+              aria-label="Toggle navigation"
+              onClick={() => setMobileNavOpen((o) => !o)}
+            >
+              <span className="client-nav-toggle-bar" />
+              <span className="client-nav-toggle-bar" />
             </button>
           </div>
         </div>
-      )}
+
+        {/* Mobile nav dropdown */}
+        <div
+          className={`client-nav-mobile ${
+            mobileNavOpen ? 'client-nav-mobile-open' : ''
+          }`}
+        >
+          <nav aria-label="Mobile dashboard navigation">
+            <button
+              className="client-nav-link"
+              onClick={() =>
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }
+            >
+              Overview
+            </button>
+            <button
+              className="client-nav-link"
+              onClick={() => scrollToSection('client-how-section')}
+            >
+              How to use
+            </button>
+            <button
+              className="client-nav-link"
+              onClick={() => scrollToSection('client-profile-section')}
+            >
+              Profile
+            </button>
+            <button
+              className="client-nav-link"
+              onClick={() => go('/experts')}
+            >
+              Experts
+            </button>
+            <button
+              className="client-nav-link"
+              onClick={() => go('/support')}
+            >
+              Support
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      {/* MAIN */}
+      <main className="client-main">
+        <div className="client-shell">
+          {/* HERO */}
+          <section className="client-section client-hero">
+            <div className="client-hero-grid">
+              <div className="client-hero-copy">
+                <p className="client-hero-kicker">Client dashboard</p>
+                <h1 className="client-hero-title">
+                  A calm, structured space for your real decisions.
+                </h1>
+                <p className="client-hero-sub">
+                  This dashboard is where you track your context, keep your
+                  focus areas in one place, and jump into high-leverage
+                  sessions with experts who have walked similar paths.
+                </p>
+
+                <div className="client-hero-pill-row">
+                  <span className="client-hero-pill">Career forks</span>
+                  <span className="client-hero-pill">Money decisions</span>
+                  <span className="client-hero-pill">Side-project bets</span>
+                  <span className="client-hero-pill">Life planning</span>
+                </div>
+
+                <div className="client-hero-cta-row">
+                  <button
+                    className="client-btn client-btn-primary"
+                    onClick={() => go('/experts')}
+                  >
+                    <Sparkles size={16} />
+                    Start a session
+                  </button>
+
+                  <button
+                    className="client-btn client-btn-outline"
+                    onClick={() => setChatOpen(true)}
+                    title="Ask AI for help — if it's not enough, talk to an expert"
+                  >
+                    <MessageCircle size={16} />
+                    Chat with AI
+                  </button>
+
+                  <button
+                    className="client-btn client-btn-outline client-hero-support-btn"
+                    onClick={() => go('/support')}
+                  >
+                    Talk to support
+                  </button>
+                </div>
+
+                <p className="client-hero-meta">
+                  No subscriptions • Pay per engagement • Private 1-to-1 rooms
+                </p>
+              </div>
+
+              {/* Hero card */}
+              <aside
+                className="client-hero-card"
+                aria-labelledby="client-hero-card-heading"
+              >
+                <div className="client-hero-card-header">
+                  <div className="client-hero-avatar">
+                    <span>{usernameInitial}</span>
+                  </div>
+                  <div className="client-hero-card-titleblock">
+                    <h2 id="client-hero-card-heading">{userData.username}</h2>
+                    <p>Solvenut client • Member since {memberSince}</p>
+                  </div>
+                </div>
+
+                <div className="client-hero-stats">
+                  <div className="client-hero-stat">
+                    <div className="client-hero-stat-label">Total sessions</div>
+                    <div className="client-hero-stat-value">
+                      {totalSessions}
+                    </div>
+                  </div>
+                  <div className="client-hero-stat">
+                    <div className="client-hero-stat-label">
+                      Active focus areas
+                    </div>
+                    <div className="client-hero-stat-value">
+                      {activeFocusAreas}
+                    </div>
+                  </div>
+                  <div className="client-hero-stat">
+                    <div className="client-hero-stat-label">
+                      Primary decision lane
+                    </div>
+                    <div className="client-hero-stat-value client-hero-stat-small">
+                      {userData.focusArea}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="client-hero-footer">
+                  <p>
+                    Your dashboard is the steady base-camp you come back to as
+                    your work, money, and life decisions evolve.
+                  </p>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          {/* SNAPSHOT + HOW TO USE */}
+          <section
+            className="client-section client-section-default"
+            id="client-how-section"
+          >
+            <div className="client-section-head">
+              <p className="client-section-kicker">Your space at a glance</p>
+              <h2 className="client-section-title">
+                Snapshot and how to get the most from Solvenut.
+              </h2>
+              <p className="client-section-sub">
+                Keep your key details in one place, and treat this space as the
+                control room for your next 3–6 months of decisions.
+              </p>
+            </div>
+
+            <div className="client-two-grid">
+              {/* Client snapshot */}
+              <div className="client-card">
+                <h3 className="client-card-title">Client snapshot</h3>
+                <p className="client-card-sub">
+                  The basics experts look at before they talk to you.
+                </p>
+
+                <div className="client-snapshot-list">
+                  <div className="client-snapshot-row">
+                    <Mail size={16} />
+                    <span>{userData.email}</span>
+                  </div>
+                  <div className="client-snapshot-row">
+                    <Phone size={16} />
+                    <span>{userData.phone}</span>
+                  </div>
+                  <div className="client-snapshot-row">
+                    <MapPin size={16} />
+                    <span>{userData.location}</span>
+                  </div>
+                  <div className="client-snapshot-row">
+                    <Briefcase size={16} />
+                    <span>{userData.focusArea}</span>
+                  </div>
+                  <div className="client-snapshot-row">
+                    <CalendarDays size={16} />
+                    <span>Member since {memberSince}</span>
+                  </div>
+                </div>
+
+                <div className="client-notes-block">
+                  <div className="client-notes-label">
+                    What you’re currently exploring
+                  </div>
+                  <p className="client-notes-body">
+                    Use this dashboard as the place where you park the big
+                    questions on your mind — job moves, salary or comp
+                    decisions, switching cities, taking a sabbatical, or ramping
+                    a side-project.
+                  </p>
+                </div>
+
+                <div className="client-card-actions-row">
+                  <button
+                    className="client-btn client-btn-outline client-btn-full"
+                    onClick={() => go('/settings')}
+                  >
+                    Edit account details
+                  </button>
+                  <button
+                    className="client-btn client-btn-primary client-btn-full"
+                    onClick={() => setChatOpen(true)}
+                    title="Quick AI assistance"
+                  >
+                    <MessageCircle size={16} />
+                    Ask AI
+                  </button>
+                </div>
+              </div>
+
+              {/* How to use */}
+              <div className="client-card">
+                <h3 className="client-card-title">Best way to use this space</h3>
+                <p className="client-card-sub">
+                  A simple flow so you’re not just venting, but actually moving.
+                </p>
+
+                <ol className="client-steps-list">
+                  <li>
+                    Pick one real decision that feels stuck — not ten things at
+                    once.
+                  </li>
+                  <li>
+                    Write your context honestly, including constraints and
+                    non-negotiables.
+                  </li>
+                  <li>
+                    Shortlist 1–3 experts whose backgrounds match your reality,
+                    not just their titles.
+                  </li>
+                  <li>
+                    Do focused sessions around that one decision and leave with
+                    a 30–90 day plan.
+                  </li>
+                  <li>
+                    Come back here to adjust your plan as you learn more.
+                  </li>
+                </ol>
+
+                <div className="client-mini-card">
+                  <p>
+                    Clients who treat this dashboard as a living workspace — not
+                    a static profile — get the most value from Solvenut.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* PROFILE & WORKING STYLE */}
+          <section
+            className="client-section client-section-alt"
+            id="client-profile-section"
+          >
+            <div className="client-section-head">
+              <p className="client-section-kicker">How experts see you</p>
+              <h2 className="client-section-title">
+                Your profile and preferred working style.
+              </h2>
+            </div>
+
+            <div className="client-two-grid">
+              {/* Profile summary */}
+              <div className="client-card client-card-flat">
+                <div className="client-profile-head">
+                  <div className="client-profile-avatar">
+                    {usernameInitial}
+                  </div>
+                  <div>
+                    <div className="client-profile-name">
+                      {userData.username}
+                    </div>
+                    <div className="client-profile-meta">
+                      {userData.email} • Member since {memberSince}
+                    </div>
+                    <div className="client-profile-meta">
+                      Role: {userData.role} • Focus: {userData.focusArea}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="client-profile-stats">
+                  <div className="client-profile-stat">
+                    <div className="client-profile-stat-number">
+                      {totalSessions}
+                    </div>
+                    <div className="client-profile-stat-label">
+                      Total sessions
+                    </div>
+                  </div>
+                  <div className="client-profile-stat">
+                    <div className="client-profile-stat-number">4.9</div>
+                    <div className="client-profile-stat-label">
+                      Avg expert rating
+                    </div>
+                  </div>
+                  <div className="client-profile-stat">
+                    <div className="client-profile-stat-number">
+                      {activeFocusAreas}
+                    </div>
+                    <div className="client-profile-stat-label">
+                      Active focus areas
+                    </div>
+                  </div>
+                </div>
+
+                <div className="client-profile-actions">
+                  <button
+                    className="client-btn client-btn-ghost"
+                    onClick={() => go('/settings')}
+                  >
+                    Edit profile
+                  </button>
+                  <button
+                    className="client-btn client-btn-outline"
+                    onClick={() => go('/experts')}
+                  >
+                    View expert directory
+                  </button>
+                </div>
+              </div>
+
+              {/* Working style */}
+              <div className="client-card client-card-flat">
+                <h3 className="client-card-title">How to work with you</h3>
+                <p className="client-card-sub">
+                  A short guide for experts so sessions feel sharp, not fluffy.
+                </p>
+
+                <ul className="client-working-list">
+                  <li>
+                    You prefer structured, actionable advice over generic
+                    motivation or feel-good pep talks.
+                  </li>
+                  <li>
+                    You value experts who share their assumptions and
+                    thought-process, not just the answer.
+                  </li>
+                  <li>
+                    You want clear trade-offs, risks, and if X, then Y branches —
+                    not one rigid recommendation.
+                  </li>
+                  <li>
+                    You’re comfortable with honest feedback as long as it’s
+                    anchored in your reality, not theory.
+                  </li>
+                  <li>
+                    The most useful sessions leave you with 3–5 moves you can
+                    actually calendar.
+                  </li>
+                </ul>
+
+                {isLoggedIn ? (
+                  <button
+                    className="client-btn client-btn-primary client-btn-full"
+                    onClick={() => go('/experts')}
+                  >
+                    Book your next session
+                  </button>
+                ) : (
+                  <button
+                    className="client-btn client-btn-primary client-btn-full"
+                    onClick={() => go('/signup-client')}
+                  >
+                    Create your client account
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* FINAL CTA */}
+          <section className="client-section client-cta-section">
+            <div className="client-cta-inner">
+              <div className="client-cta-copy">
+                <p className="client-section-kicker">Ready when you are</p>
+                <h2 className="client-section-title">
+                  One focused session can unblock your next 3–6 months.
+                </h2>
+                <p className="client-section-sub">
+                  Use this dashboard as the start and end point of each decision
+                  cycle — arrive with context, leave with a concrete plan, and
+                  then come back to adjust.
+                </p>
+              </div>
+              <div className="client-cta-actions">
+                <button
+                  className="client-btn client-btn-primary"
+                  onClick={() =>
+                    isLoggedIn ? go('/experts') : go('/signup-client')
+                  }
+                >
+                  {isLoggedIn ? 'Find an expert' : 'Start as client'}
+                </button>
+                <button
+                  className="client-btn client-btn-outline"
+                  onClick={() => setChatOpen(true)}
+                >
+                  Ask AI first
+                </button>
+                <button
+                  className="client-btn client-btn-ghost"
+                  onClick={() => go('/support')}
+                >
+                  Ask a question first
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      {/* FOOTER */}
+      <footer className="client-footer" aria-label="Site footer">
+        <div className="client-shell client-footer-row">
+          <div className="client-footer-left">
+            <div className="client-footer-brand">
+              <span className="client-footer-logo">🥜</span>
+              <span className="client-footer-name">Solvenut</span>
+            </div>
+            <p className="client-footer-text">
+              Human experts + structured tools for real-world decisions. Not a
+              replacement for medical, legal, or emergency advice.
+            </p>
+            <div className="client-footer-badges">
+              <span className="client-footer-badge">No subscriptions</span>
+              <span className="client-footer-badge">Human + AI blended</span>
+              <span className="client-footer-badge">Private by default</span>
+            </div>
+            <span className="client-footer-meta">
+              © 2026 Solvenut. All rights reserved.
+            </span>
+          </div>
+
+          <div className="client-footer-right">
+            <div className="client-footer-col">
+              <h4>Product</h4>
+              <button onClick={() => go('/experts')}>Experts</button>
+              <button onClick={() => go('/client-dashboard')}>
+                Client dashboard
+              </button>
+              <button onClick={() => go('/pricing')}>Pricing</button>
+            </div>
+            <div className="client-footer-col">
+              <h4>Company</h4>
+              <button onClick={() => go('/about')}>About</button>
+              <button onClick={() => go('/blog')}>Blog</button>
+              <button onClick={() => go('/careers')}>Careers</button>
+            </div>
+            <div className="client-footer-col">
+              <h4>Resources</h4>
+              <button onClick={() => go('/use-cases')}>Use cases</button>
+              <button onClick={() => go('/security')}>Security</button>
+              <button onClick={() => go('/support')}>Support</button>
+            </div>
+            <div className="client-footer-col">
+              <h4>Account</h4>
+              {isLoggedIn ? (
+                <>
+                  <button onClick={() => go('/client-dashboard')}>
+                    Dashboard
+                  </button>
+                  <button onClick={handleLogout}>Logout</button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => go('/login')}>Log in</button>
+                  <button onClick={() => go('/signup-client')}>
+                    Get started
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="client-shell client-footer-bottom">
+          <div className="client-footer-links">
+            <button onClick={() => go('/terms')}>Terms</button>
+            <button onClick={() => go('/privacy')}>Privacy</button>
+            <button onClick={() => go('/cookies')}>Cookies</button>
+          </div>
+          <div className="client-footer-social">
+            <a
+              href="https://x.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Solvenut on X"
+            >
+              X
+            </a>
+            <a
+              href="https://www.linkedin.com"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Solvenut on LinkedIn"
+            >
+              LinkedIn
+            </a>
+            <a
+              href="mailto:hello@solvenut.com"
+              aria-label="Email Solvenut"
+            >
+              Email
+            </a>
+          </div>
+        </div>
+      </footer>
+
+      {/* Chat widget (floating + modal) */}
+      <ChatBot
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        onEscalate={() => {
+          setChatOpen(false);
+          go('/experts');
+        }}
+        user={{ name: userData.username, email: userData.email }}
+      />
     </div>
   );
 };
 
-const StatCard = ({ num, label, color, icon }) => (
-  <div className="admin-stat-card">
-    <div className={`admin-stat-number admin-stat-${color}`}>
-      {num}
-    </div>
-    <div className="admin-stat-label">
-      <i className={`fas ${icon}`} />
-      <span>{label}</span>
-    </div>
-  </div>
-);
-
-export default AdminDashboard;
+export default ClientDashboard;

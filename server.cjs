@@ -788,35 +788,62 @@ app.post("/api/razorpay-webhook", async (req, res) => {
 });
 
 /* ============================================================
-   AI CORE (unchanged)
+   AI CORE - PRODUCTION SAFE VERSION
 ============================================================ */
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-let activeModel;
 
-(async () => {
-  try {
-    if (process.env.GEMINI_API_KEY) {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`);
-      const d = await r.json();
-      const model = d.models.find(m => m.name.includes("flash"));
-      activeModel = genAI.getGenerativeModel({ model: model.name.split("/")[1] });
-      console.log("✨ AI Ready");
-    }
-  } catch (err) {
-    console.log("⚠️ AI disabled");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+let activeModel = null;
+
+try {
+  if (!process.env.GEMINI_API_KEY) {
+    console.log("❌ GEMINI_API_KEY not set");
+  } else {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+    // Use stable model name
+    activeModel = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash-latest"
+    });
+
+    console.log("✅ Gemini AI initialized successfully");
   }
-})();
+} catch (err) {
+  console.error("❌ Gemini initialization failed:", err.message);
+}
+
+/* =============================
+   AI ROUTE
+============================= */
 
 app.post("/api/ai/ask", async (req, res) => {
   try {
-    if (!activeModel) return res.status(503).json({ error: "AI unavailable" });
-    const result = await activeModel.generateContent(req.body.prompt);
-    res.json({ answer: result.response.text() });
+    if (!activeModel) {
+      return res.status(503).json({
+        error: "AI unavailable",
+        reason: "Model not initialized"
+      });
+    }
+
+    const prompt = req.body?.prompt;
+    if (!prompt) {
+      return res.status(400).json({ error: "Prompt missing" });
+    }
+
+    const result = await activeModel.generateContent(prompt);
+    const response = await result.response.text();
+
+    res.json({ answer: response });
+
   } catch (err) {
-    res.status(500).json({ error: "AI failed" });
+    console.error("❌ AI generation error:", err.message);
+
+    res.status(500).json({
+      error: "AI generation failed",
+      details: err.message
+    });
   }
 });
-
 /* ============================================================
    SOCKET.IO - LIVE CHAT
 ============================================================ */

@@ -1,5 +1,5 @@
 // src/pages/ClientDashboard.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Mail,
@@ -7,16 +7,170 @@ import {
   MapPin,
   Briefcase,
   CalendarDays,
+  MessageCircle,
 } from 'lucide-react';
 import '../styles/ClientDashboard.css';
+import ChatBot from '../components/ChatBot';
 
-// ✅ Ready for any future API calls
-// const API = import.meta.env.VITE_API_BASE;
+const ChatBotStyles = `
+.chatbot-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.6) !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+}
+
+.chatbot-modal {
+  background: white !important;
+  border-radius: 20px 20px 0 0 !important;
+  width: 100% !important;
+  max-width: 500px !important;
+  max-height: 85vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: 0 -20px 60px rgba(0,0,0,0.3) !important;
+  animation: slideUp 0.3s ease-out !important;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.chatbot-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 1.5rem 1.5rem 1rem !important;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  color: white !important;
+  border-radius: 20px 20px 0 0 !important;
+}
+
+.chatbot-title { font-size: 1.2rem !important; font-weight: 700 !important; }
+.chatbot-subtitle { font-size: 0.9rem !important; opacity: 0.9; margin-top: 2px !important; }
+
+.chatbot-close-btn, .chatbot-escalate-btn {
+  padding: 0.75rem !important;
+  border: none !important;
+  border-radius: 12px !important;
+  background: rgba(255,255,255,0.2) !important;
+  color: white !important;
+  cursor: pointer !important;
+}
+
+.chatbot-messages {
+  flex: 1 !important;
+  padding: 1.5rem !important;
+  overflow-y: auto !important;
+  background: #f8fafc !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.chatbot-message { margin-bottom: 1rem !important; display: flex !important; }
+.chatbot-message.user { justify-content: flex-end !important; }
+.chatbot-message-content {
+  padding: 1rem 1.25rem !important;
+  border-radius: 20px !important;
+  max-width: 85% !important;
+  font-size: 0.95rem !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+}
+
+.chatbot-message.assistant .chatbot-message-content {
+  background: white !important;
+  color: #374151 !important;
+  border-radius: 20px 20px 6px 20px !important;
+}
+
+.chatbot-message.user .chatbot-message-content {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  color: white !important;
+  border-radius: 20px 20px 6px 20px !important;
+}
+
+.chatbot-input-container {
+  padding: 1.25rem 1.5rem 1.75rem !important;
+  background: white !important;
+  border-top: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  gap: 1rem !important;
+}
+
+.chatbot-input {
+  flex: 1 !important;
+  border: 2px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  padding: 1rem 1.25rem !important;
+  font-size: 1rem !important;
+  resize: vertical !important;
+  min-height: 50px !important;
+  max-height: 150px !important;
+}
+
+.chatbot-input:focus {
+  outline: none !important;
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1) !important;
+}
+
+.chatbot-send-btn {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 16px !important;
+  border: none !important;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  color: white !important;
+  cursor: pointer !important;
+}
+
+.chatbot-typing-dots {
+  display: flex !important;
+  gap: 4px !important;
+}
+
+.chatbot-typing-dots span {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: #94a3b8 !important;
+  animation: dots 1.4s infinite ease-in-out !important;
+}
+
+.chatbot-typing-dots span:nth-child(2) { animation-delay: 0.2s !important; }
+.chatbot-typing-dots span:nth-child(3) { animation-delay: 0.4s !important; }
+
+@keyframes dots {
+  0%, 60%, 100% { transform: scale(1); opacity: 0.4; }
+  30% { transform: scale(1.3); opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .chatbot-modal { border-radius: 20px 20px 0 0 !important; margin-bottom: 0 !important; }
+}
+`;
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
 
-  // auth detection
+  // inject ChatBot styles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = ChatBotStyles;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   const token =
     typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const email =
@@ -46,6 +200,8 @@ const ClientDashboard = () => {
   const totalSessions = userData.reqCount;
   const activeFocusAreas = 1;
 
+  const [chatOpen, setChatOpen] = useState(false);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('email');
@@ -60,10 +216,9 @@ const ClientDashboard = () => {
     <div className="client-page">
       <div className="client-ambient" />
 
-      {/* HEADER (mirrors Home) */}
+      {/* HEADER */}
       <header className="client-header" role="banner">
         <div className="client-shell client-header-inner">
-          {/* Logo */}
           <button
             className="client-logo"
             onClick={() => go('/')}
@@ -77,7 +232,6 @@ const ClientDashboard = () => {
             </div>
           </button>
 
-          {/* Simple nav for dashboard */}
           <nav className="client-nav-desktop" aria-label="Dashboard navigation">
             <button
               className="client-nav-link active"
@@ -107,7 +261,6 @@ const ClientDashboard = () => {
             </button>
           </nav>
 
-          {/* Header actions */}
           <div className="client-nav-actions">
             <button
               className="client-btn client-btn-ghost"
@@ -147,14 +300,14 @@ const ClientDashboard = () => {
                 </h1>
                 <p className="client-hero-sub">
                   This dashboard is where you track your context, keep your
-                  focus areas in one place, and jump into high‑leverage
-                  sessions with experts who’ve walked similar paths.
+                  focus areas in one place, and jump into high-leverage sessions
+                  with experts who've walked similar paths.
                 </p>
 
                 <div className="client-hero-pill-row">
                   <span className="client-hero-pill">Career forks</span>
                   <span className="client-hero-pill">Money decisions</span>
-                  <span className="client-hero-pill">Side‑project bets</span>
+                  <span className="client-hero-pill">Side-project bets</span>
                   <span className="client-hero-pill">Life planning</span>
                 </div>
 
@@ -165,6 +318,16 @@ const ClientDashboard = () => {
                   >
                     Start a session
                   </button>
+
+                  <button
+                    className="client-btn client-btn-outline"
+                    onClick={() => setChatOpen(true)}
+                    title="Ask AI for help — if it's not enough, talk to an expert"
+                  >
+                    <MessageCircle size={16} />
+                    Chat with AI
+                  </button>
+
                   <button
                     className="client-btn client-btn-outline"
                     onClick={() => go('/support')}
@@ -174,7 +337,7 @@ const ClientDashboard = () => {
                 </div>
 
                 <p className="client-hero-meta">
-                  No subscriptions • Pay per engagement • Private 1‑to‑1 rooms
+                  No subscriptions • Pay per engagement • Private 1-to-1 rooms
                 </p>
               </div>
 
@@ -188,7 +351,9 @@ const ClientDashboard = () => {
                     <span>{usernameInitial}</span>
                   </div>
                   <div className="client-hero-card-titleblock">
-                    <h2 id="client-hero-card-heading">{userData.username}</h2>
+                    <h2 id="client-hero-card-heading">
+                      {userData.username}
+                    </h2>
                     <p>Solvenut client • Member since {memberSince}</p>
                   </div>
                 </div>
@@ -220,7 +385,7 @@ const ClientDashboard = () => {
 
                 <div className="client-hero-footer">
                   <p>
-                    Your dashboard is the steady base‑camp you come back to as
+                    Your dashboard is the steady base-camp you come back to as
                     your work, money, and life decisions evolve.
                   </p>
                 </div>
@@ -280,21 +445,33 @@ const ClientDashboard = () => {
                     Use this dashboard as the place where you park the big
                     questions on your mind — job moves, salary or comp
                     decisions, switching cities, taking a sabbatical, or
-                    ramping a side‑project.
+                    ramping a side-project.
                   </p>
                 </div>
 
-                <button
-                  className="client-btn client-btn-outline client-btn-full"
-                  onClick={() => go('/settings')}
-                >
-                  Edit account details
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    className="client-btn client-btn-outline client-btn-full"
+                    onClick={() => go('/settings')}
+                  >
+                    Edit account details
+                  </button>
+                  <button
+                    className="client-btn client-btn-primary client-btn-full"
+                    onClick={() => setChatOpen(true)}
+                    title="Quick AI assistance"
+                  >
+                    <MessageCircle size={16} />
+                    Ask AI
+                  </button>
+                </div>
               </div>
 
               {/* How to use */}
               <div className="client-card">
-                <h3 className="client-card-title">Best way to use this space</h3>
+                <h3 className="client-card-title">
+                  Best way to use this space
+                </h3>
                 <p className="client-card-sub">
                   A simple flow so you’re not just venting, but actually moving.
                 </p>
@@ -306,7 +483,7 @@ const ClientDashboard = () => {
                   </li>
                   <li>
                     Write your context honestly, including constraints and
-                    non‑negotiables.
+                    non-negotiables.
                   </li>
                   <li>
                     Shortlist 1–3 experts whose backgrounds match your reality,
@@ -414,14 +591,14 @@ const ClientDashboard = () => {
                 <ul className="client-working-list">
                   <li>
                     You prefer structured, actionable advice over generic
-                    motivation or feel‑good pep talks.
+                    motivation or feel-good pep talks.
                   </li>
                   <li>
                     You value experts who share their assumptions and
-                    thought‑process, not just the answer.
+                    thought-process, not just the answer.
                   </li>
                   <li>
-                    You want clear trade‑offs, risks, and “if X, then Y”
+                    You want clear trade-offs, risks, and “if X, then Y”
                     branches — not one rigid recommendation.
                   </li>
                   <li>
@@ -462,9 +639,9 @@ const ClientDashboard = () => {
                   One focused session can unblock your next 3–6 months.
                 </h2>
                 <p className="client-section-sub">
-                  Use this dashboard as the start and end point of each
-                  decision cycle — arrive with context, leave with a concrete
-                  plan, and then come back to adjust.
+                  Use this dashboard as the start and end point of each decision
+                  cycle — arrive with context, leave with a concrete plan, and
+                  then come back to adjust.
                 </p>
               </div>
               <div className="client-cta-actions">
@@ -478,6 +655,12 @@ const ClientDashboard = () => {
                 </button>
                 <button
                   className="client-btn client-btn-outline"
+                  onClick={() => setChatOpen(true)}
+                >
+                  Ask AI first
+                </button>
+                <button
+                  className="client-btn client-btn-ghost"
                   onClick={() => go('/support')}
                 >
                   Ask a question first
@@ -488,7 +671,7 @@ const ClientDashboard = () => {
         </div>
       </main>
 
-      {/* FOOTER – reusing Home layout */}
+      {/* FOOTER */}
       <footer className="client-footer" aria-label="Site footer">
         <div className="client-shell client-footer-row">
           <div className="client-footer-left">
@@ -497,14 +680,12 @@ const ClientDashboard = () => {
               <span className="client-footer-name">Solvenut</span>
             </div>
             <p className="client-footer-text">
-              Human experts + structured tools for real‑world decisions. Not a
+              Human experts + structured tools for real-world decisions. Not a
               replacement for medical, legal, or emergency advice.
             </p>
             <div className="client-footer-badges">
               <span className="client-footer-badge">No subscriptions</span>
-              <span className="client-footer-badge">
-                Human + AI blended
-              </span>
+              <span className="client-footer-badge">Human + AI blended</span>
               <span className="client-footer-badge">Private by default</span>
             </div>
             <span className="client-footer-meta">
@@ -586,6 +767,17 @@ const ClientDashboard = () => {
           </div>
         </div>
       </footer>
+
+      {/* Chat widget */}
+      <ChatBot
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        onEscalate={() => {
+          setChatOpen(false);
+          go('/experts');
+        }}
+        user={{ name: userData.username, email: userData.email }}
+      />
     </div>
   );
 };
