@@ -802,7 +802,7 @@ try {
 
     // Use stable model name
     activeModel = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash-latest"
+      model: "gemini-1.5-flash"
     });
 
     console.log("✅ Gemini AI initialized successfully");
