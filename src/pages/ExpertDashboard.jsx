@@ -90,14 +90,14 @@ const css = `
 
   /* ─── HEADER ─── */
   .ed-header {
-    position: sticky; top: 0; z-index: 100;
+    position: sticky; top: 0; z-index: 200;
     height: var(--header-h);
     background: linear-gradient(180deg, rgba(2,6,23,0.95), rgba(2,6,23,0.86));
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 24px;
-    gap: 16px;
+    padding: 0 16px;
+    gap: 12px;
   }
 
   .ed-header-brand { display: flex; align-items: center; gap: 12px; cursor: pointer; }
@@ -113,20 +113,72 @@ const css = `
   .ed-header-right { display: flex; align-items: center; gap: 10px; }
   .avatar-btn { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--home-brand-1), var(--home-brand-2)); border: none; cursor: pointer; font-family: var(--font-display); font-weight: 800; font-size: 15px; color: var(--bg-void); display: flex; align-items: center; justify-content: center; transition: transform 0.15s, box-shadow 0.15s; }
   .avatar-btn:hover { transform: scale(1.05); box-shadow: 0 0 16px rgba(16,185,129,0.12); }
-  .btn-logout { padding: 7px 16px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 12px; font-family: var(--font-mono); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-logout { padding: 7px 12px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--text-secondary); font-size: 12px; font-family: var(--font-mono); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .btn-logout:hover { border-color: var(--rose); color: var(--rose); }
+
+  /* MOBILE MENU BUTTON - larger hit area */
+  .mobile-menu-btn {
+    display: none;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-primary);
+    font-size: 20px;
+    cursor: pointer;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+  }
+  .mobile-menu-btn:focus { outline: 2px solid rgba(245,158,11,0.18); }
+
+  /* ─── TOP HORIZONTAL MOBILE NAV (hidden on desktop) ─── */
+  .mobile-top-nav {
+    display: none;
+    position: sticky;
+    top: var(--header-h);
+    z-index: 190;
+    background: linear-gradient(180deg, rgba(2,6,23,0.94), rgba(2,6,23,0.9));
+    border-bottom: 1px solid var(--border);
+    padding: 8px 8px;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mobile-top-nav .mobile-nav-btn {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 10px;
+    min-width: 84px;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .mobile-top-nav .mobile-nav-btn.active {
+    background: linear-gradient(90deg, var(--gold), #e09020);
+    color: var(--bg-void);
+    border-color: rgba(245,158,11,0.12);
+    box-shadow: 0 6px 18px rgba(245,158,11,0.06);
+  }
 
   /* ─── LAYOUT ─── */
   .ed-body { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: calc(100vh - var(--header-h)); position: relative; z-index: 1; }
   .ed-body.collapsed { grid-template-columns: 72px 1fr; }
 
   /* ─── SIDEBAR ─── */
-  .ed-sidebar { background: rgba(2,6,23,0.6); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 10px; overflow: hidden; transition: width 0.25s cubic-bezier(0.4,0,0.2,1), transform 0.3s ease; position: sticky; top: var(--header-h); height: calc(100vh - var(--header-h)); overflow-y: auto; }
+  .ed-sidebar { background: rgba(2,6,23,0.6); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 10px; overflow: hidden; transition: width 0.25s cubic-bezier(0.4,0,0.2,1), transform 0.3s ease; position: sticky; top: var(--header-h); height: calc(100vh - var(--header-h)); overflow-y: auto; z-index: 200; }
   .nav-section-label { font-size: 10px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 6px 10px 4px; white-space: nowrap; overflow: hidden; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; white-space: nowrap; font-size: 14px; font-weight: 500; color: var(--text-secondary); border: 1px solid transparent; margin-bottom: 2px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 10px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; white-space: nowrap; font-size: 14px; font-weight: 500; color: var(--text-secondary); border: 1px solid transparent; margin-bottom: 4px; }
   .nav-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
   .nav-item.active { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.12); color: var(--gold); }
-  .nav-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; font-size: 13px; flex-shrink: 0; background: var(--bg-elevated); transition: background 0.15s; }
+  .nav-icon { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 9px; font-size: 13px; flex-shrink: 0; background: var(--bg-elevated); transition: background 0.15s; }
   .nav-item.active .nav-icon { background: rgba(245,158,11,0.06); }
   .nav-badge { margin-left: auto; background: var(--rose); color: white; font-size: 10px; font-family: var(--font-mono); padding: 2px 6px; border-radius: 100px; min-width: 18px; text-align: center; flex-shrink: 0; }
   .nav-badge.gold { background: var(--gold); color: var(--bg-void); }
@@ -144,7 +196,7 @@ const css = `
   .card-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
   .card-sub { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 1px; }
 
-  /* ─── STAT CARDS ─── */
+  /* ─── STUFF (kept from your original CSS) ─── */
   .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
   .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; position: relative; overflow: hidden; transition: all 0.2s; cursor: default; }
   .stat-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--accent-color, var(--gold)); opacity: 0.6; }
@@ -156,7 +208,6 @@ const css = `
   .stat-delta.down { color: var(--rose); }
   .stat-delta.neutral { color: var(--text-muted); }
 
-  /* ─── CONVERSATION LIST ─── */
   .convo-item { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.12s; border: 1px solid transparent; }
   .convo-item:hover { background: var(--bg-elevated); }
   .convo-item.active { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.12); }
@@ -166,7 +217,6 @@ const css = `
   .convo-time { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); white-space: nowrap; }
   .unread-pill { background: var(--gold); color: var(--bg-void); font-size: 10px; font-family: var(--font-mono); font-weight: 700; padding: 2px 7px; border-radius: 100px; flex-shrink: 0; }
 
-  /* ─── MESSAGES ─── */
   .messages-wrap { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; scroll-behavior: smooth; }
   .msg-row { display: flex; gap: 10px; align-items: flex-end; max-width: 76%; }
   .msg-row.sent { flex-direction: row-reverse; margin-left: auto; }
@@ -177,10 +227,9 @@ const css = `
   .msg-meta { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
   .msg-row.sent .msg-meta { justify-content: flex-end; }
 
-  /* ─── INPUTS & BUTTONS ─── */
   .input-field { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; color: var(--text-primary); font-family: var(--font-body); font-size: 14px; outline: none; transition: border-color 0.15s; }
   .input-field:focus { border-color: var(--gold); }
-  .input-field.chat-input { border-radius: 12px; padding: 12px 16px; font-size: 14px; }
+  .input-field.chat-input { border-radius: 12px; padding: 12px 16px; font-size: 14px; min-height: 44px; }
   .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; font-family: var(--font-body); cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
   .btn-primary { background: var(--gold); color: var(--bg-void); box-shadow: 0 0 20px var(--gold-glow); }
   .btn-primary:hover { background: #ffd04a; box-shadow: 0 0 30px var(--gold-glow); }
@@ -191,7 +240,10 @@ const css = `
   .btn-sm { padding: 5px 12px; font-size: 12px; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* ─── TOASTS ─── */
+  .btn-send { padding: 12px 18px; border-radius: 12px; min-width: 56px; min-height: 44px; }
+
+  .chat-compose { display: flex; gap: 10px; align-items: flex-end; }
+
   .toast-stack { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
   .toast { padding: 12px 18px; border-radius: var(--radius-md); font-size: 13px; display: flex; align-items: center; gap: 10px; min-width: 240px; backdrop-filter: blur(16px); animation: toastIn 0.25s cubic-bezier(0.34,1.56,0.64,1); border: 1px solid var(--border-bright); color: #fff;}
   @keyframes toastIn { from { opacity: 0; transform: translateX(20px) scale(0.95); } to { opacity: 1; transform: translateX(0) scale(1); } }
@@ -199,17 +251,15 @@ const css = `
   .toast.error { background: rgba(251,113,133,0.2); border-color: rgba(251,113,133,0.5); }
   .toast.info { background: rgba(56,189,248,0.2); border-color: rgba(56,189,248,0.5); }
 
-  /* ─── COMPONENTS ─── */
   .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-family: var(--font-mono); background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
   .chip.gold { background: var(--gold-dim); border-color: rgba(245,158,11,0.16); color: var(--gold); }
   .chip.green { background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.3); color: var(--emerald); }
   .chip.purple { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.3); color: var(--violet); }
   .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 20px; color: var(--text-muted); text-align: center; }
   .quick-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .quick-chip { padding: 4px 12px; border-radius: 100px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all 0.12s; }
+  .quick-chip { padding: 8px 12px; border-radius: 100px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: all 0.12s; min-height: 40px; display:flex; align-items:center; }
   .quick-chip:hover { border-color: var(--gold); color: var(--gold); }
   .earnings-bar { flex: 1; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--gold) 0%, rgba(245,158,11,0.35) 100%); transition: opacity 0.15s; }
-  .earnings-bar:hover { opacity: 0.85; }
   .progress-wrap { margin: 8px 0; }
   .progress-track { height: 5px; background: var(--bg-elevated); border-radius: 100px; overflow: hidden; }
   .progress-fill { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--gold), #e09020); }
@@ -238,63 +288,68 @@ const css = `
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 100px; }
 
-  /* ─── RESPONSIVE ADDITIONS ─── */
-  .mobile-menu-btn { display: none; background: transparent; border: none; color: var(--text-primary); font-size: 24px; cursor: pointer; }
-  .mobile-overlay { display: none; position: fixed; inset: 0; top: var(--header-h); background: rgba(0,0,0,0.5); z-index: 150; }
-  .chat-back-btn { display: none; align-items: center; gap: 4px; background: transparent; border: none; color: var(--gold); font-size: 14px; cursor: pointer; padding: 0 10px 0 0; }
-  
-  .responsive-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .suggestions-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .chat-layout-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 16px;
+    height: calc(100vh - var(--header-h) - 52px - 48px);
+    min-height: 0;
+  }
+
+  .ed-sidebar.mobile-open { transform: translateX(0); box-shadow: 10px 0 30px rgba(0,0,0,0.6); }
+  .mobile-overlay { display: none; position: fixed; inset: 0; top: var(--header-h); background: rgba(0,0,0,0.5); z-index: 150; transition: opacity 0.18s; }
+  .mobile-overlay.mobile-open { display: block; }
 
   @media (max-width: 1024px) {
     .ed-body { grid-template-columns: 72px 1fr; }
     .nav-section-label, .brand-text, .brand-sub, .sidebar-profile-inner > div:last-child { display: none; }
     .sidebar-profile-inner { justify-content: center; background: transparent; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .ed-main > div > div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
-    .chat-layout-grid { grid-template-columns: 280px 1fr !important; }
+    .chat-layout-grid { grid-template-columns: 280px 1fr; }
   }
 
   @media (max-width: 768px) {
-    .ed-header { padding: 0 16px; }
-    .mobile-menu-btn { display: block !important; }
+    .ed-header { padding: 0 12px; }
+    .mobile-menu-btn { display: flex !important; }
     .ed-header-center { display: none; }
     .ed-header-right { gap: 6px; }
     .hide-on-mobile { display: none !important; }
-    
+
+    /* show the horizontal top nav only on small screens */
+    .mobile-top-nav { display: flex; }
+
     .ed-body { grid-template-columns: 1fr; }
     .ed-sidebar { 
       position: fixed; top: var(--header-h); left: 0; bottom: 0; z-index: 200; 
-      transform: translateX(-100%); transition: transform 0.3s ease;
+      transform: translateX(-100%); transition: transform 0.28s ease;
       width: 260px; background: rgba(2,6,23,0.98); backdrop-filter: blur(20px);
       box-shadow: 10px 0 30px rgba(0,0,0,0.5);
     }
     .ed-sidebar.mobile-open { transform: translateX(0); }
     .mobile-overlay.mobile-open { display: block; }
-    
-    /* Restore sidebar text when drawer is open */
-    .ed-sidebar.mobile-open .nav-section-label, 
-    .ed-sidebar.mobile-open .brand-text, 
-    .ed-sidebar.mobile-open .sidebar-profile-inner > div:last-child { display: block; }
-    .ed-sidebar.mobile-open .nav-item span:not(.nav-badge) { display: inline !important; }
-    .ed-sidebar.mobile-open .sidebar-profile-inner { justify-content: flex-start; background: var(--bg-elevated); }
 
     .stats-grid { grid-template-columns: 1fr; }
-    .ed-main { padding: 16px; }
+    .ed-main { padding: 12px; }
     .profile-hero > div { flex-direction: column; align-items: center; text-align: center; }
     .profile-hero .chip { margin: 0 auto; }
-    
-    /* Chat Mobile Layout */
-    .chat-layout-grid { display: flex !important; flex-direction: column; }
-    .chat-sidebar-mobile-hide { display: none !important; }
-    .chat-main-mobile-hide { display: none !important; }
+
+    .chat-layout-grid { display: flex; flex-direction: column; height: calc(100vh - var(--header-h) - 20px); gap: 12px; }
+    .chat-sidebar-mobile-hide { display: block !important; }
+    .chat-main-mobile-hide { display: block !important; }
     .chat-back-btn { display: flex !important; }
     .msg-bubble { font-size: 13px; }
     .msg-row { max-width: 85%; }
+    .chat-layout-grid > .card:first-child { max-height: 36vh; overflow-y: auto; }
+    .chat-layout-grid > .card:last-child { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .messages-wrap { flex: 1; min-height: 0; padding: 12px; }
+    .chat-compose { position: sticky; bottom: 0; background: linear-gradient(180deg, rgba(2,6,23,0), rgba(2,6,23,0.02)); padding: 8px; z-index: 80; border-top: 1px solid var(--border); }
+  }
 
-    /* Other Grids */
-    .responsive-grid-2 { grid-template-columns: 1fr; }
-    .suggestions-grid { grid-template-columns: 1fr; }
+  @media (max-width: 480px) {
+    .convo-preview { max-width: 120px; }
+    .convo-avatar { width: 40px; height: 40px; font-size: 14px; }
+    .brand-text { display: none; }
+    .brand-sub { display: none; }
   }
 `;
 
@@ -410,6 +465,8 @@ const ExpertDashboard = () => {
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
+  const isMobile = () => typeof window !== 'undefined' && window.innerWidth <= 768;
+
   const showToast = useCallback((text, type = "info", ms = 3000) => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, text, type }]);
@@ -417,14 +474,24 @@ const ExpertDashboard = () => {
   }, []);
 
   useEffect(() => {
+    // lock body scroll when mobile menu open
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
         const [profRes, convRes, payRes, expRes] = await Promise.all([
-          fetch(`${API}/api/profile?email=${expertEmail}`),
-          fetch(`${API}/api/conversations?email=${expertEmail}`),
+          fetch(`${API}/api/profile?email=${expertEmail}`, { headers }),
+          fetch(`${API}/api/conversations?email=${expertEmail}`, { headers }),
           fetch(`${API}/api/my-payments`, { headers }),
-          fetch(`${API}/api/experts?status=approved`)
+          fetch(`${API}/api/experts?status=approved`, { headers })
         ]);
 
         const profData = await profRes.json();
@@ -474,6 +541,8 @@ const ExpertDashboard = () => {
       });
     });
 
+    s.on("disconnect", () => {});
+    
     return () => { try { s.disconnect(); } catch {} };
   }, [API, token]); 
 
@@ -510,6 +579,8 @@ const ExpertDashboard = () => {
     }, 45);
 
     setConversations(prev => prev.map(c => c.room === convo.room ? { ...c, unread: 0 } : c));
+
+    if (isMobile()) setMobileMenuOpen(false);
   }, [expertEmail, token, showToast, NAV.CONVERSATIONS]);
 
   useEffect(() => {
@@ -536,18 +607,22 @@ const ExpertDashboard = () => {
     if (socketRef.current?.connected) {
       socketRef.current.emit("send_private_message", { room: roomToUse, author: expertEmail, authorRole: "expert", message: text });
     }
-  }, [inputValue, expertEmail, activeRoom]);
+
+    try {
+      fetch(`${API}/api/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ room: roomToUse, author: expertEmail, message: text }) }).catch(()=>{});
+    } catch {}
+  }, [inputValue, expertEmail, activeRoom, token]);
 
   const askAI = useCallback(async (prompt) => {
     setAiLoading(true);
     setAiResponse("");
     try {
-      const res = await fetch(`${API}/api/ai/ask`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt }) });
+      const res = await fetch(`${API}/api/ai/ask`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ prompt }) });
       const data = await res.json();
       setAiResponse(data?.answer || "No response received.");
     } catch { setAiResponse("AI service error — check your connection."); }
     setAiLoading(false);
-  }, []);
+  }, [token]);
 
   const logout = () => {
     ["token","email","name","role"].forEach(k => localStorage.removeItem(k));
@@ -557,6 +632,11 @@ const ExpertDashboard = () => {
   const handleNavClick = (id) => {
     setSelectedNav(id);
     setMobileMenuOpen(false);
+    // optionally clear activeRoom when switching away from conversations
+    if (id !== NAV.CONVERSATIONS) {
+      setActiveRoom(null);
+      activeRoomRef.current = null;
+    }
   };
 
   const unreadCount = useMemo(() => conversations.reduce((a, c) => a + (c.unread || 0), 0), [conversations]);
@@ -607,9 +687,28 @@ const ExpertDashboard = () => {
     { id: NAV.CONVERSATIONS, label: "Chats", icon: "◈", badge: unreadCount > 0 ? `${unreadCount}` : null },
     { id: NAV.CLIENTS, label: "Clients", icon: "◉" },
     { id: NAV.PAYMENTS, label: "Payments", icon: "◈" },
-    { id: NAV.AI, label: "AI Assistant", icon: "✦", badgeColor: "gold" },
+    { id: NAV.AI, label: "AI", icon: "✦", badgeColor: "gold" },
     { id: NAV.PROFILE, label: "Profile", icon: "◎" },
   ];
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        if (mobileMenuOpen) setMobileMenuOpen(false);
+        else if (isMobile() && activeRoom) setActiveRoom(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileMenuOpen, activeRoom]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (isMobile()) setSidebarCollapsed(false);
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   if (loadingApp) return <div style={{ background: "var(--bg-void)", height: "100vh", color: "var(--gold)", display: "flex", alignItems: "center", justifyContent: "center" }}>Initializing Workspace...</div>;
 
@@ -619,7 +718,7 @@ const ExpertDashboard = () => {
       <div className="ed-root">
         
         {/* TOASTS */}
-        <div className="toast-stack">
+        <div className="toast-stack" aria-live="polite">
           {toasts.map(t => (
             <div key={t.id} className={`toast ${t.type}`}>
               <span>{t.type === "success" ? "✓" : t.type === "error" ? "✕" : "i"}</span> <span>{t.text}</span>
@@ -628,13 +727,21 @@ const ExpertDashboard = () => {
         </div>
 
         {/* MOBILE OVERLAY */}
-        <div className={`mobile-overlay ${mobileMenuOpen ? 'mobile-open' : ''}`} onClick={() => setMobileMenuOpen(false)} />
+        <div className={`mobile-overlay ${mobileMenuOpen ? 'mobile-open' : ''}`} onClick={() => setMobileMenuOpen(false)} aria-hidden={!mobileMenuOpen} />
 
         {/* HEADER */}
         <header className="ed-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>☰</button>
-            <div className="ed-header-brand" onClick={() => handleNavClick(NAV.DASHBOARD)}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              className="mobile-menu-btn"
+              onClick={() => setMobileMenuOpen(s => !s)}
+              aria-label="Open menu"
+              aria-expanded={mobileMenuOpen}
+              title="Open menu"
+            >
+              ☰
+            </button>
+            <div className="ed-header-brand" onClick={() => handleNavClick(NAV.DASHBOARD)} role="button" tabIndex={0}>
               <div className="brand-mark">S</div>
               <div>
                 <div className="brand-text">SolutionHub</div>
@@ -651,22 +758,46 @@ const ExpertDashboard = () => {
               <div style={{ fontSize: 13, fontWeight: 700 }}>{profile?.name || expertName}</div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>{expertEmail}</div>
             </div>
-            <div className="avatar-btn">{(profile?.name || expertName)[0].toUpperCase()}</div>
+            <div className="avatar-btn" title={profile?.name || expertName}>{(profile?.name || expertName)[0].toUpperCase()}</div>
             <button className="btn-logout hide-on-mobile" onClick={logout}>Sign out</button>
           </div>
         </header>
+
+        {/* HORIZONTAL MOBILE NAV (visible on small screens) */}
+        <div className="mobile-top-nav" role="navigation" aria-label="Mobile navigation">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              className={`mobile-nav-btn ${selectedNav === item.id ? "active" : ""}`}
+              onClick={() => handleNavClick(item.id)}
+              aria-current={selectedNav === item.id}
+              title={item.label}
+            >
+              <span style={{ fontSize: 14 }}>{item.icon}</span>
+              <span style={{ opacity: 0.95, marginLeft: 6 }}>{item.label}</span>
+              {item.badge && <span style={{ marginLeft: 8, fontFamily: 'var(--font-mono)', fontSize: 12 }}>{item.badge}</span>}
+            </button>
+          ))}
+        </div>
 
         {/* BODY */}
         <div className={`ed-body ${sidebarCollapsed ? "collapsed" : ""}`}>
           
           {/* SIDEBAR */}
-          <aside className={`ed-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
+          <aside className={`ed-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`} aria-hidden={!mobileMenuOpen && isMobile()}>
             <button className="btn btn-ghost btn-sm hide-on-mobile" style={{ marginBottom: 16, display: "flex", gap: 6 }} onClick={() => setSidebarCollapsed(s => !s)}>
               {sidebarCollapsed ? "→" : "← Collapse"}
             </button>
             <nav>
               {navItems.map(item => (
-                <div key={item.id} className={`nav-item ${selectedNav === item.id ? "active" : ""}`} onClick={() => handleNavClick(item.id)} title={sidebarCollapsed && !mobileMenuOpen ? item.label : ""}>
+                <div
+                  key={item.id}
+                  className={`nav-item ${selectedNav === item.id ? "active" : ""}`}
+                  onClick={() => { handleNavClick(item.id); setMobileMenuOpen(false); }}
+                  role="button"
+                  tabIndex={0}
+                  aria-current={selectedNav === item.id}
+                >
                   <div className="nav-icon" style={{ fontSize: 16 }}>{item.icon}</div>
                   {(!sidebarCollapsed || mobileMenuOpen) && (
                     <>
@@ -810,9 +941,9 @@ const ExpertDashboard = () => {
               </div>
             )}
 
-            {/* CONVERSATIONS TAB (FIXED RESPONSIVE) */}
+            {/* CONVERSATIONS TAB */}
             {selectedNav === NAV.CONVERSATIONS && (
-              <div className="fade-in chat-layout-grid" style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 16, height: "calc(100vh - var(--header-h) - 52px - 48px)", minHeight: 0 }}>
+              <div className="fade-in chat-layout-grid">
                 {/* List Side */}
                 <div className={`card ${activeRoom ? 'chat-sidebar-mobile-hide' : ''}`} style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
                   <div style={{ padding: "16px 16px 8px" }}>
@@ -837,6 +968,7 @@ const ExpertDashboard = () => {
                     })}
                   </div>
                 </div>
+
                 {/* Chat Window Side */}
                 <div className={`card ${!activeRoom ? 'chat-main-mobile-hide' : ''}`} style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
                   <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}>
@@ -874,9 +1006,9 @@ const ExpertDashboard = () => {
                         <button key={i} className="quick-chip" disabled={!activeRoom} onClick={() => setInputValue(p => p ? `${p} ${q}` : q)}>{q}</button>
                       ))}
                     </div>
-                    <div style={{ display: "flex", gap: 10 }}>
+                    <div className="chat-compose">
                       <textarea className="input-field chat-input" style={{ flex: 1 }} rows={2} placeholder={activeRoom ? "Type a message… (Enter to send)" : "Select a conversation first…"} disabled={!activeRoom} value={inputValue} onChange={e => setInputValue(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
-                      <button className="btn btn-primary btn-icon" onClick={sendMessage} disabled={!activeRoom || !inputValue.trim()} style={{ alignSelf: "flex-end", padding: "12px 20px" }}>➤ Send</button>
+                      <button className="btn btn-primary btn-send" onClick={sendMessage} disabled={!activeRoom || !inputValue.trim()} style={{ alignSelf: "flex-end" }}>➤ Send</button>
                     </div>
                   </div>
                 </div>
@@ -889,7 +1021,7 @@ const ExpertDashboard = () => {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                   <div>
                     <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 800 }}>Payments Ledger</h2>
-                    <div style={{ color: "var(--text-muted)", fontSize: 13, fontFamily: "var(--font-mono)" }}>{payments.length} transactions from Razorpay</div>
+                    <div style={{ color: "var(--text-muted)", fontSize: 13, fontFamily: "var(--font-mono)" }}>{payments.length} transactions</div>
                   </div>
                 </div>
                 <div className="card">
@@ -927,7 +1059,8 @@ const ExpertDashboard = () => {
                       <table className="data-table">
                         <thead><tr><th>Client Email</th><th>Total Spend</th><th>Last Action</th></tr></thead>
                         <tbody>
-                          {Array.from(new Set(payments.map(p => p.clientEmail))).map(email => {
+                          {Array.from(new Set(payments.map(p => p.clientEmail || ""))).map(email => {
+                             if(!email) return null;
                              const clientPayments = payments.filter(p => p.clientEmail === email);
                              const total = clientPayments.reduce((a, b) => b.status === 'paid' ? a + Number(b.amount || 0) : a, 0);
                              return (
