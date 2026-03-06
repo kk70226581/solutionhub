@@ -178,6 +178,7 @@ const css = `
   .chat-list { display:flex; flex-direction:column; overflow:hidden; }
   .chat-win { display:flex; flex-direction:column; overflow:hidden; }
   .msgs-wrap { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:11px; }
+  .mobile-hide { }
   .msg-row { display:flex; gap:8px; align-items:flex-end; max-width:76%; }
   .msg-row.sent { flex-direction:row-reverse; margin-left:auto; }
   .msg-av { width:27px; height:27px; border-radius:7px; background:linear-gradient(135deg,#1e2d40,#0d1b2a); border:1px solid var(--border-bright); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:10px; color:var(--gold); flex-shrink:0; }
@@ -340,6 +341,14 @@ const css = `
     /* profile hero */
     .p-hero { padding:15px; }
     .p-hero-inner { flex-direction:column !important; align-items:flex-start !important; }
+    .mobile-hide { display:none !important; }
+    .ed-header { padding:0 10px; }
+    .brand-sub { display:none; }
+    .pg-head { margin-bottom:14px; }
+    .card { border-radius:14px; }
+    .btn { min-height:36px; }
+    .msgs-wrap { padding:12px 10px; }
+    .compose { padding:9px 10px; }
   }
 
   /* Small mobile */
@@ -356,6 +365,13 @@ const css = `
     .msg-row { max-width:95%; }
     .chat-list { max-height:28vh; }
     .stats-grid .stat-value { font-size:18px; }
+    .mtab { padding:6px 9px; }
+    .mtab span:nth-child(2) { display:none; }
+    .ed-header { gap:6px; }
+    .avatar-btn { width:30px; height:30px; border-radius:8px; font-size:12px; }
+    .pg-sub { font-size:11px; }
+    .mob-row { flex-direction:column; align-items:flex-start; }
+    .mob-card .btn { width:100%; }
     /* profile stats 3 col -> 1 col */
     .p-stats-grid { grid-template-columns:1fr !important; }
   }
@@ -363,6 +379,7 @@ const css = `
   @media (max-width:360px) {
     .ed-main { padding:8px 7px; }
     .cp { padding:11px 10px; }
+    .mtab { padding:5px 8px; font-size:10px; }
   }
 `;
 
@@ -840,7 +857,7 @@ const ExpertDashboard = () => {
                   <div className="pg-sub">{conversations.length} total · {unread} unread</div>
                 </div>
                 <div className="chat-grid">
-                  <div className="card chat-list">
+                  <div className={`card chat-list ${activeRoom ? "mobile-hide" : ""}`}>
                     <div style={{padding:"12px 12px 7px"}}>
                       <input className="inp inp-search" placeholder="Search…" value={convoSearch} onChange={e=>setConvoSearch(e.target.value)}/>
                     </div>
@@ -866,7 +883,7 @@ const ExpertDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="card chat-win">
+                  <div className={`card chat-win ${!activeRoom ? "mobile-hide" : ""}`}>
                     <div style={{padding:"11px 14px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:9,flexShrink:0}}>
                       {activeRoom&&<button className="btn btn-ghost btn-sm" onClick={()=>{setActiveRoom(null);activeRoomRef.current=null;}}>← Back</button>}
                       {activeOther

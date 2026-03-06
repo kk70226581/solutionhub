@@ -36,7 +36,7 @@ const Home = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [mobileOpen]);
 
-  // navigate helper – uses your actual React routes
+  // navigate helper
   const go = (path) => {
     navigate(path);
     setMobileOpen(false);
