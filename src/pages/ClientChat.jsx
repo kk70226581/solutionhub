@@ -265,11 +265,18 @@ const ClientChat = () => {
   };
 
   const handleKeyPress = e => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
+
+  const quickPrompts = [
+    'Can you review my current situation and suggest next steps?',
+    'What should I prioritize in the next 30 days?',
+    'Can you give me a simple plan with milestones?',
+    'What are the risks I should avoid right now?',
+  ];
 
   // ===== TYPING =====
   const handleTyping = () => {
@@ -317,10 +324,10 @@ const ClientChat = () => {
             className="brand-row"
             onClick={() => navigate('/experts')}
           >
-            <div className="brand-logo">S</div>
+            <div className="brand-logo">🥜</div>
             <div>
               <div className="brand-text">
-                Solution<span>Hub</span>
+                Solve<span>nut</span>
               </div>
               <div className="chat-sub">
                 Live 1‑to‑1 with verified experts
@@ -528,6 +535,18 @@ const ClientChat = () => {
                 </div>
 
                 <div className="chat-input-area">
+                  <div className="quick-prompts">
+                    {quickPrompts.map((q, i) => (
+                      <button
+                        key={i}
+                        className="quick-prompt-btn"
+                        onClick={() => setInputValue(q)}
+                        type="button"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="text"
                     placeholder="Type your message and press Enter…"

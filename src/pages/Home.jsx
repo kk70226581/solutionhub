@@ -1,33 +1,29 @@
-// src/pages/Home.jsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/Home.css';
+
+const API = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
 const Home = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expertCount, setExpertCount] = useState(null);
   const innerRef = useRef(null);
 
-  // simple auth detection
-  const hasWindow = typeof window !== 'undefined';
-  const token = hasWindow ? localStorage.getItem('token') : null;
-  const email = hasWindow ? localStorage.getItem('email') : null;
-  const isLoggedIn = !!token && !!email;
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const email =
+    typeof window !== 'undefined' ? localStorage.getItem('email') : null;
+  const isLoggedIn = Boolean(token && email);
 
-  // lock body scroll when mobile menu is open
   useEffect(() => {
-    const original = document.body.style.overflow;
-    if (mobileOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = original || '';
-    }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = mobileOpen ? 'hidden' : prev || '';
     return () => {
-      document.body.style.overflow = original || '';
+      document.body.style.overflow = prev || '';
     };
   }, [mobileOpen]);
 
-  // close on Escape
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape' && mobileOpen) setMobileOpen(false);
@@ -36,40 +32,55 @@ const Home = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [mobileOpen]);
 
-  // navigate helper
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/api/experts?status=approved`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (mounted && Array.isArray(data)) setExpertCount(data.length);
+      } catch {
+        if (mounted) setExpertCount(null);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const go = (path) => {
     navigate(path);
     setMobileOpen(false);
   };
 
-  const toggleMobile = () => setMobileOpen((v) => !v);
+  const scrollToSection = (id) => {
+    const section = document.getElementById(id);
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setMobileOpen(false);
+  };
 
-  // close when clicking overlay (but not when clicking inside the drawer)
   const onOverlayClick = (e) => {
-    if (!innerRef.current) return setMobileOpen(false);
-    if (!innerRef.current.contains(e.target)) {
+    if (!innerRef.current || !innerRef.current.contains(e.target)) {
       setMobileOpen(false);
     }
   };
 
-  // logout handler
   const handleLogout = () => {
-    if (!hasWindow) return;
     localStorage.removeItem('token');
     localStorage.removeItem('email');
     localStorage.removeItem('name');
+    localStorage.removeItem('username');
     navigate('/login');
   };
 
   return (
     <div className="home-page">
-      {/* background */}
       <div className="home-ambient" />
 
-      {/* HEADER */}
       <header className="home-header" role="banner">
         <div className="home-shell home-header-inner">
-          {/* Logo */}
           <button
             className="home-logo"
             onClick={() => go('/')}
@@ -83,33 +94,34 @@ const Home = () => {
             </div>
           </button>
 
-          {/* Desktop nav */}
           <nav className="home-nav-desktop" aria-label="Main navigation">
             <div className="home-nav-links">
-              <button className="home-nav-link" onClick={() => go('/experts')}>
-                Find experts
+              <button
+                className="home-nav-link"
+                onClick={() => scrollToSection('why-solvenut')}
+              >
+                Why Solvenut
               </button>
               <button
                 className="home-nav-link"
-                onClick={() => go('/client-dashboard')}
+                onClick={() => scrollToSection('solutions')}
               >
-                For clients
+                Solutions
               </button>
               <button
                 className="home-nav-link"
-                onClick={() => go('/expert-dashboard')}
+                onClick={() => scrollToSection('process')}
               >
-                For experts
+                Process
               </button>
               <button
                 className="home-nav-link"
-                onClick={() => go('/admin-login')}
+                onClick={() => scrollToSection('faq')}
               >
-                Admin
+                FAQ
               </button>
             </div>
 
-            {/* Auth-aware desktop actions */}
             <div className="home-nav-actions">
               {isLoggedIn ? (
                 <>
@@ -117,7 +129,7 @@ const Home = () => {
                     className="home-btn home-btn-ghost"
                     onClick={() => go('/client-dashboard')}
                   >
-                    Go to dashboard
+                    Dashboard
                   </button>
                   <button
                     className="home-btn home-btn-primary"
@@ -145,10 +157,9 @@ const Home = () => {
             </div>
           </nav>
 
-          {/* Mobile hamburger */}
           <button
             className="home-mobile-toggle"
-            onClick={toggleMobile}
+            onClick={() => setMobileOpen((v) => !v)}
             aria-label="Toggle navigation menu"
             aria-expanded={mobileOpen}
             aria-controls="home-mobile-menu"
@@ -160,7 +171,6 @@ const Home = () => {
         </div>
       </header>
 
-      {/* Mobile drawer menu */}
       <div
         id="home-mobile-menu"
         className={`home-mobile-drawer ${mobileOpen ? 'open' : ''}`}
@@ -180,26 +190,32 @@ const Home = () => {
             ✕
           </button>
 
+          <button
+            className="home-mobile-link"
+            onClick={() => scrollToSection('why-solvenut')}
+          >
+            Why Solvenut
+          </button>
+          <button
+            className="home-mobile-link"
+            onClick={() => scrollToSection('solutions')}
+          >
+            Solutions
+          </button>
+          <button
+            className="home-mobile-link"
+            onClick={() => scrollToSection('process')}
+          >
+            Process
+          </button>
+          <button
+            className="home-mobile-link"
+            onClick={() => scrollToSection('faq')}
+          >
+            FAQ
+          </button>
           <button className="home-mobile-link" onClick={() => go('/experts')}>
-            Find experts
-          </button>
-          <button
-            className="home-mobile-link"
-            onClick={() => go('/client-dashboard')}
-          >
-            For clients
-          </button>
-          <button
-            className="home-mobile-link"
-            onClick={() => go('/expert-dashboard')}
-          >
-            For experts
-          </button>
-          <button
-            className="home-mobile-link"
-            onClick={() => go('/admin-login')}
-          >
-            Admin
+            Browse experts
           </button>
 
           <div className="home-mobile-actions">
@@ -209,7 +225,7 @@ const Home = () => {
                   className="home-btn home-btn-ghost full"
                   onClick={() => go('/client-dashboard')}
                 >
-                  Go to dashboard
+                  Dashboard
                 </button>
                 <button
                   className="home-btn home-btn-primary full"
@@ -238,32 +254,27 @@ const Home = () => {
         </div>
       </div>
 
-      {/* MAIN */}
       <main className="home-main">
         <div className="home-shell">
-          {/* HERO */}
           <section className="home-hero">
             <div className="home-hero-grid">
               <div className="home-hero-copy">
-                <p className="home-hero-kicker">
-                  Structured thinking • Clear actions
-                </p>
+                <p className="home-hero-kicker">Professional Decision Platform</p>
                 <h1 className="home-hero-title">
-                  From confused to{' '}
-                  <span className="home-hero-highlight">decisive</span> on your
-                  next move.
+                  Make high-stakes decisions with
+                  <span className="home-hero-highlight"> clarity, speed, and confidence</span>
                 </h1>
                 <p className="home-hero-sub">
-                  Solvenut pairs focused AI structure with vetted human experts,
-                  so you can move from vague “what ifs” to a concrete 30–90 day
-                  plan for your career, money, and side-projects.
+                  Solvenut connects you with vetted experts and a structured
+                  decision process, so you move from uncertainty to action with
+                  clear next steps.
                 </p>
 
                 <div className="home-hero-pill-row">
-                  <span className="home-hero-pill">Career forks</span>
-                  <span className="home-hero-pill">Money dilemmas</span>
-                  <span className="home-hero-pill">Side-projects</span>
-                  <span className="home-hero-pill">Life planning</span>
+                  <span className="home-hero-pill">Career strategy</span>
+                  <span className="home-hero-pill">Money planning</span>
+                  <span className="home-hero-pill">Business decisions</span>
+                  <span className="home-hero-pill">Growth roadmap</span>
                 </div>
 
                 <div className="home-hero-cta-row">
@@ -277,305 +288,282 @@ const Home = () => {
                   </button>
                   <button
                     className="home-btn home-btn-outline"
-                    onClick={() => go('/signup-expert')}
+                    onClick={() => go('/experts')}
                   >
-                    Apply as expert
+                    Browse experts
                   </button>
                 </div>
 
-                <p className="home-hero-meta">
-                  No subscriptions • Pay per engagement • Private 1-to-1 rooms
-                </p>
-
-                <div className="home-hero-trust">
-                  <div className="home-hero-avatars" aria-hidden="true">
-                    <span className="home-hero-avatar home-hero-avatar-1" />
-                    <span className="home-hero-avatar home-hero-avatar-2" />
-                    <span className="home-hero-avatar home-hero-avatar-3" />
+                <div className="home-trust-strip">
+                  <div className="home-trust-item">
+                    <strong>{expertCount == null ? 'Growing' : `${expertCount}+`}</strong>
+                    <span>approved experts</span>
                   </div>
-                  <div className="home-hero-trust-copy">
-                    <span className="home-hero-trust-metric">
-                      9.2/10 clarity score
-                    </span>
-                    <span className="home-hero-trust-sub">
-                      from recent client sessions
-                    </span>
+                  <div className="home-trust-item">
+                    <strong>1-to-1</strong>
+                    <span>private guidance</span>
+                  </div>
+                  <div className="home-trust-item">
+                    <strong>Actionable</strong>
+                    <span>decision plans</span>
                   </div>
                 </div>
               </div>
 
-              <aside
-                className="home-hero-card"
-                aria-labelledby="hero-card-heading"
-              >
+              <aside className="home-hero-card" aria-labelledby="hero-card-heading">
                 <div className="home-hero-card-header">
-                  <h2 id="hero-card-heading">Why people use Solvenut</h2>
-                  <p>Real decisions, not just quick answers.</p>
+                  <h2 id="hero-card-heading">What you gain with Solvenut</h2>
+                  <p>A premium experience built for serious outcomes.</p>
                 </div>
                 <div className="home-hero-stats">
                   <div className="home-hero-stat">
-                    <div className="home-hero-stat-label">Typical question</div>
-                    <p>
-                      “Should I switch jobs now or double down where I am for
-                      12–18 months?”
-                    </p>
+                    <div className="home-hero-stat-label">Clarity</div>
+                    <p>Understand your best options and the trade-offs behind each.</p>
                   </div>
                   <div className="home-hero-stat">
-                    <div className="home-hero-stat-label">
-                      What you leave with
-                    </div>
+                    <div className="home-hero-stat-label">Direction</div>
                     <ul>
-                      <li>3–5 criteria that actually fit your life</li>
-                      <li>1–3 realistic options with trade-offs</li>
-                      <li>A 30–90 day decision and action plan</li>
+                      <li>Prioritized next steps</li>
+                      <li>Focused short-term plan</li>
+                      <li>Measurable milestones</li>
                     </ul>
                   </div>
                   <div className="home-hero-stat">
-                    <div className="home-hero-stat-label">Who you talk to</div>
-                    <p>
-                      Practitioners who&apos;ve made similar decisions, not
-                      generic influencers or random internet threads.
-                    </p>
+                    <div className="home-hero-stat-label">Momentum</div>
+                    <p>Move from overthinking to execution with confident decisions.</p>
                   </div>
                 </div>
               </aside>
             </div>
           </section>
 
-          {/* HOW IT WORKS */}
-          <section className="home-section">
+          <section className="home-section" id="why-solvenut">
             <div className="home-section-head">
-              <p className="home-section-kicker">How it works</p>
+              <p className="home-section-kicker">Why Solvenut</p>
               <h2 className="home-section-title">
-                Turn messy thoughts into a concrete decision path.
+                Built for users who want outcomes, not generic advice
               </h2>
               <p className="home-section-sub">
-                We combine structured prompts, async prep, and focused live
-                calls so you don&apos;t waste time “venting” and can get to a
-                decision you can actually act on.
+                Every part of the platform is designed to help you make better
+                decisions faster while staying grounded in your real context.
+              </p>
+            </div>
+            <div className="home-proof-grid">
+              <article className="home-proof-card">
+                <div className="home-proof-value">Expert-first</div>
+                <div className="home-proof-label">
+                  Talk to experienced professionals, not random opinions.
+                </div>
+              </article>
+              <article className="home-proof-card">
+                <div className="home-proof-value">Structured flow</div>
+                <div className="home-proof-label">
+                  From problem framing to final action plan in one clear process.
+                </div>
+              </article>
+              <article className="home-proof-card">
+                <div className="home-proof-value">Private by design</div>
+                <div className="home-proof-label">
+                  Your discussions and decisions stay in dedicated private spaces.
+                </div>
+              </article>
+              <article className="home-proof-card">
+                <div className="home-proof-value">Decision quality</div>
+                <div className="home-proof-label">
+                  Focus on practical trade-offs, not abstract motivation.
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section className="home-section" id="solutions">
+            <div className="home-section-head">
+              <p className="home-section-kicker">Solutions</p>
+              <h2 className="home-section-title">Where users get the most value</h2>
+              <p className="home-section-sub">
+                Solvenut supports decisions across personal and professional life.
+              </p>
+            </div>
+            <div className="home-domains-grid">
+              <div className="home-domain-card">
+                <h3>Career and job moves</h3>
+                <p>
+                  Promotions, role shifts, team changes, and major transition
+                  choices with less risk.
+                </p>
+                <ul>
+                  <li>Stay vs switch planning</li>
+                  <li>Role growth strategy</li>
+                  <li>Compensation decisions</li>
+                </ul>
+              </div>
+              <div className="home-domain-card">
+                <h3>Money and financial direction</h3>
+                <p>
+                  Practical support for income planning, spending priorities, and
+                  long-term money decisions.
+                </p>
+                <ul>
+                  <li>Income roadmap</li>
+                  <li>Risk-based choices</li>
+                  <li>Priority allocation</li>
+                </ul>
+              </div>
+              <div className="home-domain-card">
+                <h3>Business and side ventures</h3>
+                <p>
+                  Decide what to launch, pause, or scale using clearer validation
+                  logic and milestones.
+                </p>
+                <ul>
+                  <li>Idea prioritization</li>
+                  <li>Execution sequencing</li>
+                  <li>Growth checkpoints</li>
+                </ul>
+              </div>
+              <div className="home-domain-card">
+                <h3>Leadership and personal growth</h3>
+                <p>
+                  Build direction for leadership, communication, and long-term
+                  personal development.
+                </p>
+                <ul>
+                  <li>Leadership clarity</li>
+                  <li>Confidence in decisions</li>
+                  <li>Long-term planning</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section className="home-section" id="process">
+            <div className="home-section-head">
+              <p className="home-section-kicker">Process</p>
+              <h2 className="home-section-title">A simple 3-step journey</h2>
+              <p className="home-section-sub">
+                Designed to save time and produce clear action outcomes.
               </p>
             </div>
             <div className="home-steps-grid">
               <div className="home-step-card">
                 <span className="home-step-tag">Step 1</span>
-                <h3>Clarify the real question</h3>
-                <p>
-                  A short intake helps you unpack the real decision — not just
-                  the surface-level “should I quit?” but what is actually at
-                  stake for you.
-                </p>
+                <h3>Define your decision</h3>
+                <p>Set the context, objective, and constraints clearly.</p>
                 <ul>
-                  <li>10–12 structured prompts</li>
-                  <li>Clarify constraints and non-negotiables</li>
-                  <li>See hidden assumptions surfaced</li>
+                  <li>What matters most</li>
+                  <li>Current limitations</li>
+                  <li>Decision timeline</li>
                 </ul>
               </div>
               <div className="home-step-card">
                 <span className="home-step-tag">Step 2</span>
-                <h3>Match with a relevant expert</h3>
-                <p>
-                  Get paired with someone who has lived a similar fork — same
-                  domain, similar level, and compatible risk appetite.
-                </p>
+                <h3>Work with the right expert</h3>
+                <p>Get focused guidance aligned to your exact situation.</p>
                 <ul>
-                  <li>Vetted practitioners with real track records</li>
-                  <li>Clear bios and case examples</li>
-                  <li>Transparent hourly pricing</li>
+                  <li>Domain-matched expert</li>
+                  <li>Practical option analysis</li>
+                  <li>Clear recommendations</li>
                 </ul>
               </div>
               <div className="home-step-card">
                 <span className="home-step-tag">Step 3</span>
-                <h3>Co-design your 30–90 day plan</h3>
-                <p>
-                  Use Solvenut&apos;s structured workspace to map options,
-                  trade-offs, and next steps you can actually calendar.
-                </p>
+                <h3>Execute with confidence</h3>
+                <p>Follow a practical plan with milestones and follow-ups.</p>
                 <ul>
-                  <li>Decision scorecards and trade-off maps</li>
-                  <li>Concrete experiments and checkpoints</li>
-                  <li>Downloadable summary you can revisit</li>
+                  <li>Action roadmap</li>
+                  <li>Priority order</li>
+                  <li>Progress visibility</li>
                 </ul>
               </div>
             </div>
           </section>
 
-          {/* DOMAINS / USE CASES */}
-          <section className="home-section">
-            <div className="home-section-head">
-              <p className="home-section-kicker">Where Solvenut helps</p>
-              <h2 className="home-section-title">
-                Different domains, same structured clarity.
-              </h2>
-              <p className="home-section-sub">
-                Whether it&apos;s work, money, or side bets, the patterns of
-                good decision-making look surprisingly similar.
-              </p>
-            </div>
-            <div className="home-domains-grid">
-              <div className="home-domain-card">
-                <h3>Career & work</h3>
-                <p>
-                  Promotions, role changes, switching tracks, or taking a
-                  sabbatical without blowing up your long-term trajectory.
-                </p>
-                <ul>
-                  <li>Stay vs. switch decisions</li>
-                  <li>IC vs. manager paths</li>
-                  <li>Relocation and remote trade-offs</li>
-                </ul>
-              </div>
-              <div className="home-domain-card">
-                <h3>Money & risk</h3>
-                <p>
-                  Make moves on savings, equity, and income that fit your risk
-                  tolerance and actual lifestyle goals.
-                </p>
-                <ul>
-                  <li>Runway and buffer planning</li>
-                  <li>Side income vs. full focus</li>
-                  <li>Big purchases and timing</li>
-                </ul>
-              </div>
-              <div className="home-domain-card">
-                <h3>Side-projects & bets</h3>
-                <p>
-                  Decide how seriously to take that idea — hobby, side income,
-                  or something you gradually lean into.
-                </p>
-                <ul>
-                  <li>Idea validation sprints</li>
-                  <li>Scope and constraints</li>
-                  <li>Clear “kill, pause, or double down” triggers</li>
-                </ul>
-              </div>
-              <div className="home-domain-card">
-                <h3>Life planning</h3>
-                <p>
-                  Zoom out to see how your work, money, and time stack into a
-                  life that feels coherent instead of reactive.
-                </p>
-                <ul>
-                  <li>Values and constraints mapping</li>
-                  <li>Multi-year direction checks</li>
-                  <li>Partner and family conversations</li>
-                </ul>
-              </div>
-            </div>
-          </section>
-
-          {/* SOCIAL PROOF / TESTIMONIALS */}
           <section className="home-section home-section-alt">
             <div className="home-section-head">
-              <p className="home-section-kicker">What clients say</p>
-              <h2 className="home-section-title">
-                “It felt like finally having a clean mental whiteboard.”
-              </h2>
-              <p className="home-section-sub">
-                Anonymous composites from early users making real career and
-                money decisions.
-              </p>
+              <p className="home-section-kicker">For every user type</p>
+              <h2 className="home-section-title">Choose the path that fits you</h2>
             </div>
-            <div className="home-testimonials-grid">
-              <article className="home-testimonial-card">
-                <p className="home-testimonial-quote">
-                  “I went in with a vague ‘should I leave?’ and left with three
-                  very specific scenarios, plus exact conversations I needed to
-                  have with my manager.”
+            <div className="home-path-grid">
+              <article className="home-path-card">
+                <h3>For clients</h3>
+                <p>
+                  Get decision support for important life and career moments with
+                  expert guidance and clear plans.
                 </p>
-                <div className="home-testimonial-meta">
-                  <span className="home-testimonial-name">
-                    Product lead, fintech
-                  </span>
-                  <span className="home-testimonial-tag">
-                    Career fork • 2 sessions
-                  </span>
-                </div>
+                <button
+                  className="home-btn home-btn-outline"
+                  onClick={() =>
+                    isLoggedIn ? go('/client-dashboard') : go('/signup-client')
+                  }
+                >
+                  {isLoggedIn ? 'Open client dashboard' : 'Create client account'}
+                </button>
               </article>
-              <article className="home-testimonial-card">
-                <p className="home-testimonial-quote">
-                  “We turned my messy Notion docs into one page of trade-offs
-                  that my partner and I could actually agree on.”
+              <article className="home-path-card">
+                <h3>For experts</h3>
+                <p>
+                  Build trust with serious clients, run high-value sessions, and
+                  grow your professional impact.
                 </p>
-                <div className="home-testimonial-meta">
-                  <span className="home-testimonial-name">
-                    Senior engineer, big tech
-                  </span>
-                  <span className="home-testimonial-tag">
-                    Move vs. stay • 1 session
-                  </span>
-                </div>
-              </article>
-              <article className="home-testimonial-card">
-                <p className="home-testimonial-quote">
-                  “Instead of yet another inspirational podcast, I finally had a
-                  concrete 90-day plan for my side project.”
-                </p>
-                <div className="home-testimonial-meta">
-                  <span className="home-testimonial-name">
-                    Designer, SaaS startup
-                  </span>
-                  <span className="home-testimonial-tag">
-                    Side project • 3 sessions
-                  </span>
-                </div>
+                <button
+                  className="home-btn home-btn-outline"
+                  onClick={() =>
+                    isLoggedIn ? go('/expert-dashboard') : go('/signup-expert')
+                  }
+                >
+                  {isLoggedIn ? 'Open expert dashboard' : 'Join as expert'}
+                </button>
               </article>
             </div>
           </section>
 
-          {/* FAQ */}
-          <section className="home-section">
+          <section className="home-section" id="faq">
             <div className="home-section-head">
-              <p className="home-section-kicker">Questions, answered</p>
-              <h2 className="home-section-title">
-                A few things people usually ask before booking.
-              </h2>
+              <p className="home-section-kicker">FAQ</p>
+              <h2 className="home-section-title">Common questions before getting started</h2>
             </div>
             <div className="home-faq-grid">
               <details className="home-faq-item">
-                <summary>Is Solvenut a therapy or coaching replacement?</summary>
+                <summary>How do I know which expert to choose?</summary>
                 <p>
-                  No. Solvenut is a structured decision space with experienced
-                  practitioners. It&apos;s not a substitute for therapy,
-                  medical, legal, or emergency support.
+                  Browse profiles by domain, experience, and fit. Start with the
+                  expert who best matches your exact decision context.
                 </p>
               </details>
               <details className="home-faq-item">
-                <summary>How are experts vetted?</summary>
+                <summary>Can I continue with the same expert over time?</summary>
                 <p>
-                  We review actual work history, decisions they&apos;ve made,
-                  and ask for concrete examples of outcomes — not just titles or
-                  follower counts.
+                  Yes, many users continue with the same expert for deeper
+                  follow-through and long-term planning.
                 </p>
               </details>
               <details className="home-faq-item">
-                <summary>What does a typical session look like?</summary>
+                <summary>Is Solvenut only for career topics?</summary>
                 <p>
-                  You come in with a structured pre-brief, spend 45–60 minutes
-                  exploring options and trade-offs, and leave with a written
-                  summary and next steps.
+                  No. It also supports financial decisions, growth planning, and
+                  business-side choices.
                 </p>
               </details>
               <details className="home-faq-item">
-                <summary>Can I bring my partner or co-founder?</summary>
+                <summary>What makes Solvenut different from normal advice platforms?</summary>
                 <p>
-                  Yes. Many decisions are shared. As long as everyone&apos;s
-                  aligned on the goal of the session, shared rooms work well.
+                  Solvenut combines vetted experts, a structured process, and
+                  actionable outputs instead of generic motivational content.
                 </p>
               </details>
             </div>
           </section>
 
-          {/* FINAL CTA */}
           <section className="home-section home-cta-section">
             <div className="home-cta-inner">
               <div className="home-cta-copy">
-                <p className="home-section-kicker">Ready when you are</p>
+                <p className="home-section-kicker">Ready to move forward</p>
                 <h2 className="home-section-title">
-                  One focused session can unblock your next 3–6 months.
+                  Turn uncertainty into a clear plan today.
                 </h2>
                 <p className="home-section-sub">
-                  Start with a single, no-commitment engagement. If it helps,
-                  you can always book follow-ups with the same expert.
+                  Join Solvenut and make your next important decision with
+                  confidence.
                 </p>
               </div>
               <div className="home-cta-actions">
@@ -585,13 +573,13 @@ const Home = () => {
                     isLoggedIn ? go('/client-dashboard') : go('/signup-client')
                   }
                 >
-                  {isLoggedIn ? 'Go to dashboard' : 'Start as client'}
+                  {isLoggedIn ? 'Go to dashboard' : 'Start now'}
                 </button>
                 <button
                   className="home-btn home-btn-outline"
                   onClick={() => go('/experts')}
                 >
-                  Browse experts
+                  See expert network
                 </button>
               </div>
             </div>
@@ -599,7 +587,6 @@ const Home = () => {
         </div>
       </main>
 
-      {/* FOOTER */}
       <footer className="home-footer" aria-label="Site footer">
         <div className="home-shell home-footer-row">
           <div className="home-footer-left">
@@ -608,13 +595,24 @@ const Home = () => {
               <span className="home-footer-name">Solvenut</span>
             </div>
             <p className="home-footer-text">
-              Human experts + structured tools for real-world decisions. Not a
-              replacement for medical, legal, or emergency advice.
+              Solvenut helps people and professionals make better decisions
+              through expert guidance, structured thinking, and clear execution
+              plans.
             </p>
             <div className="home-footer-badges">
-              <span className="home-footer-badge">No subscriptions</span>
-              <span className="home-footer-badge">Human + AI blended</span>
-              <span className="home-footer-badge">Private by default</span>
+              <span className="home-footer-badge">Outcome-focused</span>
+              <span className="home-footer-badge">Professional experts</span>
+              <span className="home-footer-badge">High-trust platform</span>
+            </div>
+            <div className="home-footer-contact">
+              <div className="home-footer-contact-item">
+                <span className="home-footer-contact-label">Support</span>
+                <a href="mailto:hello@solvenut.com">hello@solvenut.com</a>
+              </div>
+              <div className="home-footer-contact-item">
+                <span className="home-footer-contact-label">Response time</span>
+                <span>Usually within 24 hours</span>
+              </div>
             </div>
             <span className="home-footer-meta">
               © 2026 Solvenut. All rights reserved.
@@ -623,40 +621,40 @@ const Home = () => {
 
           <div className="home-footer-right">
             <div className="home-footer-col">
+              <h4>Platform</h4>
+              <button onClick={() => go('/experts')}>Browse experts</button>
+              <button onClick={() => go('/signup-client')}>For clients</button>
+              <button onClick={() => go('/signup-expert')}>For experts</button>
+            </div>
+            <div className="home-footer-col">
               <h4>Product</h4>
-              <button onClick={() => go('/experts')}>Experts</button>
+              <button onClick={() => scrollToSection('why-solvenut')}>
+                Why Solvenut
+              </button>
+              <button onClick={() => scrollToSection('solutions')}>Solutions</button>
+              <button onClick={() => scrollToSection('process')}>Process</button>
+            </div>
+            <div className="home-footer-col">
+              <h4>Dashboards</h4>
               <button onClick={() => go('/client-dashboard')}>
                 Client dashboard
               </button>
-              <button onClick={() => go('/pricing')}>Pricing</button>
-            </div>
-            <div className="home-footer-col">
-              <h4>Company</h4>
-              <button onClick={() => go('/about')}>About</button>
-              <button onClick={() => go('/blog')}>Blog</button>
-              <button onClick={() => go('/careers')}>Careers</button>
-            </div>
-            <div className="home-footer-col">
-              <h4>Resources</h4>
-              <button onClick={() => go('/use-cases')}>Use cases</button>
-              <button onClick={() => go('/security')}>Security</button>
-              <button onClick={() => go('/support')}>Support</button>
+              <button onClick={() => go('/expert-dashboard')}>
+                Expert dashboard
+              </button>
+              <button onClick={() => go('/admin-login')}>Admin panel</button>
             </div>
             <div className="home-footer-col">
               <h4>Account</h4>
               {isLoggedIn ? (
                 <>
-                  <button onClick={() => go('/client-dashboard')}>
-                    Dashboard
-                  </button>
+                  <button onClick={() => go('/client-dashboard')}>Dashboard</button>
                   <button onClick={handleLogout}>Logout</button>
                 </>
               ) : (
                 <>
                   <button onClick={() => go('/login')}>Log in</button>
-                  <button onClick={() => go('/signup-client')}>
-                    Get started
-                  </button>
+                  <button onClick={() => go('/signup-client')}>Get started</button>
                 </>
               )}
             </div>
@@ -665,33 +663,20 @@ const Home = () => {
 
         <div className="home-shell home-footer-bottom">
           <div className="home-footer-links">
-            <button onClick={() => go('/terms')}>Terms</button>
-            <button onClick={() => go('/privacy')}>Privacy</button>
-            <button onClick={() => go('/cookies')}>Cookies</button>
+            <button onClick={() => scrollToSection('why-solvenut')}>
+              Why Solvenut
+            </button>
+            <button onClick={() => scrollToSection('solutions')}>Solutions</button>
+            <button onClick={() => scrollToSection('faq')}>FAQ</button>
           </div>
           <div className="home-footer-social">
-            <a
-              href="https://x.com"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Solvenut on X"
-            >
+            <a href="https://x.com" target="_blank" rel="noreferrer">
               X
             </a>
-            <a
-              href="https://www.linkedin.com"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Solvenut on LinkedIn"
-            >
+            <a href="https://www.linkedin.com" target="_blank" rel="noreferrer">
               LinkedIn
             </a>
-            <a
-              href="mailto:hello@solvenut.com"
-              aria-label="Email Solvenut"
-            >
-              Email
-            </a>
+            <a href="mailto:hello@solvenut.com">Email</a>
           </div>
         </div>
       </footer>
