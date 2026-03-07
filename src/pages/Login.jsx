@@ -81,7 +81,7 @@ const Login = () => {
         const btn = document.getElementById('loginBtn');
         if (btn) btn.innerText = originalText;
       }
-    } catch (err) {
+    } catch {
       alert('Connection error. Please try again later.');
       setIsSubmitting(false);
       const btn = document.getElementById('loginBtn');
@@ -273,6 +273,8 @@ const Login = () => {
                 <Link to="/signup-client">Create client account</Link>
                 &nbsp;·&nbsp;
                 <Link to="/signup-expert">Apply as expert</Link>
+                <br />
+                <Link to="/admin-login">Admin login</Link>
               </div>
             )}
           </section>

@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../styles/SignupClient.css';
 
 // ✅ Base API root from Vite env (e.g. VITE_API_BASE=https://solutionhub66.onrender.com)
-const API = import.meta.env.VITE_API_BASE;
+const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
 const SignupClient = () => {
   const navigate = useNavigate();
@@ -67,6 +67,16 @@ const SignupClient = () => {
         return;
       }
 
+      // Persist backend-confirmed identity/profile keys used across dashboards.
+      const user = data.user || {};
+      localStorage.setItem('name', user.name || name);
+      localStorage.setItem('email', user.email || email);
+      localStorage.setItem('role', user.role || 'client');
+      localStorage.setItem('field', user.field || '');
+      localStorage.setItem('headline', user.headline || '');
+      localStorage.setItem('price', String(user.price || 0));
+      localStorage.setItem('experience', String(user.experience || 0));
+
       const btn = document.getElementById('signupBtn');
       if (btn) {
         btn.innerHTML =
@@ -75,7 +85,7 @@ const SignupClient = () => {
       setTimeout(() => {
         navigate('/login');
       }, 1000);
-    } catch (err) {
+    } catch {
       alert('Connection error. Please try again.');
       setIsSubmitting(false);
     }

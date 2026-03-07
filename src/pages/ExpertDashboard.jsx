@@ -239,9 +239,11 @@ const ExpertDashboard = () => {
     experience: 0,
     bio: '',
     avatar: '',
-    rating: 4.8,
+    rating: 0,
+    ratingsCount: 0,
     responseRate: 96,
     repeatRate: 0,
+    status: 'pending',
   });
 
   const [payments, setPayments] = useState([]);
@@ -258,6 +260,7 @@ const ExpertDashboard = () => {
   const [tipIndex, setTipIndex] = useState(0);
   const [activityIndex, setActivityIndex] = useState(0);
   const [sessionFilter, setSessionFilter] = useState('all');
+  const [sessionQuery, setSessionQuery] = useState('');
   const [activeRoom, setActiveRoom] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
@@ -306,6 +309,9 @@ const ExpertDashboard = () => {
           experience: toNum(pData.experience, prev.experience),
           bio: pData.summary || pData.bio || prev.bio,
           avatar: pData.avatar || prev.avatar,
+          status: pData.status || prev.status,
+          rating: toNum(pData.avgRating ?? pData.rating, prev.rating),
+          ratingsCount: toNum(pData.ratingsCount, prev.ratingsCount),
         }));
       }
 
@@ -428,9 +434,18 @@ const ExpertDashboard = () => {
   }, [conversations, payments]);
 
   const filteredSessions = useMemo(() => {
-    if (sessionFilter === 'all') return sessions;
-    return sessions.filter((s) => s.status === sessionFilter);
-  }, [sessions, sessionFilter]);
+    const byStatus = sessionFilter === 'all'
+      ? sessions
+      : sessions.filter((s) => s.status === sessionFilter);
+
+    const q = sessionQuery.trim().toLowerCase();
+    if (!q) return byStatus;
+
+    return byStatus.filter((s) => (
+      String(s.client || '').toLowerCase().includes(q)
+      || String(s.topic || '').toLowerCase().includes(q)
+    ));
+  }, [sessions, sessionFilter, sessionQuery]);
 
   const earningsData = useMemo(() => {
     const out = [];
@@ -494,6 +509,23 @@ const ExpertDashboard = () => {
   }, [paidPayments]);
 
   const computedProfile = useMemo(() => ({ ...profile, totalSessions: sessions.length, totalEarnings, repeatRate }), [profile, sessions.length, totalEarnings, repeatRate]);
+  const statusRaw = String(computedProfile.status || 'pending').toLowerCase();
+  const statusLabel = statusRaw === 'approved'
+    ? 'Verified by Company'
+    : statusRaw === 'rejected'
+      ? 'Not Verified'
+      : 'Verification Pending';
+  const helpHighlights = useMemo(() => {
+    const items = [];
+    if (computedProfile.headline) items.push(computedProfile.headline);
+    if (computedProfile.bio) {
+      const firstSentence = String(computedProfile.bio).split(/[.!?]/).map((s) => s.trim()).find(Boolean);
+      if (firstSentence) items.push(firstSentence);
+    }
+    if (computedProfile.field) items.push(`Specialized in ${computedProfile.field} support`);
+    if (toNum(computedProfile.experience) > 0) items.push(`${toNum(computedProfile.experience)}+ years practical guidance`);
+    return items.slice(0, 3);
+  }, [computedProfile.headline, computedProfile.bio, computedProfile.field, computedProfile.experience]);
 
   const domainColor = getDomainColor(computedProfile.field);
 
@@ -672,7 +704,7 @@ const ExpertDashboard = () => {
               <div className="ed-user-avatar" style={{ background: domainColor, color: '#02131d' }}>
                 {avatarSrc ? <img src={avatarSrc} alt={computedProfile.name} /> : usernameInitial}
               </div>
-              <div className="ed-user-info"><span className="ed-user-name">{computedProfile.name}</span><span className="ed-user-role">Expert</span></div>
+              <div className="ed-user-info"><span className="ed-user-name">{computedProfile.name}</span><span className="ed-user-role">Expert · {statusRaw === 'approved' ? 'Verified' : statusRaw === 'rejected' ? 'Rejected' : 'Pending'}</span></div>
             </div>
 
             <button className="ed-btn ed-btn-ghost ed-btn-sm" onClick={() => go('/experts')}>View listing</button>
@@ -705,11 +737,12 @@ const ExpertDashboard = () => {
 
               <div className="ed-hero-card">
                 <div className="ed-profile-top">
-                  <div className="ed-profile-avatar-wrap"><div className="ed-profile-avatar" style={{ background: domainColor, color: '#02131d' }}>{avatarSrc ? <img src={avatarSrc} alt={computedProfile.name} /> : usernameInitial}</div><div className="ed-profile-verified" title="Verified expert"><CheckCircle size={14} /></div></div>
+                  <div className="ed-profile-avatar-wrap"><div className="ed-profile-avatar" style={{ background: domainColor, color: '#02131d' }}>{avatarSrc ? <img src={avatarSrc} alt={computedProfile.name} /> : usernameInitial}</div><div className="ed-profile-verified" title={statusLabel}><CheckCircle size={14} /></div></div>
                   <div className="ed-profile-identity">
                     <h2 className="ed-profile-name">{computedProfile.name}</h2>
                     <div className="ed-profile-field" style={{ color: domainColor }}>{computedProfile.field}</div>
-                    <div className="ed-profile-stars">{Array.from({ length: 5 }).map((_, i) => (<Star key={i} size={13} fill={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : 'none'} color={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : '#374151'} />))}<span className="ed-profile-rating-text">{computedProfile.rating || 4.8}</span></div>
+                    <div className={`ed-verify-pill ed-verify-${statusRaw}`}>{statusLabel}</div>
+                    <div className="ed-profile-stars">{Array.from({ length: 5 }).map((_, i) => (<Star key={i} size={13} fill={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : 'none'} color={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : '#374151'} />))}<span className="ed-profile-rating-text">{computedProfile.rating ? `${computedProfile.rating} (${computedProfile.ratingsCount || 0})` : 'No ratings yet'}</span></div>
                   </div>
                   <button className="ed-profile-edit-btn" onClick={() => setEditModalOpen(true)} aria-label="Edit profile"><Edit3 size={14} /></button>
                 </div>
@@ -731,6 +764,16 @@ const ExpertDashboard = () => {
                     { icon: <Award size={13} />, value: `${computedProfile.responseRate || 96}% response rate` },
                   ].map(({ icon, value }) => (<div key={value} className="ed-info-row"><span className="ed-info-row-icon">{icon}</span><span>{value}</span></div>))}
                 </div>
+                <div className="ed-help-box">
+                  <div className="ed-help-title">How you help clients</div>
+                  <div className="ed-help-list">
+                    {helpHighlights.length === 0 ? (
+                      <div className="ed-help-item">Add headline and bio to show clients what help you provide.</div>
+                    ) : helpHighlights.map((item) => (
+                      <div key={item} className="ed-help-item">{item}</div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -739,7 +782,7 @@ const ExpertDashboard = () => {
             {[
               { icon: <TrendingUp size={18} />, value: fmtShortInr(totalThisMonth), label: 'This month', color: '#34d399', trend: earningsGrowth },
               { icon: <MessageCircle size={18} />, value: `${sessions.filter((s) => s.status === 'completed').length}`, label: 'Completed sessions', color: domainColor },
-              { icon: <Star size={18} />, value: computedProfile.rating || 4.8, label: 'Overall rating', color: '#fbbf24' },
+              { icon: <Star size={18} />, value: computedProfile.rating || '—', label: 'Overall rating', color: '#fbbf24' },
               { icon: <Users size={18} />, value: `${uniqueClients.size}`, label: 'Unique clients', color: '#a78bfa' },
             ].map(({ icon, value, label, color, trend }) => (
               <div key={label} className="ed-stat-bar-item"><div className="ed-stat-bar-icon" style={{ color }}>{icon}</div><div className="ed-stat-bar-value" style={{ color }}>{value}{trend !== undefined && (<span className={`ed-trend ${trend >= 0 ? 'ed-trend--up' : 'ed-trend--down'}`}>{trend >= 0 ? <ArrowUp size={11} /> : <ArrowDown size={11} />}{Math.abs(trend)}%</span>)}</div><div className="ed-stat-bar-label">{label}</div></div>
@@ -791,7 +834,10 @@ const ExpertDashboard = () => {
           {activeTab === 'sessions' && (
             <section className="ed-section">
               <div className="ed-section-head"><div className="ed-kicker">Sessions</div><h2 className="ed-section-title">All your client sessions</h2><p className="ed-section-sub">Live data from conversations and payments.</p></div>
-              <div className="ed-session-controls"><div className="ed-filter-pills">{['all', 'upcoming', 'completed', 'cancelled'].map((f) => (<button key={f} className={`ed-filter-pill ${sessionFilter === f ? 'ed-filter-pill--active' : ''}`} onClick={() => setSessionFilter(f)}>{f.charAt(0).toUpperCase() + f.slice(1)}{f === 'all' ? ` (${sessions.length})` : ` (${sessions.filter((s) => s.status === f).length})`}</button>))}</div></div>
+              <div className="ed-session-controls">
+                <div className="ed-filter-pills">{['all', 'upcoming', 'completed', 'cancelled'].map((f) => (<button key={f} className={`ed-filter-pill ${sessionFilter === f ? 'ed-filter-pill--active' : ''}`} onClick={() => setSessionFilter(f)}>{f.charAt(0).toUpperCase() + f.slice(1)}{f === 'all' ? ` (${sessions.length})` : ` (${sessions.filter((s) => s.status === f).length})`}</button>))}</div>
+                <input className="ed-filter-search" value={sessionQuery} onChange={(e) => setSessionQuery(e.target.value)} placeholder="Search by client or topic" />
+              </div>
               <div className="ed-session-table-head"><span>Client</span><span>Date</span><span>Rating</span><span>Earned</span><span>Status</span></div>
               <div className="ed-session-list">{filteredSessions.length === 0 ? (<div className="ed-empty-state"><div className="ed-empty-icon">...</div><p>No sessions in this category.</p></div>) : filteredSessions.map((s) => <SessionRow key={s.id} session={s} />)}</div>
             </section>
@@ -873,13 +919,13 @@ const ExpertDashboard = () => {
               <div className="ed-profile-tab-grid">
                 <div className="ed-card ed-profile-preview">
                   <div className="ed-preview-label">Live preview</div><div className="ed-preview-avatar" style={{ background: domainColor, color: '#02131d' }}>{avatarSrc ? <img src={avatarSrc} alt={computedProfile.name} /> : usernameInitial}</div><h3 className="ed-preview-name">{computedProfile.name}</h3><div className="ed-preview-field" style={{ color: domainColor }}>{computedProfile.field}</div>
-                  <div className="ed-preview-stars">{Array.from({ length: 5 }).map((_, i) => (<Star key={i} size={14} fill={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : 'none'} color={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : '#374151'} />))}<span>{computedProfile.rating || 4.8} - {toNum(computedProfile.experience)} yrs</span></div>
+                  <div className="ed-preview-stars">{Array.from({ length: 5 }).map((_, i) => (<Star key={i} size={14} fill={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : 'none'} color={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : '#374151'} />))}<span>{computedProfile.rating ? `${computedProfile.rating} (${computedProfile.ratingsCount || 0})` : 'No ratings yet'} - {toNum(computedProfile.experience)} yrs</span></div>
                   <p className="ed-preview-headline">{computedProfile.headline || 'No headline added yet.'}</p><p className="ed-preview-bio">{computedProfile.bio || 'No profile bio yet.'}</p><div className="ed-preview-price-row"><span className="ed-preview-price" style={{ color: domainColor }}>{fmtInr(computedProfile.price)}</span><span className="ed-preview-price-unit">/ session</span></div><button className="ed-preview-cta">Pay and talk</button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div className="ed-card"><div className="ed-card-head"><h3 className="ed-card-title">Expert details</h3><button className="ed-card-edit-btn" onClick={() => setEditModalOpen(true)}><Edit3 size={13} /> Edit</button></div>
-                    <div className="ed-detail-rows">{[{ icon: <Mail size={14} />, label: 'Email', value: computedProfile.email || '—' },{ icon: <MapPin size={14} />, label: 'Location', value: computedProfile.location || 'Not set' },{ icon: <Briefcase size={14} />, label: 'Field', value: computedProfile.field || '—' },{ icon: <Clock size={14} />, label: 'Experience', value: `${toNum(computedProfile.experience)} years` },{ icon: <DollarSign size={14} />, label: 'Session fee', value: fmtInr(computedProfile.price) },{ icon: <Star size={14} />, label: 'Rating', value: `${computedProfile.rating || 4.8} / 5.0` }].map(({ icon, label, value }) => (<div key={label} className="ed-detail-row"><div className="ed-detail-icon" style={{ color: domainColor }}>{icon}</div><div><div className="ed-detail-label">{label}</div><div className="ed-detail-value">{value}</div></div></div>))}</div>
+                    <div className="ed-detail-rows">{[{ icon: <Mail size={14} />, label: 'Email', value: computedProfile.email || '—' },{ icon: <MapPin size={14} />, label: 'Location', value: computedProfile.location || 'Not set' },{ icon: <Briefcase size={14} />, label: 'Field', value: computedProfile.field || '—' },{ icon: <Clock size={14} />, label: 'Experience', value: `${toNum(computedProfile.experience)} years` },{ icon: <DollarSign size={14} />, label: 'Session fee', value: fmtInr(computedProfile.price) },{ icon: <Star size={14} />, label: 'Rating', value: computedProfile.rating ? `${computedProfile.rating} / 5.0 (${computedProfile.ratingsCount || 0})` : 'No ratings yet' }].map(({ icon, label, value }) => (<div key={label} className="ed-detail-row"><div className="ed-detail-icon" style={{ color: domainColor }}>{icon}</div><div><div className="ed-detail-label">{label}</div><div className="ed-detail-value">{value}</div></div></div>))}</div>
                   </div>
 
                   <div className="ed-card"><div className="ed-card-head"><h3 className="ed-card-title">Profile health</h3></div>

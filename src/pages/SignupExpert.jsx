@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import '../styles/SignupExpert.css';
 
 // ✅ Backend base URL, e.g. VITE_API_BASE=https://solutionhub66.onrender.com
-const API = import.meta.env.VITE_API_BASE;
+const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
 const SignupExpert = () => {
   const navigate = useNavigate();
@@ -85,6 +85,16 @@ const SignupExpert = () => {
       const data = await res.json();
 
       if (data.success) {
+        const expert = data.expert || {};
+        // Store expert profile fields returned by backend for downstream screens.
+        localStorage.setItem('name', expert.name || String(formData.get('name') || ''));
+        localStorage.setItem('email', expert.email || String(formData.get('email') || '').toLowerCase());
+        localStorage.setItem('role', expert.role || 'expert');
+        localStorage.setItem('field', expert.field || '');
+        localStorage.setItem('headline', expert.headline || '');
+        localStorage.setItem('price', String(expert.price || 0));
+        localStorage.setItem('experience', String(expert.experience || 0));
+
         setMessage({
           text: 'Application submitted! Redirecting to login…',
           type: 'success',
@@ -99,7 +109,7 @@ const SignupExpert = () => {
         });
         setIsSubmitting(false);
       }
-    } catch (err) {
+    } catch {
       setMessage({
         text: 'Server error. Please try again later.',
         type: 'error',

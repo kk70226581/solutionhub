@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, createSearchParams, useNavigate } from 'react-router-dom';
 import '../styles/Experts.css';
 
@@ -87,10 +87,16 @@ function ExpertCard({ expert, onPay, onChat, checkingFor, processingPayment, get
           <div className="ex-card-meta">
             <span className="ex-card-rating">
               <span className="ex-card-star">★</span>
-              {expert.rating || 4.9}
+              {(expert.avgRating || expert.rating) ? (expert.avgRating || expert.rating) : 'New'}
             </span>
             <span className="ex-card-sep">·</span>
             <span>{expert.experience || 1}+ yrs exp</span>
+            {Number(expert.ratingsCount || 0) > 0 && (
+              <>
+                <span className="ex-card-sep">·</span>
+                <span>{expert.ratingsCount} ratings</span>
+              </>
+            )}
             {expert.sessions && (
               <>
                 <span className="ex-card-sep">·</span>
@@ -217,7 +223,7 @@ const Experts = () => {
       );
     }
     list.sort((a, b) => {
-      if (sortBy === 'rating')      return (b.rating || 0) - (a.rating || 0);
+      if (sortBy === 'rating')      return ((b.avgRating ?? b.rating) || 0) - ((a.avgRating ?? a.rating) || 0);
       if (sortBy === 'price-low')   return (a.price || 500) - (b.price || 500);
       if (sortBy === 'price-high')  return (b.price || 500) - (a.price || 500);
       if (sortBy === 'experience')  return (b.experience || 0) - (a.experience || 0);
@@ -231,7 +237,7 @@ const Experts = () => {
     return Math.round(experts.reduce((acc, e) => acc + Number(e.price || 500), 0) / experts.length);
   }, [experts]);
 
-  const topRatedCount = useMemo(() => experts.filter(e => (e.rating || 0) >= 4.8).length, [experts]);
+  const topRatedCount = useMemo(() => experts.filter(e => ((e.avgRating ?? e.rating) || 0) >= 4.8).length, [experts]);
 
   /* ── Utils ── */
   const getPhotoUrl = useCallback((expert) => {
@@ -293,7 +299,7 @@ const Experts = () => {
       setIsProcessingPayment(false);
       if (!data.success) throw new Error(data.error || 'Verification failed');
       navigate({ pathname: '/chat', search: `?${createSearchParams({ email: expert.email, paymentId: data.paymentId }).toString()}` });
-    } catch (e) {
+    } catch {
       setIsProcessingPayment(false);
       alert('Payment verification failed.');
     }
@@ -308,11 +314,15 @@ const Experts = () => {
         { headers: { Authorization: `Bearer ${freshToken}` } }
       );
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.hasPaid && data?.payment?.paymentId) {
+      if (res.ok && data?.hasAccess) {
         navigate({ pathname: '/chat', search: `?${createSearchParams({ email: expert.email, paymentId: data.payment.paymentId }).toString()}` });
         return;
       }
-      alert('Please complete payment first to unlock chat with this expert.');
+      if (data?.reason === 'window_expired') {
+        alert('Your 24-hour chat window has expired. Please pay again to continue.');
+      } else {
+        alert('Please complete payment first to unlock chat with this expert.');
+      }
     } catch {
       alert('Unable to verify chat access. Please try again.');
     } finally {

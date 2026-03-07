@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import FancyHome from './pages/FancyHome';
 import Experts from './pages/Experts';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminLogin from './pages/AdminLogin';
 import ClientChat from './pages/ClientChat';
 import ClientDashboard from './pages/ClientDashboard';
 import ExpertDashboard from './pages/ExpertDashboard';
@@ -35,7 +36,8 @@ function App() {
         <Route path="/expert-dashboard" element={<ExpertDashboard />} />
 
         {/* admin */}
-        <Route path="/admin-login" element={<AdminDashboard />} />
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
 
         {/* optional: small placeholder so /pricing warning goes away */}
         <Route path="/pricing" element={<div>Pricing coming soon…</div>} />

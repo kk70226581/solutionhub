@@ -5,7 +5,7 @@ import io from 'socket.io-client';
 import '../styles/ClientChat.css';
 
 // ✅ STEP 1 — API base from .env (same folder as package.json, restart dev server)
-const API = import.meta.env.VITE_API_BASE;
+const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
 const ClientChat = () => {
   const navigate = useNavigate();
@@ -37,6 +37,8 @@ const ClientChat = () => {
     experience: 0,
     email: '---',
     avatar: '',
+    avgRating: 0,
+    ratingsCount: 0,
   });
 
   const [roomId, setRoomId] = useState(null);
@@ -46,6 +48,16 @@ const ClientChat = () => {
   const [inputValue, setInputValue] = useState('');
   const [typingVisible, setTypingVisible] = useState(false);
   const [toast, setToast] = useState({ visible: false, text: '', error: false });
+  const [myRating, setMyRating] = useState(0);
+  const [myReview, setMyReview] = useState('');
+  const [savingRating, setSavingRating] = useState(false);
+  const [chatAccess, setChatAccess] = useState({
+    checking: true,
+    allowed: false,
+    reason: '',
+    accessUntil: '',
+    hoursLeft: 0,
+  });
 
   const displayedMessageIdsRef = useRef(new Set());
   const typingTimeoutRef = useRef(null);
@@ -120,14 +132,61 @@ const ClientChat = () => {
         experience: data.experience || 0,
         email: data.email || '---',
         avatar: data.avatar || '',
+        avgRating: Number(data.avgRating || 0),
+        ratingsCount: Number(data.ratingsCount || 0),
       });
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('Error loading expert', err);
       window.alert('Failed to load expert details');
       navigate('/experts', { replace: true });
     }
   }, [expertEmail, navigate]);
+
+  const loadMyRating = useCallback(async () => {
+    if (!token || !expertEmail) return;
+    try {
+      const res = await fetch(
+        `${API}/api/ratings/my?expertEmail=${encodeURIComponent(expertEmail)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await res.json().catch(() => ({}));
+      const r = data?.rating;
+      if (r) {
+        setMyRating(Number(r.score || 0));
+        setMyReview(String(r.review || ''));
+      }
+    } catch {
+      // ignore
+    }
+  }, [expertEmail, token]);
+
+  const loadChatAccess = useCallback(async () => {
+    if (!token || !expertEmail) return;
+    setChatAccess((p) => ({ ...p, checking: true }));
+    try {
+      const res = await fetch(
+        `${API}/api/check-payment?expertEmail=${encodeURIComponent(expertEmail)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Failed to verify access');
+      setChatAccess({
+        checking: false,
+        allowed: Boolean(data?.hasAccess),
+        reason: String(data?.reason || ''),
+        accessUntil: String(data?.accessUntil || ''),
+        hoursLeft: Number(data?.hoursLeft || 0),
+      });
+    } catch {
+      setChatAccess({
+        checking: false,
+        allowed: false,
+        reason: 'verification_failed',
+        accessUntil: '',
+        hoursLeft: 0,
+      });
+    }
+  }, [expertEmail, token]);
 
   // ===== LOAD CHAT HISTORY =====
   const loadChatHistory = useCallback(async rid => {
@@ -147,7 +206,6 @@ const ClientChat = () => {
       displayedMessageIdsRef.current = setIds;
       setMessages(msgs || []);
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('Error loading history', err);
       setMessages([
         {
@@ -217,13 +275,11 @@ const ClientChat = () => {
     });
 
     s.on('connect_error', err => {
-      // eslint-disable-next-line no-console
       console.error('Socket error', err);
       showToast('Socket connection issue', true);
     });
 
     s.on('disconnect', () => {
-      // eslint-disable-next-line no-console
       console.log('Socket disconnected');
     });
 
@@ -238,6 +294,15 @@ const ClientChat = () => {
   // ===== SEND MESSAGE =====
   const handleSend = () => {
     if (!socketInstance || !roomId) return;
+    if (!chatAccess.allowed) {
+      showToast(
+        chatAccess.reason === 'window_expired'
+          ? '24-hour chat window expired. Please pay again.'
+          : 'Chat is locked. Payment required.',
+        true,
+      );
+      return;
+    }
     const trimmed = inputValue.trim();
     if (!trimmed) return;
 
@@ -302,6 +367,62 @@ const ClientChat = () => {
   useEffect(() => {
     loadExpert();
   }, [loadExpert]);
+
+  useEffect(() => {
+    loadMyRating();
+  }, [loadMyRating]);
+
+  useEffect(() => {
+    loadChatAccess();
+  }, [loadChatAccess]);
+
+  useEffect(() => {
+    if (!socketInstance) return;
+    const onDenied = (data) => {
+      setChatAccess((p) => ({
+        ...p,
+        allowed: false,
+        reason: String(data?.reason || 'access_denied'),
+      }));
+      showToast(String(data?.message || 'Chat access denied'), true);
+    };
+    socketInstance.on('chat_access_denied', onDenied);
+    return () => {
+      socketInstance.off('chat_access_denied', onDenied);
+    };
+  }, [socketInstance]);
+
+  const submitRating = async () => {
+    if (!token || !expertEmail) return;
+    if (!myRating || myRating < 1 || myRating > 5) {
+      showToast('Please select a rating from 1 to 5 stars', true);
+      return;
+    }
+    setSavingRating(true);
+    try {
+      const res = await fetch(`${API}/api/ratings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          expertEmail,
+          score: myRating,
+          review: myReview.trim(),
+          room: roomId || '',
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.error) throw new Error(data?.error || 'Failed to save rating');
+      showToast('Rating submitted successfully');
+      await loadExpert();
+    } catch (err) {
+      showToast(err.message || 'Could not submit rating', true);
+    } finally {
+      setSavingRating(false);
+    }
+  };
 
   // ===== RENDER =====
   const avatarInitial =
@@ -393,6 +514,10 @@ const ClientChat = () => {
               <div className="expert-field">
                 {expert.field || 'Expert'}
               </div>
+              <div className="expert-rating-line">
+                <i className="fa-solid fa-star" />
+                <span>{expert.avgRating ? expert.avgRating.toFixed(1) : 'New'} ({expert.ratingsCount || 0})</span>
+              </div>
 
               <div className="expert-info">
                 <div className="info-row">
@@ -424,6 +549,34 @@ const ClientChat = () => {
                   network is in early access.
                 </span>
               </div>
+
+              <div className="rate-box">
+                <strong>Rate this expert</strong>
+                <div className="rate-stars">
+                  {[1, 2, 3, 4, 5].map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      className={`rate-star-btn ${v <= myRating ? 'active' : ''}`}
+                      onClick={() => setMyRating(v)}
+                      aria-label={`Rate ${v} star`}
+                    >
+                      ★
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  className="rate-review"
+                  rows={2}
+                  maxLength={500}
+                  placeholder="Optional review..."
+                  value={myReview}
+                  onChange={(e) => setMyReview(e.target.value)}
+                />
+                <button className="rate-submit" type="button" onClick={submitRating} disabled={savingRating}>
+                  {savingRating ? 'Saving...' : 'Submit rating'}
+                </button>
+              </div>
             </aside>
 
             {/* Chat section */}
@@ -443,6 +596,24 @@ const ClientChat = () => {
                   <div className="status-dot" />
                   <span>Connected</span>
                 </div>
+              </div>
+
+              <div className={`chat-access-banner ${chatAccess.allowed ? 'ok' : 'locked'}`}>
+                {chatAccess.checking ? (
+                  <span>Checking chat access...</span>
+                ) : chatAccess.allowed ? (
+                  <span>
+                    {chatAccess.reason === 'awaiting_first_expert_reply'
+                      ? 'Chat unlocked after payment. 24-hour timer starts after expert first reply.'
+                      : `Chat unlocked${chatAccess.hoursLeft ? ` · ${chatAccess.hoursLeft}h left` : ''}`}
+                  </span>
+                ) : (
+                  <span>
+                    {chatAccess.reason === 'window_expired'
+                      ? '24-hour chat window expired. Please pay again to continue.'
+                      : 'Chat locked. Complete payment to start chat.'}
+                  </span>
+                )}
               </div>
 
               <div className="chat-box">
@@ -560,7 +731,7 @@ const ClientChat = () => {
                   <button
                     className="send-btn"
                     onClick={handleSend}
-                    disabled={!inputValue.trim()}
+                    disabled={!inputValue.trim() || !chatAccess.allowed}
                   >
                     <i className="fa-solid fa-paper-plane" />
                     Send

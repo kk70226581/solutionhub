@@ -198,6 +198,94 @@ const Payment = mongoose.model(
   )
 );
 
+const Rating = mongoose.model(
+  "Rating",
+  new mongoose.Schema(
+    {
+      expertEmail: { type: String, required: true, lowercase: true, index: true },
+      clientEmail: { type: String, required: true, lowercase: true, index: true },
+      room: { type: String, default: "" },
+      score: { type: Number, required: true, min: 1, max: 5 },
+      review: { type: String, default: "" },
+    },
+    { timestamps: true }
+  )
+);
+
+const CHAT_ACCESS_HOURS = 24;
+const CHAT_ACCESS_MS = CHAT_ACCESS_HOURS * 60 * 60 * 1000;
+
+async function getClientExpertChatAccess(clientEmailRaw, expertEmailRaw) {
+  const clientEmail = String(clientEmailRaw || "").toLowerCase();
+  const expertEmail = String(expertEmailRaw || "").toLowerCase();
+
+  if (!clientEmail || !expertEmail) {
+    return {
+      hasPaid: false,
+      hasAccess: false,
+      reason: "missing_emails",
+      payment: null,
+      firstExpertReplyAt: null,
+      accessUntil: null,
+      hoursLeft: 0,
+    };
+  }
+
+  const payment = await Payment.findOne({
+    clientEmail,
+    expertEmail,
+    status: "paid",
+    verified: true,
+  }).sort({ createdAt: -1 });
+
+  if (!payment) {
+    return {
+      hasPaid: false,
+      hasAccess: false,
+      reason: "payment_required",
+      payment: null,
+      firstExpertReplyAt: null,
+      accessUntil: null,
+      hoursLeft: 0,
+    };
+  }
+
+  const room = [clientEmail, expertEmail].sort().join("_");
+  const firstExpertReply = await Message.findOne({
+    room,
+    authorRole: "expert",
+    createdAt: { $gte: payment.createdAt },
+  }).sort({ createdAt: 1 });
+
+  if (!firstExpertReply) {
+    return {
+      hasPaid: true,
+      hasAccess: true,
+      reason: "awaiting_first_expert_reply",
+      payment,
+      firstExpertReplyAt: null,
+      accessUntil: null,
+      hoursLeft: CHAT_ACCESS_HOURS,
+    };
+  }
+
+  const firstReplyAt = new Date(firstExpertReply.createdAt);
+  const accessUntilDate = new Date(firstReplyAt.getTime() + CHAT_ACCESS_MS);
+  const now = Date.now();
+  const remainingMs = accessUntilDate.getTime() - now;
+  const hasAccess = remainingMs > 0;
+
+  return {
+    hasPaid: true,
+    hasAccess,
+    reason: hasAccess ? "within_24h_window" : "window_expired",
+    payment,
+    firstExpertReplyAt: firstReplyAt.toISOString(),
+    accessUntil: accessUntilDate.toISOString(),
+    hoursLeft: hasAccess ? Number((remainingMs / (60 * 60 * 1000)).toFixed(2)) : 0,
+  };
+}
+
 /* ============================================================
    AUTH MIDDLEWARE
 ============================================================ */
@@ -246,14 +334,21 @@ app.post("/api/register", async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    await User.create({
+    const newUser = await User.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hash,
     });
 
     console.log("✅ Client registered:", email);
-    res.json({ success: true });
+    res.json({
+      success: true,
+      user: {
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role || "client",
+      },
+    });
   } catch (err) {
     console.error("❌ Registration error:", err);
     res.status(500).json({ error: "Registration failed" });
@@ -421,7 +516,12 @@ app.post(
         expert: {
           name: newExpert.name,
           email: newExpert.email,
+          role: "expert",
           field: newExpert.field,
+          headline: newExpert.headline,
+          experience: newExpert.experience,
+          price: newExpert.price,
+          avatar: newExpert.avatar,
           status: newExpert.status,
         },
       });
@@ -443,15 +543,41 @@ app.get("/api/profile", async (req, res) => {
       return res.status(400).json({ error: "Email required" });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select(
-      "-password"
-    );
+    const normalizedEmail = email.toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail }).select("-password");
+
+    // For expert accounts, prefer Expert document so avatar/profile fields are returned.
+    if (user?.role === "expert") {
+      const expert = await Expert.findOne({ email: normalizedEmail }).select("-password");
+      if (expert) {
+        const summary = await Rating.aggregate([
+          { $match: { expertEmail: normalizedEmail } },
+          { $group: { _id: "$expertEmail", avgRating: { $avg: "$score" }, ratingsCount: { $sum: 1 } } },
+        ]);
+        const ratingInfo = summary[0] || { avgRating: 0, ratingsCount: 0 };
+        return res.json({
+          ...expert.toObject(),
+          avgRating: Number((ratingInfo.avgRating || 0).toFixed(2)),
+          ratingsCount: ratingInfo.ratingsCount || 0,
+        });
+      }
+    }
+
     if (user) return res.json(user);
 
-    const expert = await Expert.findOne({
-      email: email.toLowerCase(),
-    }).select("-password");
-    if (expert) return res.json(expert);
+    const expert = await Expert.findOne({ email: normalizedEmail }).select("-password");
+    if (expert) {
+      const summary = await Rating.aggregate([
+        { $match: { expertEmail: normalizedEmail } },
+        { $group: { _id: "$expertEmail", avgRating: { $avg: "$score" }, ratingsCount: { $sum: 1 } } },
+      ]);
+      const ratingInfo = summary[0] || { avgRating: 0, ratingsCount: 0 };
+      return res.json({
+        ...expert.toObject(),
+        avgRating: Number((ratingInfo.avgRating || 0).toFixed(2)),
+        ratingsCount: ratingInfo.ratingsCount || 0,
+      });
+    }
 
     res.status(404).json({ error: "User not found" });
   } catch (err) {
@@ -607,11 +733,72 @@ app.get("/api/experts", async (req, res) => {
     const experts = await Expert.find(filter)
       .select("-password")
       .sort({ experience: -1, createdAt: -1 });
-
-    res.json(experts);
+    const emails = experts.map((e) => String(e.email || "").toLowerCase()).filter(Boolean);
+    const ratings = await Rating.aggregate([
+      { $match: { expertEmail: { $in: emails } } },
+      { $group: { _id: "$expertEmail", avgRating: { $avg: "$score" }, ratingsCount: { $sum: 1 } } },
+    ]);
+    const ratingsMap = new Map(
+      ratings.map((r) => [String(r._id).toLowerCase(), { avgRating: Number((r.avgRating || 0).toFixed(2)), ratingsCount: r.ratingsCount || 0 }])
+    );
+    const out = experts.map((e) => {
+      const k = String(e.email || "").toLowerCase();
+      const info = ratingsMap.get(k) || { avgRating: 0, ratingsCount: 0 };
+      return { ...e.toObject(), avgRating: info.avgRating, ratingsCount: info.ratingsCount };
+    });
+    res.json(out);
   } catch (err) {
     console.error("❌ EXPERTS ERROR:", err);
     res.status(500).json({ error: "Failed to fetch experts" });
+  }
+});
+
+app.post("/api/ratings", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== "client") {
+      return res.status(403).json({ error: "Only clients can submit ratings" });
+    }
+
+    const clientEmail = String(req.user.email || "").toLowerCase();
+    const expertEmail = String(req.body.expertEmail || "").toLowerCase();
+    const score = Number(req.body.score);
+    const review = String(req.body.review || "").trim().slice(0, 500);
+    const room = String(req.body.room || "");
+
+    if (!expertEmail || !Number.isFinite(score) || score < 1 || score > 5) {
+      return res.status(400).json({ error: "Valid expertEmail and score (1-5) are required" });
+    }
+
+    const expert = await Expert.findOne({ email: expertEmail }).select("email");
+    if (!expert) {
+      return res.status(404).json({ error: "Expert not found" });
+    }
+
+    const saved = await Rating.findOneAndUpdate(
+      { expertEmail, clientEmail },
+      { $set: { score, review, room } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return res.json({ success: true, rating: saved });
+  } catch (err) {
+    console.error("❌ Rating save error:", err);
+    return res.status(500).json({ error: "Failed to save rating" });
+  }
+});
+
+app.get("/api/ratings/my", authMiddleware, async (req, res) => {
+  try {
+    const clientEmail = String(req.user.email || "").toLowerCase();
+    const expertEmail = String(req.query.expertEmail || "").toLowerCase();
+    if (!expertEmail) {
+      return res.status(400).json({ error: "expertEmail is required" });
+    }
+    const rating = await Rating.findOne({ clientEmail, expertEmail }).lean();
+    return res.json({ success: true, rating: rating || null });
+  } catch (err) {
+    console.error("❌ Rating fetch error:", err);
+    return res.status(500).json({ error: "Failed to fetch rating" });
   }
 });
 
@@ -830,16 +1017,16 @@ app.get("/api/check-payment", authMiddleware, async (req, res) => {
   try {
     const { expertEmail } = req.query;
     const clientEmail = req.user.email;
-
-    const payment = await Payment.findOne({
-      clientEmail,
-      expertEmail: expertEmail.toLowerCase(),
-      status: "paid",
-      verified: true,
-    }).sort({ createdAt: -1 });
+    const access = await getClientExpertChatAccess(clientEmail, expertEmail);
+    const payment = access.payment;
 
     res.json({
-      hasPaid: !!payment,
+      hasPaid: access.hasPaid,
+      hasAccess: access.hasAccess,
+      reason: access.reason,
+      firstExpertReplyAt: access.firstExpertReplyAt,
+      accessUntil: access.accessUntil,
+      hoursLeft: access.hoursLeft,
       payment: payment
         ? {
             paymentId: payment.paymentId,
@@ -1069,14 +1256,49 @@ io.on("connection", (socket) => {
 
   socket.on("send_private_message", async (data) => {
     try {
-      const msg = await Message.create(data);
-      io.to(data.room).emit("receive_message", msg);
+      const senderEntry = Object.entries(onlineUsers).find(
+        ([, info]) => info.socketId === socket.id
+      );
+      const senderEmail = String(senderEntry?.[0] || data.author || "").toLowerCase();
+      const senderRole = String(senderEntry?.[1]?.role || data.authorRole || "").toLowerCase();
+      const room = String(data.room || "");
 
-      const emails = data.room.split("_");
+      if (!room) {
+        socket.emit("error", "Invalid room");
+        return;
+      }
+
+      // Enforce payment/access window for client messages.
+      if (senderRole === "client") {
+        const emails = room.split("_").map((e) => String(e || "").toLowerCase());
+        const expertEmail = emails.find((e) => e && e !== senderEmail) || "";
+        const access = await getClientExpertChatAccess(senderEmail, expertEmail);
+        if (!access.hasAccess) {
+          socket.emit("chat_access_denied", {
+            reason: access.reason,
+            message:
+              access.reason === "window_expired"
+                ? "Your 24-hour chat window has expired. Please make a new payment to continue."
+                : "Please complete payment to continue chatting with this expert.",
+          });
+          return;
+        }
+      }
+
+      const payload = {
+        ...data,
+        room,
+        author: senderEmail || data.author,
+        authorRole: senderRole || data.authorRole,
+      };
+      const msg = await Message.create(payload);
+      io.to(room).emit("receive_message", msg);
+
+      const emails = room.split("_");
       emails.forEach((email) => {
         if (onlineUsers[email] && onlineUsers[email].socketId) {
           io.to(onlineUsers[email].socketId).emit("new_message_notification", {
-            room: data.room,
+            room,
             message: msg,
           });
         }
