@@ -505,6 +505,38 @@ app.put("/api/profile", authMiddleware, async (req, res) => {
   }
 });
 
+app.put("/api/profile/photo", authMiddleware, upload.single("photo"), async (req, res) => {
+  try {
+    if (req.user?.role !== "expert") {
+      return res.status(403).json({ error: "Only experts can update profile photo" });
+    }
+
+    const email = req.user.email?.toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: "Invalid auth token" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "Photo file is required" });
+    }
+
+    const expert = await Expert.findOneAndUpdate(
+      { email },
+      { $set: { avatar: req.file.path } },
+      { new: true }
+    ).select("-password");
+
+    if (!expert) {
+      return res.status(404).json({ error: "Expert not found" });
+    }
+
+    return res.json({ success: true, expert });
+  } catch (err) {
+    console.error("❌ Profile photo update error:", err);
+    return res.status(500).json({ error: "Failed to update profile photo" });
+  }
+});
+
 /* ============================================================
    ROUTES - GET CHAT HISTORY
 ============================================================ */

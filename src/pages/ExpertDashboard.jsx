@@ -46,6 +46,12 @@ const formatRelative = (ts) => {
 };
 
 const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+const toAssetUrl = (p) => {
+  if (!p) return '';
+  if (/^https?:\/\//i.test(p)) return p;
+  const normalized = String(p).replace(/\\/g, '/').replace(/^\.?\//, '');
+  return `${API}/${normalized}`;
+};
 
 function useInView(threshold = 0.15) {
   const ref = useRef(null);
@@ -154,6 +160,8 @@ function EarningsChart({ data }) {
 
 function EditProfileModal({ profile, onSave, onClose, saving }) {
   const [form, setForm] = useState({ ...profile });
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(profile.avatar ? toAssetUrl(profile.avatar) : '');
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   return (
@@ -164,6 +172,28 @@ function EditProfileModal({ profile, onSave, onClose, saving }) {
           <button className="ed-modal-close" onClick={onClose}>x</button>
         </div>
         <div className="ed-modal-body">
+          <div className="ed-avatar-edit">
+            <div className="ed-avatar-edit-preview">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="Preview" />
+              ) : (
+                <span>{(form.name?.[0] || 'E').toUpperCase()}</span>
+              )}
+            </div>
+            <label className="ed-avatar-upload-btn">
+              Change Photo
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  setAvatarFile(f);
+                  setAvatarPreview(URL.createObjectURL(f));
+                }}
+              />
+            </label>
+          </div>
           {[
             { label: 'Display name', key: 'name', placeholder: 'Your full name' },
             { label: 'Headline', key: 'headline', placeholder: 'e.g. Senior Product Manager' },
@@ -184,7 +214,7 @@ function EditProfileModal({ profile, onSave, onClose, saving }) {
         </div>
         <div className="ed-modal-foot">
           <button className="ed-btn ed-btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
-          <button className="ed-btn ed-btn-primary" onClick={() => onSave(form)} disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</button>
+          <button className="ed-btn ed-btn-primary" onClick={() => onSave({ ...form, avatarFile })} disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</button>
         </div>
       </div>
     </div>
@@ -208,6 +238,7 @@ const ExpertDashboard = () => {
     price: 500,
     experience: 0,
     bio: '',
+    avatar: '',
     rating: 4.8,
     responseRate: 96,
     repeatRate: 0,
@@ -274,6 +305,7 @@ const ExpertDashboard = () => {
           price: toNum(pData.price, prev.price),
           experience: toNum(pData.experience, prev.experience),
           bio: pData.summary || pData.bio || prev.bio,
+          avatar: pData.avatar || prev.avatar,
         }));
       }
 
@@ -557,7 +589,22 @@ const ExpertDashboard = () => {
       }
       if (!r.ok || d?.error) throw new Error(d?.error || 'Failed to update profile');
 
-      applySavedProfile({ ...payload, bio: d?.expert?.summary || payload.bio });
+      let nextAvatar = d?.expert?.avatar || profile.avatar;
+      const avatarFile = updatedProfile.avatarFile;
+      if (avatarFile) {
+        const fd = new FormData();
+        fd.append('photo', avatarFile);
+        const pr = await fetch(`${API}/api/profile/photo`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+        const pd = await pr.json().catch(() => ({}));
+        if (!pr.ok || pd?.error) throw new Error(pd?.error || 'Failed to update profile photo');
+        nextAvatar = pd?.expert?.avatar || nextAvatar;
+      }
+
+      applySavedProfile({ ...payload, bio: d?.expert?.summary || payload.bio, avatar: nextAvatar });
     } catch (err) {
       alert(err.message || 'Profile update failed');
     } finally {
@@ -566,6 +613,7 @@ const ExpertDashboard = () => {
   };
 
   const usernameInitial = (computedProfile.name?.charAt(0) || 'E').toUpperCase();
+  const avatarSrc = toAssetUrl(computedProfile.avatar);
 
   const TABS = [
     { id: 'overview', label: 'Overview', icon: <BarChart3 size={15} /> },
@@ -621,7 +669,9 @@ const ExpertDashboard = () => {
             <button className="ed-home-btn" onClick={() => go('/')}><House size={14} />Home</button>
 
             <div className="ed-user-chip">
-              <div className="ed-user-avatar" style={{ background: domainColor, color: '#02131d' }}>{usernameInitial}</div>
+              <div className="ed-user-avatar" style={{ background: domainColor, color: '#02131d' }}>
+                {avatarSrc ? <img src={avatarSrc} alt={computedProfile.name} /> : usernameInitial}
+              </div>
               <div className="ed-user-info"><span className="ed-user-name">{computedProfile.name}</span><span className="ed-user-role">Expert</span></div>
             </div>
 
@@ -655,7 +705,7 @@ const ExpertDashboard = () => {
 
               <div className="ed-hero-card">
                 <div className="ed-profile-top">
-                  <div className="ed-profile-avatar-wrap"><div className="ed-profile-avatar" style={{ background: domainColor, color: '#02131d' }}>{usernameInitial}</div><div className="ed-profile-verified" title="Verified expert"><CheckCircle size={14} /></div></div>
+                  <div className="ed-profile-avatar-wrap"><div className="ed-profile-avatar" style={{ background: domainColor, color: '#02131d' }}>{avatarSrc ? <img src={avatarSrc} alt={computedProfile.name} /> : usernameInitial}</div><div className="ed-profile-verified" title="Verified expert"><CheckCircle size={14} /></div></div>
                   <div className="ed-profile-identity">
                     <h2 className="ed-profile-name">{computedProfile.name}</h2>
                     <div className="ed-profile-field" style={{ color: domainColor }}>{computedProfile.field}</div>
@@ -822,7 +872,7 @@ const ExpertDashboard = () => {
               <div className="ed-section-head"><div className="ed-kicker">Profile</div><h2 className="ed-section-title">Your expert card on Solvenut</h2><p className="ed-section-sub">This reflects your live expert data.</p></div>
               <div className="ed-profile-tab-grid">
                 <div className="ed-card ed-profile-preview">
-                  <div className="ed-preview-label">Live preview</div><div className="ed-preview-avatar" style={{ background: domainColor, color: '#02131d' }}>{usernameInitial}</div><h3 className="ed-preview-name">{computedProfile.name}</h3><div className="ed-preview-field" style={{ color: domainColor }}>{computedProfile.field}</div>
+                  <div className="ed-preview-label">Live preview</div><div className="ed-preview-avatar" style={{ background: domainColor, color: '#02131d' }}>{avatarSrc ? <img src={avatarSrc} alt={computedProfile.name} /> : usernameInitial}</div><h3 className="ed-preview-name">{computedProfile.name}</h3><div className="ed-preview-field" style={{ color: domainColor }}>{computedProfile.field}</div>
                   <div className="ed-preview-stars">{Array.from({ length: 5 }).map((_, i) => (<Star key={i} size={14} fill={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : 'none'} color={i < Math.floor(computedProfile.rating || 0) ? '#fbbf24' : '#374151'} />))}<span>{computedProfile.rating || 4.8} - {toNum(computedProfile.experience)} yrs</span></div>
                   <p className="ed-preview-headline">{computedProfile.headline || 'No headline added yet.'}</p><p className="ed-preview-bio">{computedProfile.bio || 'No profile bio yet.'}</p><div className="ed-preview-price-row"><span className="ed-preview-price" style={{ color: domainColor }}>{fmtInr(computedProfile.price)}</span><span className="ed-preview-price-unit">/ session</span></div><button className="ed-preview-cta">Pay and talk</button>
                 </div>
@@ -849,4 +899,3 @@ const ExpertDashboard = () => {
 };
 
 export default ExpertDashboard;
-
