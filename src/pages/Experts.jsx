@@ -243,6 +243,7 @@ const Experts = () => {
   const getPhotoUrl = useCallback((expert) => {
     const avatar = expert?.avatar;
     if (!avatar) return null;
+    if (avatar.startsWith('data:') || avatar.startsWith('blob:')) return avatar;
     if (avatar.startsWith('http')) return avatar;
     return `${API}/${avatar.replace(/^\/+/, '')}`;
   }, []);

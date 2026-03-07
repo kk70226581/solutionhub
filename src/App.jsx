@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 
 import Home from './pages/Home';
 import FancyHome from './pages/FancyHome';
@@ -15,6 +15,9 @@ import SignupClient from './pages/SignupClient';
 import SignupExpert from './pages/SignupExpert';
 
 function App() {
+  // HashRouter in production prevents refresh 404 on hosts without SPA rewrites.
+  const Router = import.meta.env.PROD ? HashRouter : BrowserRouter;
+
   return (
     <Router>
       <Routes>
@@ -39,8 +42,8 @@ function App() {
         <Route path="/admin-login" element={<AdminLogin />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
 
-        {/* optional: small placeholder so /pricing warning goes away */}
-        <Route path="/pricing" element={<div>Pricing coming soon…</div>} />
+        <Route path="/pricing" element={<div>Pricing coming soon...</div>} />
+        <Route path="*" element={<Home />} />
       </Routes>
     </Router>
   );

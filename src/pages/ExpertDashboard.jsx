@@ -5,7 +5,7 @@ import io from 'socket.io-client';
 import {
   TrendingUp, Star, Clock, MessageCircle, Users, Briefcase,
   DollarSign, BarChart3, Settings, Bell, Edit3, Eye, CheckCircle,
-  XCircle, Calendar, Award, ArrowRight, Zap, Mail, MapPin, ArrowUp, ArrowDown, House, Send,
+  XCircle, Calendar, Award, ArrowRight, Zap, Mail, MapPin, ArrowUp, ArrowDown, House, Send, Paperclip, X,
 } from 'lucide-react';
 import '../styles/ExpertDashboard.css';
 
@@ -48,10 +48,12 @@ const formatRelative = (ts) => {
 const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
 const toAssetUrl = (p) => {
   if (!p) return '';
+  if (/^data:/i.test(p) || /^blob:/i.test(p)) return p;
   if (/^https?:\/\//i.test(p)) return p;
   const normalized = String(p).replace(/\\/g, '/').replace(/^\.?\//, '');
   return `${API}/${normalized}`;
 };
+const isImageDataUrl = (v) => /^data:image\//i.test(String(v || ''));
 
 function useInView(threshold = 0.15) {
   const ref = useRef(null);
@@ -264,10 +266,13 @@ const ExpertDashboard = () => {
   const [activeRoom, setActiveRoom] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const [chatImageDataUrl, setChatImageDataUrl] = useState('');
+  const [chatImageName, setChatImageName] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
   const socketRef = useRef(null);
   const activeRoomRef = useRef('');
   const msgsEndRef = useRef(null);
+  const chatImageInputRef = useRef(null);
 
   const [statsRef, statsInView] = useInView(0.25);
 
@@ -354,7 +359,13 @@ const ExpertDashboard = () => {
       if (!msg?.room || msg.room !== activeRoomRef.current) return;
       setChatMessages((prev) => {
         const last = prev[prev.length - 1];
-        if (last && last.author === msg.author && last.message === msg.message && Math.abs(new Date(last.createdAt || 0) - new Date(msg.createdAt || 0)) < 3000) {
+        if (
+          last
+          && last.author === msg.author
+          && last.message === msg.message
+          && last.imageUrl === msg.imageUrl
+          && Math.abs(new Date(last.createdAt || 0) - new Date(msg.createdAt || 0)) < 3000
+        ) {
           return prev;
         }
         return [...prev, msg];
@@ -541,6 +552,9 @@ const ExpertDashboard = () => {
     setActiveTab('chat');
     setActiveRoom(c.room);
     activeRoomRef.current = c.room;
+    setChatImageDataUrl('');
+    setChatImageName('');
+    if (chatImageInputRef.current) chatImageInputRef.current.value = '';
     setLoadingChat(true);
     try {
       const r = await fetch(`${API}/api/messages?room=${encodeURIComponent(c.room)}`, {
@@ -560,25 +574,61 @@ const ExpertDashboard = () => {
   const sendChatMessage = useCallback(() => {
     const room = activeRoomRef.current || activeRoom;
     const txt = chatInput.trim();
-    if (!room || !txt || !email) return;
+    const hasImage = Boolean(chatImageDataUrl);
+    if (!room || (!txt && !hasImage) || !email) return;
     const local = {
       _id: `local-${Date.now()}`,
       room,
       author: email,
       authorRole: 'expert',
       message: txt,
+      messageType: hasImage ? 'image' : 'text',
+      imageUrl: hasImage ? chatImageDataUrl : '',
+      imageName: hasImage ? chatImageName : '',
       createdAt: new Date().toISOString(),
     };
     setChatMessages((prev) => [...prev, local]);
     setChatInput('');
+    setChatImageDataUrl('');
+    setChatImageName('');
+    if (chatImageInputRef.current) chatImageInputRef.current.value = '';
     socketRef.current?.emit('send_private_message', {
       room,
       author: email,
       authorRole: 'expert',
       message: txt,
+      messageType: hasImage ? 'image' : 'text',
+      imageUrl: hasImage ? chatImageDataUrl : '',
+      imageName: hasImage ? chatImageName : '',
     });
     setTimeout(() => msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
-  }, [activeRoom, chatInput, email]);
+  }, [activeRoom, chatInput, chatImageDataUrl, chatImageName, email]);
+
+  const onPickChatImage = useCallback((ev) => {
+    const file = ev.target.files?.[0];
+    if (!file) return;
+    if (!file.type?.startsWith('image/')) {
+      alert('Please select an image file.');
+      ev.target.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be 2MB or smaller.');
+      ev.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const v = String(reader.result || '');
+      if (!isImageDataUrl(v)) {
+        alert('Invalid image format.');
+        return;
+      }
+      setChatImageDataUrl(v);
+      setChatImageName(file.name || 'image');
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   const handleLogout = () => {
     ['token', 'email', 'name', 'username', 'role', 'field', 'headline', 'price', 'experience'].forEach((k) => localStorage.removeItem(k));
@@ -672,14 +722,15 @@ const ExpertDashboard = () => {
       <header className={`ed-header ${headerScrolled ? 'ed-header--scrolled' : ''}`} role="banner">
         <div className="ed-shell ed-header-inner">
           <button className="ed-logo" onClick={() => go('/')} aria-label="Solvenut home">
-            <div className="ed-logo-mark"><House size={17} /></div>
+            <div className="ed-logo-mark" aria-hidden>🥜</div>
             <div className="ed-logo-info"><span className="ed-logo-name">Solve<span className="ed-logo-accent">nut</span></span><span className="ed-logo-sub">Expert workspace</span></div>
           </button>
 
           <nav className="ed-tab-nav" aria-label="Dashboard sections">
             {TABS.map((tab) => (
               <button key={tab.id} className={`ed-tab-btn ${activeTab === tab.id ? 'ed-tab-btn--active' : ''}`} onClick={() => setActiveTab(tab.id)}>
-                {tab.icon}{tab.label}
+                <span className="ed-tab-btn-icon">{tab.icon}</span>
+                <span className="ed-tab-btn-label">{tab.label}</span>
               </button>
             ))}
           </nav>
@@ -712,6 +763,21 @@ const ExpertDashboard = () => {
           </div>
         </div>
       </header>
+
+      <nav className="ed-mobile-nav" aria-label="Dashboard sections mobile">
+        <div className="ed-mobile-nav-inner">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              className={`ed-mobile-tab ${activeTab === tab.id ? 'ed-mobile-tab--active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span className="ed-mobile-tab-icon">{tab.icon}</span>
+              <span className="ed-mobile-tab-label">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
 
       <main className="ed-main">
         <div className="ed-shell">
@@ -872,7 +938,16 @@ const ExpertDashboard = () => {
                           const mine = m.author === email;
                           return (
                             <div key={m._id || i} className={`ed-chat-msg ${mine ? 'mine' : ''}`}>
-                              <div className="ed-chat-bub">{m.message}</div>
+                              <div className="ed-chat-bub">
+                                {m.messageType === 'image' && m.imageUrl ? (
+                                  <>
+                                    <img className="ed-chat-image" src={m.imageUrl} alt={m.imageName || 'Chat image'} />
+                                    {m.message ? <div className="ed-chat-image-caption">{m.message}</div> : null}
+                                  </>
+                                ) : (
+                                  m.message
+                                )}
+                              </div>
                               <div className="ed-chat-msg-time">{formatRelative(m.createdAt)}</div>
                             </div>
                           );
@@ -880,13 +955,40 @@ const ExpertDashboard = () => {
                         <div ref={msgsEndRef} />
                       </div>
                       <div className="ed-chat-compose">
+                        <input
+                          ref={chatImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="ed-chat-file-input"
+                          onChange={onPickChatImage}
+                        />
+                        {chatImageDataUrl ? (
+                          <div className="ed-chat-attachment-preview">
+                            <img src={chatImageDataUrl} alt={chatImageName || 'Attachment'} />
+                            <span className="ed-chat-attachment-name">{chatImageName || 'image'}</span>
+                            <button
+                              className="ed-chat-attachment-clear"
+                              onClick={() => {
+                                setChatImageDataUrl('');
+                                setChatImageName('');
+                                if (chatImageInputRef.current) chatImageInputRef.current.value = '';
+                              }}
+                              aria-label="Remove attached image"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : null}
+                        <button className="ed-btn ed-btn-ghost ed-btn-sm" onClick={() => chatImageInputRef.current?.click()} type="button">
+                          <Paperclip size={14} />Image
+                        </button>
                         <textarea className="ed-chat-input" rows={2} value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type message... (Enter to send)" onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
                             sendChatMessage();
                           }
                         }} />
-                        <button className="ed-btn ed-btn-primary" onClick={sendChatMessage} disabled={!chatInput.trim()}><Send size={14} />Send</button>
+                        <button className="ed-btn ed-btn-primary" onClick={sendChatMessage} disabled={!chatInput.trim() && !chatImageDataUrl}><Send size={14} />Send</button>
                       </div>
                     </>
                   )}

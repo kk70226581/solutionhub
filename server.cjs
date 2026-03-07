@@ -269,6 +269,9 @@ const Message = mongoose.model(
       author: String,
       authorRole: String,
       message: String,
+      messageType: { type: String, enum: ["text", "image"], default: "text" },
+      imageUrl: String,
+      imageName: String,
     },
     { timestamps: true }
   )
@@ -538,6 +541,23 @@ const upload = multer({
   },
 });
 
+const fileToDataUrl = (filePath, mimeType = "image/jpeg") => {
+  const absPath = path.isAbsolute(filePath)
+    ? filePath
+    : path.join(__dirname, filePath);
+  const bytes = fs.readFileSync(absPath);
+  return `data:${mimeType};base64,${bytes.toString("base64")}`;
+};
+
+const MAX_CHAT_IMAGE_DATA_URL_LEN = 3 * 1024 * 1024; // ~2MB binary image payload
+const toChatImageDataUrl = (raw) => {
+  const v = String(raw || "").trim();
+  if (!v) return "";
+  if (!/^data:image\/[a-zA-Z0-9+.-]+;base64,/i.test(v)) return "";
+  if (v.length > MAX_CHAT_IMAGE_DATA_URL_LEN) return "";
+  return v;
+};
+
 app.post(
   "/api/pro-signup",
   upload.fields([
@@ -590,6 +610,14 @@ app.post(
 
       const hash = await bcrypt.hash(password, 10);
 
+      const photoFile = req.files.photo[0];
+      let avatarValue = photoFile.path;
+      try {
+        avatarValue = fileToDataUrl(photoFile.path, photoFile.mimetype);
+      } catch (imgErr) {
+        console.warn("⚠️ Could not convert signup photo to data URL:", imgErr.message);
+      }
+
       const newExpert = await Expert.create({
         name: name.trim(),
         email: email.toLowerCase().trim(),
@@ -601,7 +629,7 @@ app.post(
         linkedin: linkedin?.trim() || "",
         price: parseInt(price),
         resumePath: req.files.resume[0].path,
-        avatar: req.files.photo[0].path,
+        avatar: avatarValue,
         status: "pending",
       });
 
@@ -743,9 +771,16 @@ app.put("/api/profile/photo", authMiddleware, upload.single("photo"), async (req
       return res.status(400).json({ error: "Photo file is required" });
     }
 
+    let avatarValue = req.file.path;
+    try {
+      avatarValue = fileToDataUrl(req.file.path, req.file.mimetype);
+    } catch (imgErr) {
+      console.warn("⚠️ Could not convert profile photo to data URL:", imgErr.message);
+    }
+
     const expert = await Expert.findOneAndUpdate(
       { email },
-      { $set: { avatar: req.file.path } },
+      { $set: { avatar: avatarValue } },
       { new: true }
     ).select("-password");
 
@@ -800,9 +835,12 @@ app.get("/api/conversations", async (req, res) => {
     const roomMap = {};
     messages.forEach((msg) => {
       if (!roomMap[msg.room]) {
+        const preview = msg.messageType === "image"
+          ? (msg.imageName ? `[Image] ${msg.imageName}` : "[Image]")
+          : (msg.message || "");
         roomMap[msg.room] = {
           room: msg.room,
-          lastMessage: msg.message,
+          lastMessage: preview,
           lastMessageTime: msg.createdAt,
           otherEmail: msg.room.split("_").find((e) => e !== email),
         };
@@ -1505,6 +1543,22 @@ io.on("connection", (socket) => {
         author: senderEmail || data.author,
         authorRole: senderRole || data.authorRole,
       };
+      const text = String(payload.message || "").trim();
+      const imageUrl = toChatImageDataUrl(payload.imageUrl);
+      const imageName = String(payload.imageName || "").trim().slice(0, 120);
+      const hasText = Boolean(text);
+      const hasImage = Boolean(imageUrl);
+
+      if (!hasText && !hasImage) {
+        socket.emit("error", "Message cannot be empty");
+        return;
+      }
+
+      payload.messageType = hasImage ? "image" : "text";
+      payload.message = text;
+      payload.imageUrl = hasImage ? imageUrl : "";
+      payload.imageName = hasImage ? imageName : "";
+
       const msg = await Message.create(payload);
       io.to(room).emit("receive_message", msg);
 

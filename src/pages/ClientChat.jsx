@@ -46,6 +46,8 @@ const ClientChat = () => {
   const [messages, setMessages] = useState([]); // {author, message, createdAt, _id?}
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [inputValue, setInputValue] = useState('');
+  const [selectedImageDataUrl, setSelectedImageDataUrl] = useState('');
+  const [selectedImageName, setSelectedImageName] = useState('');
   const [typingVisible, setTypingVisible] = useState(false);
   const [toast, setToast] = useState({ visible: false, text: '', error: false });
   const [myRating, setMyRating] = useState(0);
@@ -63,6 +65,7 @@ const ClientChat = () => {
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
   const chatMessagesRef = useRef(null);
+  const chatFileInputRef = useRef(null);
 
   // ===== AUTH GUARD =====
   useEffect(() => {
@@ -105,6 +108,9 @@ const ClientChat = () => {
   // Small helper for avatar URLs (backend domain + path)
   const buildAvatarUrl = avatarPath => {
     if (!avatarPath) return null;
+    if (avatarPath.startsWith('data:') || avatarPath.startsWith('blob:')) {
+      return avatarPath;
+    }
     if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
       return avatarPath;
     }
@@ -200,7 +206,7 @@ const ClientChat = () => {
       const setIds = new Set();
       (msgs || []).forEach(m => {
         const id =
-          (m._id || '') + '|' + (m.createdAt || '') + '|' + (m.message || '');
+          (m._id || '') + '|' + (m.createdAt || '') + '|' + (m.message || '') + '|' + (m.imageUrl || '');
         if (id) setIds.add(id);
       });
       displayedMessageIdsRef.current = setIds;
@@ -254,7 +260,9 @@ const ClientChat = () => {
         '|' +
         (data.createdAt || '') +
         '|' +
-        (data.message || '');
+        (data.message || '') +
+        '|' +
+        (data.imageUrl || '');
       if (id && displayedMessageIdsRef.current.has(id)) return;
       if (id) displayedMessageIdsRef.current.add(id);
 
@@ -304,11 +312,15 @@ const ClientChat = () => {
       return;
     }
     const trimmed = inputValue.trim();
-    if (!trimmed) return;
+    const hasImage = Boolean(selectedImageDataUrl);
+    if (!trimmed && !hasImage) return;
 
     const localMsg = {
       author: clientEmail,
       message: trimmed,
+      messageType: hasImage ? 'image' : 'text',
+      imageUrl: hasImage ? selectedImageDataUrl : '',
+      imageName: hasImage ? selectedImageName : '',
       createdAt: new Date().toISOString(),
     };
 
@@ -321,12 +333,44 @@ const ClientChat = () => {
       author: clientEmail,
       authorRole: 'client',
       message: trimmed,
+      messageType: hasImage ? 'image' : 'text',
+      imageUrl: hasImage ? selectedImageDataUrl : '',
+      imageName: hasImage ? selectedImageName : '',
     };
 
     socketInstance.emit('send_private_message', payload);
     socketInstance.emit('stop_typing', { room: roomId });
 
     setInputValue('');
+    setSelectedImageDataUrl('');
+    setSelectedImageName('');
+    if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+  };
+
+  const handlePickImage = (ev) => {
+    const file = ev.target.files?.[0];
+    if (!file) return;
+    if (!file.type?.startsWith('image/')) {
+      showToast('Please select an image file.', true);
+      ev.target.value = '';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Image must be 2MB or smaller.', true);
+      ev.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const out = String(reader.result || '');
+      if (!/^data:image\//i.test(out)) {
+        showToast('Invalid image format.', true);
+        return;
+      }
+      setSelectedImageDataUrl(out);
+      setSelectedImageName(file.name || 'image');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleKeyPress = e => {
@@ -588,8 +632,7 @@ const ClientChat = () => {
                     <span>Live chat</span>
                   </div>
                   <div className="chat-sub">
-                    Ask, clarify, share screenshots (by
-                    link), and get direct guidance.
+                    Ask, clarify, share screenshots, and get direct guidance.
                   </div>
                 </div>
                 <div className="chat-status">
@@ -678,13 +721,30 @@ const ClientChat = () => {
                             <div className="message-sender">
                               {senderName}
                             </div>
-                            <div
-                              dangerouslySetInnerHTML={{
-                                __html: escapeHtml(
-                                  msg.message || '',
-                                ),
-                              }}
-                            />
+                            {msg.messageType === 'image' && msg.imageUrl ? (
+                              <div className="chat-image-wrap">
+                                <img
+                                  src={msg.imageUrl}
+                                  alt={msg.imageName || 'Chat image'}
+                                  className="chat-message-image"
+                                />
+                                {msg.message ? (
+                                  <div
+                                    dangerouslySetInnerHTML={{
+                                      __html: escapeHtml(msg.message || ''),
+                                    }}
+                                  />
+                                ) : null}
+                              </div>
+                            ) : (
+                              <div
+                                dangerouslySetInnerHTML={{
+                                  __html: escapeHtml(
+                                    msg.message || '',
+                                  ),
+                                }}
+                              />
+                            )}
                             <div className="message-time">
                               {formatTime(msg.createdAt)}
                             </div>
@@ -706,6 +766,13 @@ const ClientChat = () => {
                 </div>
 
                 <div className="chat-input-area">
+                  <input
+                    ref={chatFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="chat-file-input"
+                    onChange={handlePickImage}
+                  />
                   <div className="quick-prompts">
                     {quickPrompts.map((q, i) => (
                       <button
@@ -718,6 +785,31 @@ const ClientChat = () => {
                       </button>
                     ))}
                   </div>
+                  {selectedImageDataUrl ? (
+                    <div className="chat-image-preview">
+                      <img src={selectedImageDataUrl} alt={selectedImageName || 'Attachment'} />
+                      <span>{selectedImageName || 'image'}</span>
+                      <button
+                        className="chat-image-remove"
+                        type="button"
+                        onClick={() => {
+                          setSelectedImageDataUrl('');
+                          setSelectedImageName('');
+                          if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+                        }}
+                      >
+                        <i className="fa-solid fa-xmark" />
+                      </button>
+                    </div>
+                  ) : null}
+                  <button
+                    className="attach-btn"
+                    type="button"
+                    onClick={() => chatFileInputRef.current?.click()}
+                  >
+                    <i className="fa-solid fa-paperclip" />
+                    Image
+                  </button>
                   <input
                     type="text"
                     placeholder="Type your message and press Enter…"
@@ -731,7 +823,7 @@ const ClientChat = () => {
                   <button
                     className="send-btn"
                     onClick={handleSend}
-                    disabled={!inputValue.trim() || !chatAccess.allowed}
+                    disabled={(!inputValue.trim() && !selectedImageDataUrl) || !chatAccess.allowed}
                   >
                     <i className="fa-solid fa-paper-plane" />
                     Send
