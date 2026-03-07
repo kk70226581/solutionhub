@@ -15,6 +15,7 @@ const SignupClient = () => {
 
   const token = hasWindow ? localStorage.getItem('token') : null;
   const role = hasWindow ? localStorage.getItem('role') : null;
+  const normalizedRole = (role || '').toLowerCase();
   const storedName =
     (hasWindow && localStorage.getItem('name')) ||
     (hasWindow && localStorage.getItem('username')) ||
@@ -22,7 +23,8 @@ const SignupClient = () => {
       ? localStorage.getItem('email').split('@')[0]
       : null);
 
-  const dashUrl = role === 'expert' ? '/expert-dashboard' : '/client-dashboard';
+  const dashUrl =
+    normalizedRole === 'expert' ? '/expert-dashboard' : '/client-dashboard';
 
   // Redirect if already logged in
   useEffect(() => {

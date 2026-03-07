@@ -99,6 +99,9 @@ const Home = () => {
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const email = typeof window !== 'undefined' ? localStorage.getItem('email') : null;
+  const role = typeof window !== 'undefined' ? localStorage.getItem('role') : null;
+  const normalizedRole = (role || '').toLowerCase();
+  const dashboardPath = normalizedRole === 'expert' ? '/expert-dashboard' : '/client-dashboard';
   const isLoggedIn = Boolean(token && email);
 
   /* Hero entrance */
@@ -155,7 +158,7 @@ const Home = () => {
     setMobileOpen(false);
   }, []);
   const handleLogout = () => {
-    ['token', 'email', 'name', 'username'].forEach(k => localStorage.removeItem(k));
+    ['token', 'email', 'name', 'username', 'role'].forEach(k => localStorage.removeItem(k));
     navigate('/login');
   };
 
@@ -188,7 +191,7 @@ const Home = () => {
           <div className="hp-nav-actions">
             {isLoggedIn ? (
               <>
-                <button className="hp-btn hp-btn-ghost" onClick={() => go('/client-dashboard')}>Dashboard</button>
+                <button className="hp-btn hp-btn-ghost" onClick={() => go(dashboardPath)}>Dashboard</button>
                 <button className="hp-btn hp-btn-primary" onClick={handleLogout}>Logout</button>
               </>
             ) : (
@@ -224,7 +227,7 @@ const Home = () => {
           <div className="hp-drawer-actions">
             {isLoggedIn ? (
               <>
-                <button className="hp-btn hp-btn-ghost full" onClick={() => go('/client-dashboard')}>Dashboard</button>
+                <button className="hp-btn hp-btn-ghost full" onClick={() => go(dashboardPath)}>Dashboard</button>
                 <button className="hp-btn hp-btn-primary full" onClick={handleLogout}>Logout</button>
               </>
             ) : (
@@ -268,7 +271,7 @@ const Home = () => {
 
                 <div className="hp-hero-ctas">
                   <button className="hp-btn hp-btn-primary hp-btn-lg"
-                    onClick={() => isLoggedIn ? go('/client-dashboard') : go('/signup-client')}>
+                    onClick={() => isLoggedIn ? go(dashboardPath) : go('/signup-client')}>
                     {isLoggedIn ? 'Go to dashboard' : 'Start for free'}
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                   </button>
@@ -560,7 +563,7 @@ const Home = () => {
                   <li>Follow-up and milestone tracking</li>
                 </ul>
                 <button className="hp-btn hp-btn-primary"
-                  onClick={() => isLoggedIn ? go('/client-dashboard') : go('/signup-client')}>
+                  onClick={() => isLoggedIn ? go(dashboardPath) : go('/signup-client')}>
                   {isLoggedIn ? 'Client dashboard' : 'Start as client'}
                 </button>
               </article>
@@ -614,7 +617,7 @@ const Home = () => {
               <p className="hp-cta-sub">Join 2,400+ professionals who made their most important decisions with Solvenut.</p>
               <div className="hp-cta-actions">
                 <button className="hp-btn hp-btn-primary hp-btn-lg"
-                  onClick={() => isLoggedIn ? go('/client-dashboard') : go('/signup-client')}>
+                  onClick={() => isLoggedIn ? go(dashboardPath) : go('/signup-client')}>
                   {isLoggedIn ? 'Go to dashboard' : 'Start now — it\'s free'}
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </button>

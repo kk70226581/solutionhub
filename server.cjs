@@ -152,6 +152,7 @@ const Expert = mongoose.model(
       experience: Number,
       headline: String,
       summary: String,
+      location: String,
       linkedin: String,
       resumePath: String,
       avatar: String,
@@ -456,6 +457,51 @@ app.get("/api/profile", async (req, res) => {
   } catch (err) {
     console.error("❌ Profile error:", err);
     res.status(500).json({ error: "Failed to fetch profile" });
+  }
+});
+
+app.put("/api/profile", authMiddleware, async (req, res) => {
+  try {
+    if (req.user?.role !== "expert") {
+      return res.status(403).json({ error: "Only experts can update this profile" });
+    }
+
+    const email = req.user.email?.toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: "Invalid auth token" });
+    }
+
+    const allowed = ["name", "field", "headline", "summary", "location", "linkedin", "price", "experience"];
+    const updates = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+    // Frontend uses "bio"; schema stores it as "summary".
+    if (req.body.bio !== undefined) updates.summary = req.body.bio;
+
+    if (updates.price !== undefined) {
+      const n = Number(updates.price);
+      updates.price = Number.isFinite(n) ? n : 0;
+    }
+    if (updates.experience !== undefined) {
+      const n = Number(updates.experience);
+      updates.experience = Number.isFinite(n) ? n : 0;
+    }
+
+    const expert = await Expert.findOneAndUpdate(
+      { email },
+      { $set: updates },
+      { new: true }
+    ).select("-password");
+
+    if (!expert) {
+      return res.status(404).json({ error: "Expert not found" });
+    }
+
+    return res.json({ success: true, expert });
+  } catch (err) {
+    console.error("❌ Profile update error:", err);
+    return res.status(500).json({ error: "Failed to update profile" });
   }
 });
 

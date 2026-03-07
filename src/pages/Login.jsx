@@ -15,6 +15,7 @@ const Login = () => {
 
   const token = hasWindow ? localStorage.getItem('token') : null;
   const role = hasWindow ? localStorage.getItem('role') : null;
+  const normalizedRole = (role || '').toLowerCase();
   const storedName =
     (hasWindow && localStorage.getItem('name')) ||
     (hasWindow && localStorage.getItem('username')) ||
@@ -25,10 +26,11 @@ const Login = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (token && role) {
-      const dashUrl = role === 'expert' ? '/expert-dashboard' : '/client-dashboard';
+      const dashUrl =
+        normalizedRole === 'expert' ? '/expert-dashboard' : '/client-dashboard';
       navigate(dashUrl, { replace: true });
     }
-  }, [token, role, navigate]);
+  }, [token, role, normalizedRole, navigate]);
 
   const handleLogout = () => {
     if (!hasWindow) return;
@@ -38,7 +40,8 @@ const Login = () => {
     }
   };
 
-  const dashUrl = role === 'expert' ? '/expert-dashboard' : '/client-dashboard';
+  const dashUrl =
+    normalizedRole === 'expert' ? '/expert-dashboard' : '/client-dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,15 +64,16 @@ const Login = () => {
       const data = await res.json();
 
       if (data.success) {
+        const incomingRole = String(data.role || 'client').toLowerCase();
         if (hasWindow) {
           localStorage.setItem('token', data.token);
           localStorage.setItem('username', data.name);
           localStorage.setItem('email', data.email);
-          localStorage.setItem('role', data.role || 'client');
+          localStorage.setItem('role', incomingRole);
         }
 
         const target =
-          data.role === 'expert' ? '/expert-dashboard' : '/client-dashboard';
+          incomingRole === 'expert' ? '/expert-dashboard' : '/client-dashboard';
         navigate(target);
       } else {
         alert(data.error || 'Invalid email or password');
