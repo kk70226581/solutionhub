@@ -13,7 +13,7 @@ const toAssetUrl = (p) => {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [adminToken, setAdminToken] = useState(localStorage.getItem('adminToken') || '');
+  const [adminSessionToken, setAdminSessionToken] = useState(localStorage.getItem('adminSessionToken') || '');
   const [loading, setLoading] = useState(true);
   const [savingEmail, setSavingEmail] = useState('');
   const [tab, setTab] = useState('pending');
@@ -22,13 +22,14 @@ const AdminDashboard = () => {
   const [previewSrc, setPreviewSrc] = useState('');
 
   useEffect(() => {
-    if (!adminToken) navigate('/admin-login', { replace: true });
-  }, [adminToken, navigate]);
+    if (!adminSessionToken) navigate('/admin-login', { replace: true });
+  }, [adminSessionToken, navigate]);
 
   const adminHeaders = useMemo(() => ({
     'Content-Type': 'application/json',
-    'x-admin-token': adminToken,
-  }), [adminToken]);
+    Authorization: `Bearer ${adminSessionToken}`,
+    'x-admin-session': adminSessionToken,
+  }), [adminSessionToken]);
 
   const showToast = useCallback((text, type = 'success') => {
     setToast({ text, type });
@@ -36,17 +37,17 @@ const AdminDashboard = () => {
   }, []);
 
   const fetchExperts = useCallback(async () => {
-    if (!adminToken) return;
+    if (!adminSessionToken) return;
     setLoading(true);
     try {
       const [allRes, healthRes] = await Promise.all([
-        fetch(`${API}/api/experts?status=all`, { headers: { 'x-admin-token': adminToken } }),
-        fetch(`${API}/api/health`, { headers: { 'x-admin-token': adminToken } }),
+        fetch(`${API}/api/experts?status=all`, { headers: { Authorization: `Bearer ${adminSessionToken}`, 'x-admin-session': adminSessionToken } }),
+        fetch(`${API}/api/health`, { headers: { Authorization: `Bearer ${adminSessionToken}`, 'x-admin-session': adminSessionToken } }),
       ]);
 
       if (allRes.status === 401 || healthRes.status === 401) {
-        localStorage.removeItem('adminToken');
-        setAdminToken('');
+        localStorage.removeItem('adminSessionToken');
+        setAdminSessionToken('');
         navigate('/admin-login', { replace: true });
         return;
       }
@@ -58,7 +59,7 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [adminToken, navigate, showToast]);
+  }, [adminSessionToken, navigate, showToast]);
 
   useEffect(() => {
     fetchExperts();
@@ -99,8 +100,8 @@ const AdminDashboard = () => {
   };
 
   const logoutAdmin = () => {
-    localStorage.removeItem('adminToken');
-    setAdminToken('');
+    localStorage.removeItem('adminSessionToken');
+    setAdminSessionToken('');
     navigate('/admin-login', { replace: true });
   };
 
@@ -199,4 +200,3 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-

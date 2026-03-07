@@ -37,6 +37,25 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "solutionhub_secret";
 const ADMIN_SECRET =
   process.env.ADMIN_SECRET || "your-super-secret-admin-key-2025-CHANGE-THIS";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const ADMIN_ALLOWED_EMAILS = String(process.env.ADMIN_ALLOWED_EMAILS || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+const ADMIN_2FA_SECRET = String(process.env.ADMIN_2FA_SECRET || "").trim();
+const ADMIN_2FA_SECRETS = (() => {
+  try {
+    const raw = process.env.ADMIN_2FA_SECRETS || "{}";
+    const obj = JSON.parse(raw);
+    const out = {};
+    Object.keys(obj || {}).forEach((k) => {
+      out[String(k).toLowerCase()] = String(obj[k] || "").trim();
+    });
+    return out;
+  } catch {
+    return {};
+  }
+})();
 
 /* ============================================================
    ENV DEBUG
@@ -91,30 +110,108 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 ============================================================ */
 const adminAuth = async (req, res, next) => {
   try {
-    const adminToken =
+    const legacyAdminToken =
       req.cookies.adminToken ||
       req.headers["x-admin-token"] ||
       req.query.adminToken ||
       req.headers["admin-token"];
+    const bearer = req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.split(" ")[1]
+      : null;
+    const adminSessionToken =
+      bearer ||
+      req.headers["x-admin-session"] ||
+      req.cookies.adminSession;
 
-    if (!adminToken) {
+    // Backward-compatible legacy secret token path.
+    if (legacyAdminToken && legacyAdminToken === ADMIN_SECRET) {
+      req.admin = { email: "legacy-admin@local", method: "legacy-secret" };
+      return next();
+    }
+
+    if (!adminSessionToken) {
       console.log(
         `🚫 ADMIN BLOCKED: No token from ${req.ip} → ${req.originalUrl}`
       );
       return res.status(401).json({ error: "Admin access required" });
     }
 
-    if (adminToken !== ADMIN_SECRET) {
-      console.log(`🚫 ADMIN BLOCKED: Invalid token from ${req.ip}`);
+    let decoded;
+    try {
+      decoded = jwt.verify(adminSessionToken, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: "Invalid admin session" });
+    }
+
+    const email = String(decoded?.email || "").toLowerCase();
+    if (decoded?.type !== "admin" || !email) {
       return res.status(401).json({ error: "Invalid admin credentials" });
+    }
+    if (
+      ADMIN_ALLOWED_EMAILS.length > 0 &&
+      !ADMIN_ALLOWED_EMAILS.includes(email)
+    ) {
+      return res.status(403).json({ error: "Admin email not authorized" });
     }
 
     console.log(`🛡️ ADMIN OK: ${req.ip} → ${req.originalUrl}`);
+    req.admin = { email, method: "google-2fa" };
     next();
   } catch (err) {
     console.error("❌ Admin auth error:", err);
     res.status(500).json({ error: "Admin verification failed" });
   }
+};
+
+const base32ToBuffer = (base32) => {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = String(base32 || "").toUpperCase().replace(/[^A-Z2-7]/g, "");
+  let bits = "";
+  for (const c of clean) {
+    const v = alphabet.indexOf(c);
+    if (v < 0) continue;
+    bits += v.toString(2).padStart(5, "0");
+  }
+  const bytes = [];
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    bytes.push(parseInt(bits.slice(i, i + 8), 2));
+  }
+  return Buffer.from(bytes);
+};
+
+const verifyTOTP = (codeRaw, base32Secret, window = 1) => {
+  const code = String(codeRaw || "").replace(/\D/g, "");
+  if (code.length !== 6 || !base32Secret) return false;
+  const key = base32ToBuffer(base32Secret);
+  if (!key.length) return false;
+
+  const step = 30;
+  const now = Math.floor(Date.now() / 1000);
+
+  const hotp = (counter) => {
+    const ctr = Buffer.alloc(8);
+    ctr.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+    ctr.writeUInt32BE(counter % 0x100000000, 4);
+    const hmac = crypto.createHmac("sha1", key).update(ctr).digest();
+    const offset = hmac[hmac.length - 1] & 0x0f;
+    const binary =
+      ((hmac[offset] & 0x7f) << 24) |
+      ((hmac[offset + 1] & 0xff) << 16) |
+      ((hmac[offset + 2] & 0xff) << 8) |
+      (hmac[offset + 3] & 0xff);
+    return String(binary % 1000000).padStart(6, "0");
+  };
+
+  const counterNow = Math.floor(now / step);
+  for (let i = -window; i <= window; i++) {
+    if (hotp(counterNow + i) === code) return true;
+  }
+  return false;
+};
+
+const getAdmin2FASecret = (email) => {
+  const key = String(email || "").toLowerCase();
+  return ADMIN_2FA_SECRETS[key] || ADMIN_2FA_SECRET;
 };
 
 /* ============================================================
@@ -848,6 +945,123 @@ app.get("/api/health", adminAuth, (req, res) => {
     adminAccess: true,
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get("/api/admin/auth-config", (req, res) => {
+  const hasGoogleClientId = !!GOOGLE_CLIENT_ID;
+  const hasAllowedAdminEmails = ADMIN_ALLOWED_EMAILS.length > 0;
+  const hasGlobal2FASecret = !!ADMIN_2FA_SECRET;
+  const hasPerEmail2FASecrets =
+    Object.values(ADMIN_2FA_SECRETS).filter(Boolean).length > 0;
+  const has2FASecret = hasGlobal2FASecret || hasPerEmail2FASecrets;
+
+  res.json({
+    success: true,
+    hasGoogleClientId,
+    googleClientId: GOOGLE_CLIENT_ID || "",
+    hasAllowedAdminEmails,
+    has2FASecret,
+    hasPerEmail2FASecrets,
+    hasGlobal2FASecret,
+    allowedAdminEmailsCount: ADMIN_ALLOWED_EMAILS.length,
+  });
+});
+
+app.post("/api/admin/google-auth", async (req, res) => {
+  try {
+    const idToken = String(req.body?.idToken || "");
+    if (!idToken) {
+      return res.status(400).json({ error: "Google ID token required" });
+    }
+    if (!GOOGLE_CLIENT_ID) {
+      return res
+        .status(500)
+        .json({ error: "GOOGLE_CLIENT_ID is not configured on server" });
+    }
+
+    const verifyRes = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(
+        idToken
+      )}`
+    );
+    const verifyData = await verifyRes.json().catch(() => ({}));
+    if (!verifyRes.ok || verifyData?.error) {
+      return res.status(401).json({ error: "Invalid Google token" });
+    }
+
+    const aud = String(verifyData.aud || "");
+    const email = String(verifyData.email || "").toLowerCase();
+    const emailVerified = String(verifyData.email_verified || "false") === "true";
+
+    if (aud !== GOOGLE_CLIENT_ID) {
+      return res.status(401).json({ error: "Google token audience mismatch" });
+    }
+    if (!email || !emailVerified) {
+      return res.status(401).json({ error: "Google email is not verified" });
+    }
+    if (
+      ADMIN_ALLOWED_EMAILS.length > 0 &&
+      !ADMIN_ALLOWED_EMAILS.includes(email)
+    ) {
+      return res.status(403).json({ error: "Admin email not authorized" });
+    }
+    if (!getAdmin2FASecret(email)) {
+      return res.status(500).json({
+        error: "Admin 2FA secret not configured for this email",
+      });
+    }
+
+    const pre2faToken = jwt.sign(
+      { email, type: "admin_pre2fa" },
+      JWT_SECRET,
+      { expiresIn: "5m" }
+    );
+
+    return res.json({ success: true, email, pre2faToken });
+  } catch (err) {
+    console.error("❌ Admin google-auth error:", err);
+    return res.status(500).json({ error: "Admin Google auth failed" });
+  }
+});
+
+app.post("/api/admin/2fa/verify", async (req, res) => {
+  try {
+    const pre2faToken = String(req.body?.pre2faToken || "");
+    const code = String(req.body?.code || "");
+    if (!pre2faToken || !code) {
+      return res.status(400).json({ error: "pre2faToken and code are required" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(pre2faToken, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: "Invalid or expired pre-2FA token" });
+    }
+    if (decoded?.type !== "admin_pre2fa") {
+      return res.status(401).json({ error: "Invalid pre-2FA token type" });
+    }
+
+    const email = String(decoded.email || "").toLowerCase();
+    const secret = getAdmin2FASecret(email);
+    if (!secret) {
+      return res.status(500).json({ error: "Admin 2FA secret missing" });
+    }
+
+    if (!verifyTOTP(code, secret, 1)) {
+      return res.status(401).json({ error: "Invalid 2FA code" });
+    }
+
+    const adminSessionToken = jwt.sign(
+      { email, type: "admin", role: "admin" },
+      JWT_SECRET,
+      { expiresIn: "8h" }
+    );
+    return res.json({ success: true, adminSessionToken, email });
+  } catch (err) {
+    console.error("❌ Admin 2FA verify error:", err);
+    return res.status(500).json({ error: "Admin 2FA verification failed" });
+  }
 });
 
 /* ============================================================
