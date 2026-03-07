@@ -11,6 +11,13 @@ const toAssetUrl = (p) => {
   return `${String(API).replace(/\/+$/, '')}/${normalized}`;
 };
 
+const formatDate = (v) => {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [adminSessionToken, setAdminSessionToken] = useState(localStorage.getItem('adminSessionToken') || '');
@@ -153,6 +160,7 @@ const AdminDashboard = () => {
             const status = String(expert.status || '').toLowerCase() || 'pending';
             const cls = status === 'approved' ? 'admin-expert-approved' : status === 'rejected' ? 'admin-expert-rejected' : 'admin-expert-pending';
             const photo = toAssetUrl(expert.avatar);
+            const resumeUrl = toAssetUrl(expert.resumePath);
             const initials = (expert.name?.[0] || 'E').toUpperCase();
             return (
               <article key={expert._id || expert.email} className={`admin-expert-card ${cls}`}>
@@ -164,6 +172,48 @@ const AdminDashboard = () => {
                   <h3 className="admin-expert-name">{expert.name || 'Expert'}</h3>
                   <p className="admin-expert-field">{expert.field || 'General'}</p>
                   <p className="admin-expert-email">{expert.email}</p>
+                </div>
+                <div className="admin-expert-details">
+                  <div className="admin-detail-row">
+                    <span className="k">Experience</span>
+                    <span className="v">{expert.experience ? `${expert.experience} years` : '—'}</span>
+                  </div>
+                  <div className="admin-detail-row">
+                    <span className="k">Location</span>
+                    <span className="v">{expert.location || '—'}</span>
+                  </div>
+                  <div className="admin-detail-row">
+                    <span className="k">Headline</span>
+                    <span className="v">{expert.headline || '—'}</span>
+                  </div>
+                  <div className="admin-detail-row">
+                    <span className="k">Applied On</span>
+                    <span className="v">{formatDate(expert.createdAt)}</span>
+                  </div>
+                  <div className="admin-detail-block">
+                    <div className="k">Bio / Summary</div>
+                    <div className="v pre">{expert.summary || '—'}</div>
+                  </div>
+                  <div className="admin-detail-actions">
+                    <a
+                      className={`admin-detail-link ${resumeUrl ? '' : 'disabled'}`}
+                      href={resumeUrl || '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => { if (!resumeUrl) e.preventDefault(); }}
+                    >
+                      View Resume
+                    </a>
+                    <a
+                      className={`admin-detail-link ${expert.linkedin ? '' : 'disabled'}`}
+                      href={expert.linkedin || '#'}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => { if (!expert.linkedin) e.preventDefault(); }}
+                    >
+                      LinkedIn
+                    </a>
+                  </div>
                 </div>
                 <div className="admin-expert-actions">
                   <button

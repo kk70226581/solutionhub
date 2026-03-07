@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import '../styles/AdminLogin.css';
 
 const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -15,6 +16,30 @@ const AdminLogin = () => {
   const [pre2faToken, setPre2faToken] = useState('');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
+  const isOtpStep = step === 'otp';
+
+  const configItems = [
+    {
+      ok: !!effectiveGoogleClientId,
+      label: 'Frontend client id',
+      keyName: 'VITE_GOOGLE_CLIENT_ID',
+    },
+    {
+      ok: !!authConfig?.hasGoogleClientId,
+      label: 'Backend Google id',
+      keyName: 'GOOGLE_CLIENT_ID',
+    },
+    {
+      ok: !!authConfig?.hasAllowedAdminEmails,
+      label: 'Allowed admins',
+      keyName: 'ADMIN_ALLOWED_EMAILS',
+    },
+    {
+      ok: !!authConfig?.has2FASecret,
+      label: '2FA secret',
+      keyName: 'ADMIN_2FA_SECRET / ADMIN_2FA_SECRETS',
+    },
+  ];
 
   useEffect(() => {
     let active = true;
@@ -118,47 +143,46 @@ const AdminLogin = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#030712', color: '#f0f6ff', display: 'grid', placeItems: 'center', padding: 16 }}>
-      <form onSubmit={handleLogin} style={{ width: '100%', maxWidth: 420, background: 'rgba(9,16,36,.92)', border: '1px solid rgba(148,163,184,.22)', borderRadius: 14, padding: 20 }}>
-        <h2 style={{ marginBottom: 8 }}>Secure Admin Login</h2>
-        <p style={{ marginBottom: 14, color: '#94a3b8', fontSize: 14 }}>
+    <div className="admin-login-page">
+      <div className="admin-login-bg" aria-hidden />
+      <form onSubmit={handleLogin} className="admin-login-card">
+        <div className="admin-login-head">
+          <div className="admin-login-badge">SolutionHub Security</div>
+          <h2>Secure Admin Login</h2>
+          <p>
           Step 1: Google sign-in. Step 2: 2FA code from your authenticator app.
-        </p>
+          </p>
+        </div>
 
-        <div style={{ marginBottom: 12, border: '1px solid rgba(148,163,184,.22)', borderRadius: 10, padding: 10, background: 'rgba(2,6,23,.5)' }}>
-          <div style={{ fontSize: 12, color: '#cbd5e1', marginBottom: 6 }}>Auth setup status</div>
+        <div className="admin-login-status-wrap">
+          <div className="admin-login-status-title">Auth setup status</div>
           {configLoading ? (
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>Checking backend config...</div>
+            <div className="admin-login-status-loading">Checking backend config...</div>
           ) : (
-            <div style={{ display: 'grid', gap: 4, fontSize: 12 }}>
-              <div style={{ color: GOOGLE_CLIENT_ID ? '#34d399' : '#fca5a5' }}>
-                {effectiveGoogleClientId ? 'OK' : 'Missing'} frontend: VITE_GOOGLE_CLIENT_ID
-              </div>
-              <div style={{ color: authConfig?.hasGoogleClientId ? '#34d399' : '#fca5a5' }}>
-                {authConfig?.hasGoogleClientId ? 'OK' : 'Missing'} backend: GOOGLE_CLIENT_ID
-              </div>
-              <div style={{ color: authConfig?.hasAllowedAdminEmails ? '#34d399' : '#fca5a5' }}>
-                {authConfig?.hasAllowedAdminEmails ? 'OK' : 'Missing'} backend: ADMIN_ALLOWED_EMAILS
-              </div>
-              <div style={{ color: authConfig?.has2FASecret ? '#34d399' : '#fca5a5' }}>
-                {authConfig?.has2FASecret ? 'OK' : 'Missing'} backend: ADMIN_2FA_SECRET or ADMIN_2FA_SECRETS
-              </div>
+            <div className="admin-login-status-list">
+              {configItems.map((item) => (
+                <div key={item.keyName} className={`admin-login-status-item ${item.ok ? 'ok' : 'bad'}`}>
+                  <span className="dot">{item.ok ? '✓' : '!'}</span>
+                  <span>{item.label}</span>
+                  <code>{item.keyName}</code>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {step === 'google' ? (
+        {!isOtpStep ? (
           <div>
             {!effectiveGoogleClientId ? (
-              <div style={{ marginBottom: 12, color: '#fca5a5', fontSize: 13 }}>
+              <div className="admin-login-error">
                 Missing Google client id. Set `VITE_GOOGLE_CLIENT_ID` in frontend env or configure backend `GOOGLE_CLIENT_ID`.
               </div>
             ) : null}
-            <div ref={googleBtnRef} style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }} />
+            <div ref={googleBtnRef} className="admin-google-wrap" />
           </div>
         ) : (
           <>
-            <div style={{ marginBottom: 8, color: '#93c5fd', fontSize: 13 }}>
+            <div className="admin-login-signed-in">
               Signed in as: {email}
             </div>
             <input
@@ -166,12 +190,14 @@ const AdminLogin = () => {
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="Enter 6-digit 2FA code"
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(148,163,184,.28)', background: 'rgba(2,6,23,.8)', color: '#f0f6ff', marginBottom: 12 }}
+              className="admin-login-input"
+              inputMode="numeric"
+              autoComplete="one-time-code"
             />
             <button
               type="submit"
               disabled={loading || code.length !== 6}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: 'none', background: '#22d3ee', color: '#02131d', fontWeight: 700, cursor: 'pointer' }}
+              className="admin-login-btn primary"
             >
               {loading ? 'Verifying...' : 'Verify 2FA & Open Dashboard'}
             </button>
@@ -181,7 +207,7 @@ const AdminLogin = () => {
         <button
           type="button"
           onClick={() => navigate('/')}
-          style={{ width: '100%', marginTop: 10, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(148,163,184,.28)', background: 'transparent', color: '#cbd5e1', cursor: 'pointer' }}
+          className="admin-login-btn ghost"
         >
           Back to Home
         </button>
