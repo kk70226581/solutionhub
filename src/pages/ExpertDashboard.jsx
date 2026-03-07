@@ -9,8 +9,7 @@ import {
 } from 'lucide-react';
 import '../styles/ExpertDashboard.css';
 
-const API = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
-const PROFILE_API_BLOCKED_HOSTS = new Set(['solutionhub66.onrender.com']);
+const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
 const fmtInr = (n) => {
   const v = Number(n || 0);
@@ -219,16 +218,6 @@ const ExpertDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
-  const [profileApiSupported, setProfileApiSupported] = useState(() => {
-    try {
-      const host = new URL(API).hostname;
-      if (PROFILE_API_BLOCKED_HOSTS.has(host)) return false;
-    } catch (err) {
-      console.error(err);
-    }
-    const saved = localStorage.getItem('profileApiSupported');
-    return saved == null ? true : saved === 'true';
-  });
 
   const [activeTab, setActiveTab] = useState('overview');
   const [headerScrolled, setHeaderScrolled] = useState(false);
@@ -261,31 +250,19 @@ const ExpertDashboard = () => {
     setLoadError('');
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const requests = [
+      const [pRes, cRes, payRes] = await Promise.all([
+        fetch(`${API}/api/profile?email=${encodeURIComponent(email)}`, { headers }),
         fetch(`${API}/api/conversations?email=${encodeURIComponent(email)}`, { headers }),
         fetch(`${API}/api/my-payments`, { headers }),
-      ];
-      if (profileApiSupported) {
-        requests.unshift(fetch(`${API}/api/profile?email=${encodeURIComponent(email)}`, { headers }));
-      }
-
-      const responses = await Promise.all(requests);
-      const pRes = profileApiSupported ? responses[0] : null;
-      const cRes = profileApiSupported ? responses[1] : responses[0];
-      const payRes = profileApiSupported ? responses[2] : responses[1];
+      ]);
 
       const [pData, cData, payData] = await Promise.all([
-        pRes ? pRes.json().catch(() => ({})) : Promise.resolve({}),
+        pRes.json().catch(() => ({})),
         cRes.json().catch(() => ([])),
         payRes.json().catch(() => ([])),
       ]);
 
-      if (pRes && pRes.status === 404) {
-        setProfileApiSupported(false);
-        localStorage.setItem('profileApiSupported', 'false');
-      } else if (!pData?.error) {
-        setProfileApiSupported(true);
-        localStorage.setItem('profileApiSupported', 'true');
+      if (!pData?.error) {
         setProfile((prev) => ({
           ...prev,
           ...pData,
@@ -307,7 +284,7 @@ const ExpertDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, email, profileApiSupported]);
+  }, [token, email]);
 
   useEffect(() => {
     loadDashboardData();
@@ -558,7 +535,7 @@ const ExpertDashboard = () => {
         bio: updatedProfile.bio || '',
       };
 
-      const applyLocalProfile = (next) => {
+      const applySavedProfile = (next) => {
         setProfile((prev) => ({ ...prev, ...next }));
         localStorage.setItem('name', next.name || storedName);
         localStorage.setItem('field', next.field || '');
@@ -568,21 +545,6 @@ const ExpertDashboard = () => {
         setEditModalOpen(false);
       };
 
-      let blockedHost = false;
-      try {
-        blockedHost = PROFILE_API_BLOCKED_HOSTS.has(new URL(API).hostname);
-      } catch (err) {
-        console.error(err);
-      }
-
-      if (blockedHost || !profileApiSupported) {
-        setProfileApiSupported(false);
-        localStorage.setItem('profileApiSupported', 'false');
-        applyLocalProfile(payload);
-        alert('Profile saved locally. Backend profile update API is not available on this deployment.');
-        return;
-      }
-
       const r = await fetch(`${API}/api/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -591,17 +553,11 @@ const ExpertDashboard = () => {
 
       const d = await r.json().catch(() => ({}));
       if (r.status === 404) {
-        setProfileApiSupported(false);
-        localStorage.setItem('profileApiSupported', 'false');
-        applyLocalProfile(payload);
-        alert('Profile saved locally. Server update endpoint is not deployed yet (PUT /api/profile).');
-        return;
+        throw new Error('Profile API route not found on backend (PUT /api/profile). Please redeploy backend.');
       }
       if (!r.ok || d?.error) throw new Error(d?.error || 'Failed to update profile');
 
-      applyLocalProfile({ ...payload, bio: d?.expert?.summary || payload.bio });
-      setProfileApiSupported(true);
-      localStorage.setItem('profileApiSupported', 'true');
+      applySavedProfile({ ...payload, bio: d?.expert?.summary || payload.bio });
     } catch (err) {
       alert(err.message || 'Profile update failed');
     } finally {
