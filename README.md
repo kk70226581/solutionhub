@@ -22,6 +22,9 @@ Full-stack app with React (Vite) frontend and Express backend.
 - In-memory rate limiting:
   - Global API limiter on `/api/*`
   - Stricter auth limiter on login/register/reset endpoints
+- Optional Redis caching:
+  - `/api/experts`
+  - `/api/public-home-data`
 
 ## API Docs
 

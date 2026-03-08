@@ -109,6 +109,53 @@ const SENDGRID_API_KEY = String(process.env.SENDGRID_API_KEY || "").trim();
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000);
 const RATE_LIMIT_MAX_GLOBAL = Number(process.env.RATE_LIMIT_MAX_GLOBAL || 300);
 const RATE_LIMIT_MAX_AUTH = Number(process.env.RATE_LIMIT_MAX_AUTH || 20);
+const REDIS_URL = String(process.env.REDIS_URL || "").trim();
+const CACHE_EXPERTS_TTL_SEC = Number(process.env.CACHE_EXPERTS_TTL_SEC || 120);
+const CACHE_HOME_TTL_SEC = Number(process.env.CACHE_HOME_TTL_SEC || 60);
+
+let redisClient = null;
+let redisReady = false;
+
+const initRedisCache = async () => {
+  if (!REDIS_URL) return;
+  try {
+    // Optional dependency: app still works without redis package.
+    // eslint-disable-next-line global-require
+    const { createClient } = require("redis");
+    redisClient = createClient({ url: REDIS_URL });
+    redisClient.on("error", (err) => {
+      redisReady = false;
+      console.warn("⚠️ Redis error:", err.message);
+    });
+    await redisClient.connect();
+    redisReady = true;
+    console.log("✅ Redis cache connected");
+  } catch (err) {
+    redisClient = null;
+    redisReady = false;
+    console.warn("⚠️ Redis cache disabled:", err.message);
+  }
+};
+
+const cacheGetJson = async (key) => {
+  if (!redisReady || !redisClient) return null;
+  try {
+    const raw = await redisClient.get(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const cacheSetJson = async (key, value, ttlSec) => {
+  if (!redisReady || !redisClient) return;
+  try {
+    await redisClient.set(key, JSON.stringify(value), { EX: ttlSec });
+  } catch {
+    // ignore cache write errors
+  }
+};
 
 const createInMemoryRateLimiter = ({ windowMs, max, keyPrefix }) => {
   const buckets = new Map();
@@ -226,6 +273,8 @@ const sendPasswordResetEmail = async ({ toEmail, resetLink }) => {
 
   return { ok: false, error: `Unsupported EMAIL_PROVIDER: ${EMAIL_PROVIDER}` };
 };
+
+initRedisCache();
 
 /* ============================================================
    ENV DEBUG
@@ -615,6 +664,7 @@ app.get("/api/health-public", (req, res) => {
     success: true,
     status: "ok",
     service: "solutionhub-api",
+    cache: redisReady ? "redis" : "none",
     timestamp: new Date().toISOString(),
   });
 });
@@ -1253,6 +1303,9 @@ app.get("/api/conversations", async (req, res) => {
 app.get("/api/experts", async (req, res) => {
   try {
     const { status = "approved", field } = req.query;
+    const cacheKey = `experts:${JSON.stringify({ status, field: field || "" })}`;
+    const cached = await cacheGetJson(cacheKey);
+    if (cached) return res.json(cached);
 
     const filter = {};
     if (status !== "all") filter.status = status;
@@ -1274,6 +1327,7 @@ app.get("/api/experts", async (req, res) => {
       const info = ratingsMap.get(k) || { avgRating: 0, ratingsCount: 0 };
       return { ...e.toObject(), avgRating: info.avgRating, ratingsCount: info.ratingsCount };
     });
+    await cacheSetJson(cacheKey, out, CACHE_EXPERTS_TTL_SEC);
     res.json(out);
   } catch (err) {
     console.error("❌ EXPERTS ERROR:", err);
@@ -1283,6 +1337,10 @@ app.get("/api/experts", async (req, res) => {
 
 app.get("/api/public-home-data", async (req, res) => {
   try {
+    const cacheKey = "home:public-data";
+    const cached = await cacheGetJson(cacheKey);
+    if (cached) return res.json(cached);
+
     const palette = ["#22d3ee", "#34d399", "#fbbf24", "#a78bfa"];
     const initials = (name) => String(name || "")
       .split(" ")
@@ -1369,7 +1427,7 @@ app.get("/api/public-home-data", async (req, res) => {
     const avgScore = Number(avgRatingAgg?.[0]?.avgScore || 0);
     const satisfactionPct = avgScore > 0 ? Math.round((avgScore / 5) * 100) : 97;
 
-    return res.json({
+    const payload = {
       stats: {
         approvedExperts,
         sessionsCompleted: paidSessions,
@@ -1378,7 +1436,9 @@ app.get("/api/public-home-data", async (req, res) => {
       },
       experts,
       activity,
-    });
+    };
+    await cacheSetJson(cacheKey, payload, CACHE_HOME_TTL_SEC);
+    return res.json(payload);
   } catch (err) {
     console.error("❌ PUBLIC HOME DATA ERROR:", err);
     return res.status(500).json({ error: "Failed to fetch home data" });
