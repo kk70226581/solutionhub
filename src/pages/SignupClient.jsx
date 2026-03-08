@@ -50,6 +50,19 @@ const SignupClient = () => {
     const email = String(formData.get('email') || '').trim().toLowerCase();
     const password = String(formData.get('password') || '');
 
+    const passwordError = (() => {
+      if (password.length < 8) return 'Password must be at least 8 characters.';
+      if (!/[A-Z]/.test(password)) return 'Password must include an uppercase letter.';
+      if (!/[a-z]/.test(password)) return 'Password must include a lowercase letter.';
+      if (!/[0-9]/.test(password)) return 'Password must include a number.';
+      if (!/[!@#$%^&*()_\-+=[\]{};:'",.<>/?\\|`~]/.test(password)) return 'Password must include a special character.';
+      return '';
+    })();
+    if (passwordError) {
+      alert(passwordError);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -261,11 +274,15 @@ const SignupClient = () => {
                       type="password"
                       id="password"
                       name="password"
-                      placeholder="Create a strong password"
+                      placeholder="8+ chars, Aa1!"
                       required
+                      minLength={8}
                       autoComplete="new-password"
                     />
                   </div>
+                  <small style={{ color: 'var(--muted)' }}>
+                    Use 8+ characters with uppercase, lowercase, number, and special character.
+                  </small>
                 </div>
 
                 <div className="input-group">

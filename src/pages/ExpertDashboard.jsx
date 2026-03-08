@@ -357,6 +357,8 @@ const ExpertDashboard = () => {
     s.on('connect', () => s.emit('authenticate', { token }));
     s.on('receive_message', (msg) => {
       if (!msg?.room || msg.room !== activeRoomRef.current) return;
+      // Ignore echo of own message because it is already added optimistically.
+      if (msg.author === email) return;
       setChatMessages((prev) => {
         const last = prev[prev.length - 1];
         if (

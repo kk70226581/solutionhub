@@ -59,6 +59,20 @@ const SignupExpert = () => {
 
     const formEl = e.currentTarget;
     const formData = new FormData(formEl);
+    const password = String(formData.get('password') || '');
+
+    const passwordError = (() => {
+      if (password.length < 8) return 'Password must be at least 8 characters.';
+      if (!/[A-Z]/.test(password)) return 'Password must include an uppercase letter.';
+      if (!/[a-z]/.test(password)) return 'Password must include a lowercase letter.';
+      if (!/[0-9]/.test(password)) return 'Password must include a number.';
+      if (!/[!@#$%^&*()_\-+=[\]{};:'",.<>/?\\|`~]/.test(password)) return 'Password must include a special character.';
+      return '';
+    })();
+    if (passwordError) {
+      setMessage({ text: passwordError, type: 'error' });
+      return;
+    }
 
     const photo = formEl.photo.files[0];
     const resume = formEl.resume.files[0];
@@ -272,10 +286,13 @@ const SignupExpert = () => {
                     id="password"
                     type="password"
                     name="password"
-                    placeholder="Minimum 6 characters"
-                    minLength={6}
+                    placeholder="8+ chars, Aa1!"
+                    minLength={8}
                     required
                   />
+                  <small>
+                    Use 8+ characters with uppercase, lowercase, number, and special character.
+                  </small>
                 </div>
               </div>
 

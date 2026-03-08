@@ -65,14 +65,14 @@ const TESTIMONIALS = [
   },
 ];
 
-const EXPERTS = [
+const DEFAULT_EXPERTS = [
   { name: 'Dr. Elena Torres', domain: 'Career Transitions', exp: '14 yrs', sessions: 340, tag: 'Top rated', color: '#22d3ee', initial: 'ET' },
   { name: 'James Okafor', domain: 'Financial Planning', exp: '11 yrs', sessions: 285, tag: 'Finance expert', color: '#34d399', initial: 'JO' },
   { name: 'Neha Kapoor', domain: 'Business Strategy', exp: '9 yrs', sessions: 210, tag: 'Startup specialist', color: '#fbbf24', initial: 'NK' },
   { name: 'Leon Fischer', domain: 'Leadership & Growth', exp: '16 yrs', sessions: 420, tag: 'Executive coach', color: '#a78bfa', initial: 'LF' },
 ];
 
-const ACTIVITY_FEED = [
+const DEFAULT_ACTIVITY_FEED = [
   { icon: '🎯', text: 'Career plan created', time: '2m ago' },
   { icon: '💼', text: 'Expert session completed', time: '8m ago' },
   { icon: '📈', text: 'Investment roadmap built', time: '15m ago' },
@@ -83,6 +83,7 @@ const ACTIVITY_FEED = [
 const Home = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [homeData, setHomeData] = useState(null);
   const [expertCount, setExpertCount] = useState(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [activityIndex, setActivityIndex] = useState(0);
@@ -90,12 +91,16 @@ const Home = () => {
   const [heroVisible, setHeroVisible] = useState(false);
   const innerRef = useRef(null);
 
+  const activityFeed = homeData?.activity?.length ? homeData.activity : DEFAULT_ACTIVITY_FEED;
+  const expertsShowcase = homeData?.experts?.length ? homeData.experts : DEFAULT_EXPERTS;
+  const stats = homeData?.stats || {};
+
   const [statsRef, statsInView] = useInView(0.3);
-  const expertCountTarget = expertCount ?? 48;
-  const sessionsCount = useCounter(1240, 2000, statsInView);
+  const expertCountTarget = stats.approvedExperts ?? expertCount ?? 48;
+  const sessionsCount = useCounter(stats.sessionsCompleted ?? 1240, 2000, statsInView);
   const expertsAnimated = useCounter(expertCountTarget, 1600, statsInView);
-  const satisfactionCount = useCounter(97, 1400, statsInView);
-  const decisionsCount = useCounter(3800, 2200, statsInView);
+  const satisfactionCount = useCounter(stats.clientSatisfaction ?? 97, 1400, statsInView);
+  const decisionsCount = useCounter(stats.decisionsMade ?? 3800, 2200, statsInView);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const email = typeof window !== 'undefined' ? localStorage.getItem('email') : null;
@@ -103,6 +108,42 @@ const Home = () => {
   const normalizedRole = (role || '').toLowerCase();
   const dashboardPath = normalizedRole === 'expert' ? '/expert-dashboard' : '/client-dashboard';
   const isLoggedIn = Boolean(token && email);
+
+  const deriveHomeDataFromExperts = useCallback((experts = []) => {
+    const palette = ['#22d3ee', '#34d399', '#fbbf24', '#a78bfa'];
+    const initials = (name = '') => String(name).split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() || '').join('') || 'EX';
+    const safeExperts = Array.isArray(experts) ? experts : [];
+    const sorted = [...safeExperts].sort((a, b) => (Number(b.avgRating || b.rating || 0) - Number(a.avgRating || a.rating || 0))
+      || (Number(b.ratingsCount || 0) - Number(a.ratingsCount || 0)));
+    const showcase = sorted.slice(0, 4).map((e, i) => ({
+      name: e.name || 'Expert',
+      domain: e.field || 'General Consulting',
+      exp: `${Number(e.experience || 0)}+ yrs`,
+      sessions: Number(e.ratingsCount || 0),
+      tag: Number(e.avgRating || e.rating || 0) >= 4.7 ? 'Top rated' : 'Verified expert',
+      color: palette[i % palette.length],
+      initial: initials(e.name),
+    }));
+    const approvedExperts = safeExperts.length;
+    const sessionsCompleted = safeExperts.reduce((sum, e) => sum + Number(e.ratingsCount || 0), 0);
+    const totalRatingWeight = safeExperts.reduce((sum, e) => sum + Number(e.ratingsCount || 0), 0);
+    const weightedRating = safeExperts.reduce((sum, e) => sum + (Number(e.avgRating || e.rating || 0) * Number(e.ratingsCount || 0)), 0);
+    const avgRating = totalRatingWeight > 0 ? (weightedRating / totalRatingWeight) : 0;
+    const clientSatisfaction = avgRating > 0 ? Math.round((avgRating / 5) * 100) : 97;
+    const decisionsMade = sessionsCompleted + approvedExperts * 3;
+    const activity = [
+      { icon: '🎯', text: `${approvedExperts} approved experts active`, time: 'live' },
+      { icon: '💼', text: `${sessionsCompleted} rated sessions completed`, time: 'live' },
+      { icon: '📈', text: `Average expert rating ${avgRating ? avgRating.toFixed(1) : 'new'}`, time: 'live' },
+      { icon: '✅', text: `${clientSatisfaction}% client satisfaction`, time: 'live' },
+      { icon: '🚀', text: 'New consultations starting daily', time: 'live' },
+    ];
+    return {
+      stats: { approvedExperts, sessionsCompleted, decisionsMade, clientSatisfaction },
+      experts: showcase,
+      activity,
+    };
+  }, []);
 
   /* Hero entrance */
   useEffect(() => {
@@ -130,15 +171,29 @@ const Home = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  /* Fetch experts */
+  /* Fetch real home data */
   useEffect(() => {
     let mounted = true;
-    fetch(`${API}/api/experts?status=approved`)
+    fetch(`${API}/api/public-home-data`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (mounted && Array.isArray(data)) setExpertCount(data.length); })
-      .catch(() => {});
+      .then(data => {
+        if (!mounted || !data) return;
+        setHomeData(data);
+        const n = Number(data?.stats?.approvedExperts);
+        if (Number.isFinite(n) && n >= 0) setExpertCount(n);
+      })
+      .catch(() => {
+        fetch(`${API}/api/experts?status=approved`)
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (!mounted || !Array.isArray(data)) return;
+            setExpertCount(data.length);
+            setHomeData(deriveHomeDataFromExperts(data));
+          })
+          .catch(() => {});
+      });
     return () => { mounted = false; };
-  }, []);
+  }, [deriveHomeDataFromExperts]);
 
   /* Testimonial auto-rotate */
   useEffect(() => {
@@ -148,9 +203,9 @@ const Home = () => {
 
   /* Activity feed */
   useEffect(() => {
-    const t = setInterval(() => setActivityIndex(v => (v + 1) % ACTIVITY_FEED.length), 3000);
+    const t = setInterval(() => setActivityIndex(v => (v + 1) % activityFeed.length), 3000);
     return () => clearInterval(t);
-  }, []);
+  }, [activityFeed.length]);
 
   const go = useCallback((path) => { navigate(path); setMobileOpen(false); }, [navigate]);
   const scrollTo = useCallback((id) => {
@@ -300,7 +355,7 @@ const Home = () => {
                     <span className="hp-live-dot" />
                     <span className="hp-activity-title">Live platform activity</span>
                   </div>
-                  {ACTIVITY_FEED.map((item, i) => (
+                  {activityFeed.map((item, i) => (
                     <div key={i} className={`hp-activity-item ${i === activityIndex ? 'hp-activity-item--active' : ''}`}>
                       <span className="hp-activity-icon">{item.icon}</span>
                       <span className="hp-activity-text">{item.text}</span>
@@ -489,7 +544,7 @@ const Home = () => {
             </div>
 
             <div className="hp-experts-grid">
-              {EXPERTS.map(({ name, domain, exp, sessions, tag, color, initial }) => (
+              {expertsShowcase.map(({ name, domain, exp, sessions, tag, color, initial }) => (
                 <article key={name} className="hp-expert-card" style={{ '--exp-color': color }}>
                   <div className="hp-expert-avatar" style={{ background: color }}>{initial}</div>
                   <div className="hp-expert-tag">{tag}</div>

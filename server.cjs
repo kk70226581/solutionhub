@@ -35,6 +35,10 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "solutionhub_secret";
+const PASSWORD_SALT_ROUNDS = (() => {
+  const n = Number(process.env.PASSWORD_SALT_ROUNDS || 12);
+  return Number.isFinite(n) && n >= 10 ? Math.floor(n) : 12;
+})();
 const ADMIN_SECRET =
   process.env.ADMIN_SECRET || "your-super-secret-admin-key-2025-CHANGE-THIS";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
@@ -56,6 +60,134 @@ const ADMIN_2FA_SECRETS = (() => {
     return {};
   }
 })();
+
+const PASSWORD_POLICY = Object.freeze({
+  minLength: 8,
+  maxLength: 64,
+  requiresUpper: true,
+  requiresLower: true,
+  requiresNumber: true,
+  requiresSpecial: true,
+});
+
+const validatePasswordStrength = (passwordRaw) => {
+  const password = String(passwordRaw || "");
+  if (password.length < PASSWORD_POLICY.minLength) {
+    return `Password must be at least ${PASSWORD_POLICY.minLength} characters`;
+  }
+  if (password.length > PASSWORD_POLICY.maxLength) {
+    return `Password must be at most ${PASSWORD_POLICY.maxLength} characters`;
+  }
+  if (PASSWORD_POLICY.requiresUpper && !/[A-Z]/.test(password)) {
+    return "Password must include at least one uppercase letter";
+  }
+  if (PASSWORD_POLICY.requiresLower && !/[a-z]/.test(password)) {
+    return "Password must include at least one lowercase letter";
+  }
+  if (PASSWORD_POLICY.requiresNumber && !/[0-9]/.test(password)) {
+    return "Password must include at least one number";
+  }
+  if (
+    PASSWORD_POLICY.requiresSpecial &&
+    !/[!@#$%^&*()_\-+=[\]{};:'",.<>/?\\|`~]/.test(password)
+  ) {
+    return "Password must include at least one special character";
+  }
+  return "";
+};
+
+const EMAIL_PROVIDER = String(process.env.EMAIL_PROVIDER || "none")
+  .trim()
+  .toLowerCase();
+const EMAIL_FROM = String(process.env.EMAIL_FROM || "").trim();
+const RESEND_API_KEY = String(process.env.RESEND_API_KEY || "").trim();
+const SENDGRID_API_KEY = String(process.env.SENDGRID_API_KEY || "").trim();
+
+const sendPasswordResetEmail = async ({ toEmail, resetLink }) => {
+  const subject = "Reset your Solvenut password";
+  const text = [
+    "We received a request to reset your Solvenut password.",
+    "",
+    "Use the link below to reset it (valid for 15 minutes):",
+    resetLink,
+    "",
+    "If you did not request this, you can ignore this email.",
+  ].join("\n");
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111827">
+      <h2 style="margin:0 0 12px">Reset your Solvenut password</h2>
+      <p>We received a request to reset your Solvenut password.</p>
+      <p>
+        <a href="${resetLink}" style="display:inline-block;padding:10px 14px;background:#0ea5e9;color:#fff;text-decoration:none;border-radius:8px">
+          Reset Password
+        </a>
+      </p>
+      <p style="font-size:12px;color:#6b7280">This link expires in 15 minutes.</p>
+      <p style="font-size:12px;color:#6b7280">If you did not request this, you can ignore this email.</p>
+    </div>
+  `;
+
+  if (EMAIL_PROVIDER === "none") {
+    return { ok: false, error: "EMAIL_PROVIDER is not configured" };
+  }
+  if (!EMAIL_FROM) {
+    return { ok: false, error: "EMAIL_FROM is missing" };
+  }
+
+  if (EMAIL_PROVIDER === "resend") {
+    if (!RESEND_API_KEY) {
+      return { ok: false, error: "RESEND_API_KEY is missing" };
+    }
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: EMAIL_FROM,
+        to: [toEmail],
+        subject,
+        html,
+        text,
+      }),
+    });
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      return { ok: false, error: `Resend error (${r.status}): ${body}` };
+    }
+    return { ok: true };
+  }
+
+  if (EMAIL_PROVIDER === "sendgrid") {
+    if (!SENDGRID_API_KEY) {
+      return { ok: false, error: "SENDGRID_API_KEY is missing" };
+    }
+    const r = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SENDGRID_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: toEmail }] }],
+        from: { email: EMAIL_FROM },
+        subject,
+        content: [
+          { type: "text/plain", value: text },
+          { type: "text/html", value: html },
+        ],
+      }),
+    });
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      return { ok: false, error: `SendGrid error (${r.status}): ${body}` };
+    }
+    return { ok: true };
+  }
+
+  return { ok: false, error: `Unsupported EMAIL_PROVIDER: ${EMAIL_PROVIDER}` };
+};
 
 /* ============================================================
    ENV DEBUG
@@ -235,6 +367,8 @@ const User = mongoose.model(
     email: { type: String, unique: true, lowercase: true },
     password: String,
     role: { type: String, default: "client" },
+    resetPasswordTokenHash: String,
+    resetPasswordExpires: Date,
   })
 );
 
@@ -256,6 +390,8 @@ const Expert = mongoose.model(
       role: { type: String, default: "expert" },
       status: { type: String, default: "pending" },
       price: { type: Number, default: 500 },
+      resetPasswordTokenHash: String,
+      resetPasswordExpires: Date,
     },
     { timestamps: true }
   )
@@ -433,7 +569,12 @@ app.post("/api/register", async (req, res) => {
       return res.status(400).json({ error: "User already exists" });
     }
 
-    const hash = await bcrypt.hash(password, 10);
+    const passwordErr = validatePasswordStrength(password);
+    if (passwordErr) {
+      return res.status(400).json({ error: passwordErr });
+    }
+
+    const hash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
     const newUser = await User.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
@@ -608,7 +749,12 @@ app.post(
           .json({ error: "Expert with this email already exists" });
       }
 
-      const hash = await bcrypt.hash(password, 10);
+      const passwordErr = validatePasswordStrength(password);
+      if (passwordErr) {
+        return res.status(400).json({ error: passwordErr });
+      }
+
+      const hash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
 
       const photoFile = req.files.photo[0];
       let avatarValue = photoFile.path;
@@ -756,6 +902,127 @@ app.put("/api/profile", authMiddleware, async (req, res) => {
   }
 });
 
+app.get("/api/password-policy", (req, res) => {
+  return res.json({ success: true, policy: PASSWORD_POLICY });
+});
+
+app.post("/api/forgot-password", async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    let account = await User.findOne({ email });
+    let role = "client";
+    if (!account) {
+      account = await Expert.findOne({ email });
+      role = "expert";
+    }
+
+    // Never reveal whether account exists.
+    if (!account) {
+      return res.json({
+        success: true,
+        message: "If this email is registered, a reset link has been generated.",
+      });
+    }
+
+    const resetToken = jwt.sign(
+      { type: "password_reset", email, role },
+      JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+    const tokenHash = crypto.createHash("sha256").update(resetToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    account.resetPasswordTokenHash = tokenHash;
+    account.resetPasswordExpires = expiresAt;
+    await account.save();
+
+    const base =
+      process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || "http://localhost:5173";
+    const resetLink = `${base.replace(/\/+$/, "")}/login?mode=reset&token=${encodeURIComponent(resetToken)}`;
+    const mailResult = await sendPasswordResetEmail({ toEmail: email, resetLink });
+    if (!mailResult.ok) {
+      console.warn(`⚠️ Reset email delivery issue for ${email}: ${mailResult.error}`);
+    } else {
+      console.log(`📧 Password reset email sent to ${email} via ${EMAIL_PROVIDER}`);
+    }
+
+    console.log(`🔐 Password reset link (${email}): ${resetLink}`);
+
+    const response = {
+      success: true,
+      message: "If this email is registered, a reset link has been generated.",
+    };
+
+    if (String(process.env.NODE_ENV || "").toLowerCase() !== "production") {
+      response.resetLink = resetLink;
+      response.token = resetToken;
+      response.emailDelivery =
+        mailResult.ok ? "sent" : `not_sent: ${mailResult.error}`;
+    }
+
+    return res.json(response);
+  } catch (err) {
+    console.error("❌ Forgot password error:", err);
+    return res.status(500).json({ error: "Failed to process forgot password request" });
+  }
+});
+
+app.post("/api/reset-password", async (req, res) => {
+  try {
+    const token = String(req.body?.token || "").trim();
+    const password = String(req.body?.password || "");
+
+    if (!token || !password) {
+      return res.status(400).json({ error: "Token and new password are required" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      return res.status(400).json({ error: "Reset token is invalid or expired" });
+    }
+
+    if (decoded?.type !== "password_reset") {
+      return res.status(400).json({ error: "Invalid reset token type" });
+    }
+
+    const email = String(decoded.email || "").toLowerCase();
+    const role = String(decoded.role || "");
+    const Model = role === "expert" ? Expert : User;
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const account = await Model.findOne({
+      email,
+      resetPasswordTokenHash: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!account) {
+      return res.status(400).json({ error: "Reset token is invalid or expired" });
+    }
+
+    const passwordErr = validatePasswordStrength(password);
+    if (passwordErr) {
+      return res.status(400).json({ error: passwordErr });
+    }
+
+    account.password = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
+    account.resetPasswordTokenHash = undefined;
+    account.resetPasswordExpires = undefined;
+    await account.save();
+
+    return res.json({ success: true, message: "Password reset successful. Please login." });
+  } catch (err) {
+    console.error("❌ Reset password error:", err);
+    return res.status(500).json({ error: "Failed to reset password" });
+  }
+});
+
 app.put("/api/profile/photo", authMiddleware, upload.single("photo"), async (req, res) => {
   try {
     if (req.user?.role !== "expert") {
@@ -885,6 +1152,110 @@ app.get("/api/experts", async (req, res) => {
   } catch (err) {
     console.error("❌ EXPERTS ERROR:", err);
     res.status(500).json({ error: "Failed to fetch experts" });
+  }
+});
+
+app.get("/api/public-home-data", async (req, res) => {
+  try {
+    const palette = ["#22d3ee", "#34d399", "#fbbf24", "#a78bfa"];
+    const initials = (name) => String(name || "")
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() || "")
+      .join("") || "EX";
+    const ago = (ts) => {
+      const t = new Date(ts || 0).getTime();
+      if (!t) return "now";
+      const mins = Math.max(1, Math.floor((Date.now() - t) / 60000));
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      const days = Math.floor(hrs / 24);
+      return `${days}d ago`;
+    };
+
+    const [approvedExperts, paidSessions, totalMessages, avgRatingAgg, expertsRaw, recentPayments] = await Promise.all([
+      Expert.countDocuments({ status: "approved" }),
+      Payment.countDocuments({ status: "paid", verified: true }),
+      Message.countDocuments({}),
+      Rating.aggregate([{ $group: { _id: null, avgScore: { $avg: "$score" } } }]),
+      Expert.find({ status: "approved" }).select("name field experience email").sort({ experience: -1, createdAt: -1 }).lean(),
+      Payment.find({ status: "paid", verified: true })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select("clientName clientEmail expertField createdAt")
+        .lean(),
+    ]);
+
+    const expertEmails = expertsRaw.map((e) => String(e.email || "").toLowerCase()).filter(Boolean);
+    const [ratingsByExpert, sessionsByExpert] = await Promise.all([
+      Rating.aggregate([
+        { $match: { expertEmail: { $in: expertEmails } } },
+        { $group: { _id: "$expertEmail", avgRating: { $avg: "$score" }, ratingsCount: { $sum: 1 } } },
+      ]),
+      Payment.aggregate([
+        { $match: { status: "paid", verified: true, expertEmail: { $in: expertEmails } } },
+        { $group: { _id: "$expertEmail", sessions: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const ratingMap = new Map(
+      ratingsByExpert.map((r) => [String(r._id || "").toLowerCase(), { avg: Number(r.avgRating || 0), count: Number(r.ratingsCount || 0) }])
+    );
+    const sessionsMap = new Map(
+      sessionsByExpert.map((s) => [String(s._id || "").toLowerCase(), Number(s.sessions || 0)])
+    );
+
+    const experts = expertsRaw
+      .map((e, i) => {
+        const email = String(e.email || "").toLowerCase();
+        const r = ratingMap.get(email) || { avg: 0, count: 0 };
+        const sessions = sessionsMap.get(email) || 0;
+        const domain = String(e.field || "General Consulting");
+        const expYears = Number(e.experience || 0);
+        return {
+          name: e.name || "Expert",
+          domain,
+          exp: `${expYears}+ yrs`,
+          sessions,
+          tag: r.avg >= 4.7 ? "Top rated" : sessions >= 20 ? "Active expert" : "Verified expert",
+          color: palette[i % palette.length],
+          initial: initials(e.name),
+          score: r.avg,
+        };
+      })
+      .sort((a, b) => (b.score - a.score) || (b.sessions - a.sessions))
+      .slice(0, 4)
+      .map(({ score, ...rest }) => rest);
+
+    const activityIcons = ["🎯", "💼", "📈", "✅", "🚀"];
+    const activity = recentPayments.map((p, i) => {
+      const who = p.clientName || (p.clientEmail ? p.clientEmail.split("@")[0] : "Client");
+      const field = String(p.expertField || "expert");
+      return {
+        icon: activityIcons[i % activityIcons.length],
+        text: `${who} booked a ${field} session`,
+        time: ago(p.createdAt),
+      };
+    });
+
+    const avgScore = Number(avgRatingAgg?.[0]?.avgScore || 0);
+    const satisfactionPct = avgScore > 0 ? Math.round((avgScore / 5) * 100) : 97;
+
+    return res.json({
+      stats: {
+        approvedExperts,
+        sessionsCompleted: paidSessions,
+        decisionsMade: totalMessages,
+        clientSatisfaction: satisfactionPct,
+      },
+      experts,
+      activity,
+    });
+  } catch (err) {
+    console.error("❌ PUBLIC HOME DATA ERROR:", err);
+    return res.status(500).json({ error: "Failed to fetch home data" });
   }
 });
 
