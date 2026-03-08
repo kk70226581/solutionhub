@@ -106,6 +106,41 @@ const EMAIL_FROM = String(process.env.EMAIL_FROM || "").trim();
 const RESEND_API_KEY = String(process.env.RESEND_API_KEY || "").trim();
 const SENDGRID_API_KEY = String(process.env.SENDGRID_API_KEY || "").trim();
 
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000);
+const RATE_LIMIT_MAX_GLOBAL = Number(process.env.RATE_LIMIT_MAX_GLOBAL || 300);
+const RATE_LIMIT_MAX_AUTH = Number(process.env.RATE_LIMIT_MAX_AUTH || 20);
+
+const createInMemoryRateLimiter = ({ windowMs, max, keyPrefix }) => {
+  const buckets = new Map();
+  return (req, res, next) => {
+    const ip =
+      String(
+        req.headers["x-forwarded-for"] ||
+          req.ip ||
+          req.socket?.remoteAddress ||
+          "unknown"
+      )
+        .split(",")[0]
+        .trim();
+    const key = `${keyPrefix}:${ip}`;
+    const now = Date.now();
+    const bucket = buckets.get(key);
+    if (!bucket || now >= bucket.resetAt) {
+      buckets.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+    if (bucket.count >= max) {
+      const retryAfter = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+      res.setHeader("Retry-After", String(retryAfter));
+      return res.status(429).json({
+        error: "Too many requests. Please try again later.",
+      });
+    }
+    bucket.count += 1;
+    return next();
+  };
+};
+
 const sendPasswordResetEmail = async ({ toEmail, resetLink }) => {
   const subject = "Reset your Solvenut password";
   const text = [
@@ -239,6 +274,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(
+  "/api",
+  createInMemoryRateLimiter({
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    max: RATE_LIMIT_MAX_GLOBAL,
+    keyPrefix: "global",
+  })
+);
 
 /* ============================================================
    ADMIN SECURITY MIDDLEWARE
@@ -352,13 +395,15 @@ const getAdmin2FASecret = (email) => {
 /* ============================================================
    DATABASE
 ============================================================ */
-mongoose
-  .connect(process.env.MONGO_URI || "mongodb://localhost:27017/solutionhub")
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => {
-    console.error("❌ MongoDB Error:", err);
-    process.exit(1);
-  });
+if (String(process.env.NODE_ENV || "").toLowerCase() !== "test") {
+  mongoose
+    .connect(process.env.MONGO_URI || "mongodb://localhost:27017/solutionhub")
+    .then(() => console.log("✅ MongoDB Connected"))
+    .catch((err) => {
+      console.error("❌ MongoDB Error:", err);
+      process.exit(1);
+    });
+}
 
 /* ============================================================
    SCHEMAS
@@ -544,6 +589,12 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+const authRateLimiter = createInMemoryRateLimiter({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MAX_AUTH,
+  keyPrefix: "auth",
+});
+
 /* ============================================================
    ADMIN PAGES
 ============================================================ */
@@ -559,7 +610,73 @@ app.get("/admin.html", adminAuth, (req, res) => {
 /* ============================================================
    ROUTES - CLIENT REGISTER
 ============================================================ */
-app.post("/api/register", async (req, res) => {
+app.get("/api/health-public", (req, res) => {
+  res.json({
+    success: true,
+    status: "ok",
+    service: "solutionhub-api",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/api/docs/openapi.json", (req, res) => {
+  const serverUrl =
+    process.env.PUBLIC_API_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    `http://localhost:${PORT}`;
+  const spec = {
+    openapi: "3.0.3",
+    info: {
+      title: "SolutionHub API",
+      version: "1.0.0",
+      description: "Core public and auth endpoints",
+    },
+    servers: [{ url: serverUrl }],
+    paths: {
+      "/api/health-public": {
+        get: { summary: "Public health check", responses: { 200: { description: "OK" } } },
+      },
+      "/api/password-policy": {
+        get: { summary: "Password policy", responses: { 200: { description: "Policy returned" } } },
+      },
+      "/api/register": {
+        post: { summary: "Register client account", responses: { 200: { description: "Created" }, 400: { description: "Validation error" } } },
+      },
+      "/api/pro-signup": {
+        post: { summary: "Register expert account", responses: { 200: { description: "Created" }, 400: { description: "Validation error" } } },
+      },
+      "/api/login": {
+        post: { summary: "Login for client/expert", responses: { 200: { description: "Login success" }, 401: { description: "Invalid credentials" } } },
+      },
+      "/api/forgot-password": {
+        post: { summary: "Request password reset", responses: { 200: { description: "Request accepted" } } },
+      },
+      "/api/reset-password": {
+        post: { summary: "Reset password with token", responses: { 200: { description: "Reset success" }, 400: { description: "Invalid token/password" } } },
+      },
+      "/api/experts": {
+        get: { summary: "Public experts list", responses: { 200: { description: "Experts returned" } } },
+      },
+      "/api/public-home-data": {
+        get: { summary: "Public homepage data", responses: { 200: { description: "Homepage metrics returned" } } },
+      },
+    },
+  };
+  res.json(spec);
+});
+
+app.get("/api/docs", (req, res) => {
+  res.type("html").send(`<!doctype html>
+<html><head><meta charset="utf-8"/><title>SolutionHub API Docs</title>
+<style>body{font-family:Arial,sans-serif;padding:24px;background:#0b1020;color:#e5e7eb}a{color:#38bdf8}code{background:#111827;padding:2px 6px;border-radius:6px}</style>
+</head><body>
+<h1>SolutionHub API Docs</h1>
+<p>OpenAPI JSON: <a href="/api/docs/openapi.json">/api/docs/openapi.json</a></p>
+<p>Import this JSON in Postman/Insomnia or Swagger Editor.</p>
+</body></html>`);
+});
+
+app.post("/api/register", authRateLimiter, async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -602,7 +719,7 @@ app.post("/api/register", async (req, res) => {
 /* ============================================================
    ROUTES - LOGIN
 ============================================================ */
-app.post("/api/login", async (req, res) => {
+app.post("/api/login", authRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -704,6 +821,7 @@ const toChatImageDataUrl = (raw) => {
 
 app.post(
   "/api/pro-signup",
+  authRateLimiter,
   upload.fields([
     { name: "resume", maxCount: 1 },
     { name: "photo", maxCount: 1 },
@@ -909,7 +1027,7 @@ app.get("/api/password-policy", (req, res) => {
   return res.json({ success: true, policy: PASSWORD_POLICY });
 });
 
-app.post("/api/forgot-password", async (req, res) => {
+app.post("/api/forgot-password", authRateLimiter, async (req, res) => {
   try {
     const email = String(req.body?.email || "").trim().toLowerCase();
     if (!email) {
@@ -979,7 +1097,7 @@ app.post("/api/forgot-password", async (req, res) => {
   }
 });
 
-app.post("/api/reset-password", async (req, res) => {
+app.post("/api/reset-password", authRateLimiter, async (req, res) => {
   try {
     const token = String(req.body?.token || "").trim();
     const password = String(req.body?.password || "");
@@ -1970,38 +2088,18 @@ io.on("connection", (socket) => {
 /* ============================================================
    START SERVER
 ============================================================ */
-server.listen(PORT, () => {
-  console.log(`\n🚀 ============================================`);
-  console.log(`🚀 SolutionHub v9.0 LIVE - STABLE BACKEND 🎉`);
-  console.log(`🚀 ============================================`);
-  console.log(`📡 Server: http://localhost:${PORT}`);
-  console.log(`💬 Socket.IO: Ready`);
-  console.log(
-    `💳 Razorpay: ${
-      process.env.RAZORPAY_KEY_ID ? "Enabled ✅" : "TEST MODE (env key missing)"
-    }`
-  );
-  console.log(
-    `🤖 AI: ${
-      process.env.GEMINI_API_KEY
-        ? "Enabled (v1, gemini-2.5-flash, safe fallback)"
-        : "Disabled (no key)"
-    }`
-  );
-  console.log(
-    `🔐 Admin Login: http://localhost:${PORT}/admin-login.html`
-  );
-  console.log(
-    `🛡️ Admin Dashboard: http://localhost:${PORT}/admin.html`
-  );
-  console.log(`✅ Public Experts: http://localhost:${PORT}/experts.html`);
-  console.log(`💬 Chat System: FULLY ENABLED`);
-  console.log(`💰 Payment System: ACTIVE`);
-  console.log(
-    `🔑 Razorpay Key: ${(process.env.RAZORPAY_KEY_ID || "NOT_SET").substring(
-      0,
-      15
-    )}...`
-  );
-  console.log(`🚀 ============================================\n`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log("\n============================================");
+    console.log("SolutionHub backend live");
+    console.log("============================================");
+    console.log(`Server: http://localhost:${PORT}`);
+    console.log(`Socket.IO: Ready`);
+    console.log(`Admin Login: http://localhost:${PORT}/admin-login.html`);
+    console.log(`Admin Dashboard: http://localhost:${PORT}/admin.html`);
+    console.log(`API Docs: http://localhost:${PORT}/api/docs`);
+    console.log("============================================\n");
+  });
+}
+
+module.exports = { app, server };

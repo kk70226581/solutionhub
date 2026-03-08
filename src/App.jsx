@@ -13,6 +13,7 @@ import ExpertDashboard from './pages/ExpertDashboard';
 import Login from './pages/Login';
 import SignupClient from './pages/SignupClient';
 import SignupExpert from './pages/SignupExpert';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   // HashRouter in production prevents refresh 404 on hosts without SPA rewrites.
@@ -32,15 +33,29 @@ function App() {
         <Route path="/signup-expert" element={<SignupExpert />} />
 
         {/* client side */}
-        <Route path="/client-dashboard" element={<ClientDashboard />} />
-        <Route path="/chat" element={<ClientChat />} />
+        <Route element={<ProtectedRoute allowedRoles={['client']} redirectTo="/login" />}>
+          <Route path="/client-dashboard" element={<ClientDashboard />} />
+          <Route path="/chat" element={<ClientChat />} />
+        </Route>
 
         {/* expert side */}
-        <Route path="/expert-dashboard" element={<ExpertDashboard />} />
+        <Route element={<ProtectedRoute allowedRoles={['expert']} redirectTo="/login" />}>
+          <Route path="/expert-dashboard" element={<ExpertDashboard />} />
+        </Route>
 
         {/* admin */}
         <Route path="/admin-login" element={<AdminLogin />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route
+          element={
+            <ProtectedRoute
+              tokenKey="adminSessionToken"
+              roleKey={null}
+              redirectTo="/admin-login"
+            />
+          }
+        >
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        </Route>
 
         <Route path="/pricing" element={<div>Pricing coming soon...</div>} />
         <Route path="*" element={<Home />} />
