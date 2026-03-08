@@ -3,15 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-"scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "lint": "eslint .",
-  "test": "node --test tests/*.test.cjs",
-  "preview": "vite preview",
-  "server": "node server.cjs",
-  "start": "concurrently \"npm run server\" \"npm run dev\""
-},
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "test": "node --test tests/*.test.cjs",
+    "preview": "vite preview",
+    "server": "node server.cjs",
+    "start": "concurrently \"npm run server\" \"npm run dev\""
+  },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
@@ -28,7 +28,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^6.30.3",
-    "redis": "^4.7.0",
+    "redis": "^4.7.1",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3"
   },
