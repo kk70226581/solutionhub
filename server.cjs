@@ -99,6 +99,9 @@ const validatePasswordStrength = (passwordRaw) => {
 const EMAIL_PROVIDER = String(process.env.EMAIL_PROVIDER || "none")
   .trim()
   .toLowerCase();
+const FRONTEND_ROUTER_MODE = String(process.env.FRONTEND_ROUTER_MODE || "hash")
+  .trim()
+  .toLowerCase();
 const EMAIL_FROM = String(process.env.EMAIL_FROM || "").trim();
 const RESEND_API_KEY = String(process.env.RESEND_API_KEY || "").trim();
 const SENDGRID_API_KEY = String(process.env.SENDGRID_API_KEY || "").trim();
@@ -942,7 +945,12 @@ app.post("/api/forgot-password", async (req, res) => {
 
     const base =
       process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || "http://localhost:5173";
-    const resetLink = `${base.replace(/\/+$/, "")}/login?mode=reset&token=${encodeURIComponent(resetToken)}`;
+    const cleanBase = base.replace(/\/+$/, "");
+    const resetPath = `login?mode=reset&token=${encodeURIComponent(resetToken)}`;
+    const resetLink =
+      FRONTEND_ROUTER_MODE === "hash"
+        ? `${cleanBase}/#/${resetPath}`
+        : `${cleanBase}/${resetPath}`;
     const mailResult = await sendPasswordResetEmail({ toEmail: email, resetLink });
     if (!mailResult.ok) {
       console.warn(`⚠️ Reset email delivery issue for ${email}: ${mailResult.error}`);

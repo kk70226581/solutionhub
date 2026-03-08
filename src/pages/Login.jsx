@@ -33,12 +33,15 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const mode = String(params.get('mode') || '').toLowerCase();
+    if (mode === 'reset') return;
     if (token && role) {
       const dashUrl =
         normalizedRole === 'expert' ? '/expert-dashboard' : '/client-dashboard';
       navigate(dashUrl, { replace: true });
     }
-  }, [token, role, normalizedRole, navigate]);
+  }, [location.search, token, role, normalizedRole, navigate]);
 
   const handleLogout = () => {
     if (!hasWindow) return;
