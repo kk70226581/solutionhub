@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Mic,
   MicOff,
@@ -78,6 +78,9 @@ export default function VideoCall({
   const panelRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const ringtoneTimeoutRef = useRef(null);
+  const activeNodesRef = useRef([]);
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
   const remoteStreamRef = useRef(null);
@@ -125,6 +128,12 @@ export default function VideoCall({
 
   const syncVideoElement = async (element, stream, { muted = false } = {}) => {
     if (!element) return;
+
+    if (element.srcObject === stream) {
+      element.muted = muted;
+      return;
+    }
+
     element.srcObject = stream || null;
     element.muted = muted;
 
@@ -133,10 +142,93 @@ export default function VideoCall({
     try {
       await element.play();
     } catch (err) {
-      // Autoplay can race with layout updates; a user gesture from call controls will recover.
-      console.warn('Video autoplay was blocked or deferred', err);
+      // Ignore play races triggered by srcObject swaps; real playback will recover on the next stable frame.
+      if (err?.name !== 'AbortError') {
+        console.warn('Video autoplay was blocked or deferred', err);
+      }
     }
   };
+
+  const clearScheduledTone = () => {
+    if (ringtoneTimeoutRef.current) {
+      window.clearTimeout(ringtoneTimeoutRef.current);
+      ringtoneTimeoutRef.current = null;
+    }
+    activeNodesRef.current.forEach(({ oscillator, gain }) => {
+      try { oscillator.stop(); } catch (err) { void err; }
+      try { oscillator.disconnect(); } catch (err) { void err; }
+      try { gain.disconnect(); } catch (err) { void err; }
+    });
+    activeNodesRef.current = [];
+  };
+
+  const getAudioContext = useCallback(async () => {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioCtx();
+    }
+    if (audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+      } catch (err) {
+        console.warn('Could not resume audio context', err);
+      }
+    }
+    return audioContextRef.current;
+  }, []);
+
+  const playToneBurst = useCallback(async (frequencies, durationMs = 180, volume = 0.025) => {
+    const context = await getAudioContext();
+    if (!context) return;
+
+    const startAt = context.currentTime + 0.01;
+    const stopAt = startAt + durationMs / 1000;
+
+    frequencies.forEach((frequency) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, startAt);
+      gain.gain.setValueAtTime(0.0001, startAt);
+      gain.gain.linearRampToValueAtTime(volume, startAt + 0.02);
+      gain.gain.linearRampToValueAtTime(0.0001, stopAt);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(startAt);
+      oscillator.stop(stopAt + 0.02);
+      activeNodesRef.current.push({ oscillator, gain });
+      oscillator.onended = () => {
+        activeNodesRef.current = activeNodesRef.current.filter((node) => node.oscillator !== oscillator);
+        try { oscillator.disconnect(); } catch (err) { void err; }
+        try { gain.disconnect(); } catch (err) { void err; }
+      };
+    });
+  }, [getAudioContext]);
+
+  const startToneLoop = useCallback((kind) => {
+    clearScheduledTone();
+
+    const schedule = async () => {
+      if (kind === 'incoming') {
+        await playToneBurst([880, 1174], 220, 0.028);
+        ringtoneTimeoutRef.current = window.setTimeout(async () => {
+          await playToneBurst([880, 1174], 220, 0.028);
+          ringtoneTimeoutRef.current = window.setTimeout(schedule, 1400);
+        }, 320);
+        return;
+      }
+
+      await playToneBurst([425], 360, 0.02);
+      ringtoneTimeoutRef.current = window.setTimeout(schedule, 1800);
+    };
+
+    schedule();
+  }, [playToneBurst]);
+
+  const stopToneLoop = useCallback(() => {
+    clearScheduledTone();
+  }, []);
 
   const clearPeerConnection = () => {
     if (peerConnectionRef.current) {
@@ -242,7 +334,11 @@ export default function VideoCall({
   };
 
   const flushPendingCandidates = async () => {
-    if (!peerConnectionRef.current || !pendingCandidatesRef.current.length) return;
+    if (
+      !peerConnectionRef.current
+      || !peerConnectionRef.current.remoteDescription
+      || !pendingCandidatesRef.current.length
+    ) return;
 
     const queued = [...pendingCandidatesRef.current];
     pendingCandidatesRef.current = [];
@@ -312,7 +408,6 @@ export default function VideoCall({
     };
 
     peerConnectionRef.current = connection;
-    await flushPendingCandidates();
     return connection;
   };
 
@@ -395,6 +490,7 @@ export default function VideoCall({
       socket.emit('call-ended', { room: signalingRoomId });
     }
     onIncomingCallCleared?.();
+    stopToneLoop();
     await resetCallState();
   };
 
@@ -564,6 +660,28 @@ export default function VideoCall({
 
     return () => window.clearInterval(interval);
   }, [callStatus]);
+
+  useEffect(() => {
+    if (hasIncomingRequest) {
+      startToneLoop('incoming');
+      return () => stopToneLoop();
+    }
+
+    if (callStatus === 'calling') {
+      startToneLoop('outgoing');
+      return () => stopToneLoop();
+    }
+
+    stopToneLoop();
+    return undefined;
+  }, [hasIncomingRequest, callStatus, startToneLoop, stopToneLoop]);
+
+  useEffect(() => () => {
+    stopToneLoop();
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(() => {});
+    }
+  }, [stopToneLoop]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
