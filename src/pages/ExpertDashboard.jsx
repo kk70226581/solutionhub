@@ -5,7 +5,7 @@ import io from 'socket.io-client';
 import {
   TrendingUp, Star, Clock, MessageCircle, Users, Briefcase,
   DollarSign, BarChart3, Settings, Bell, Edit3, Eye, CheckCircle,
-  XCircle, Calendar, Award, ArrowRight, Zap, Mail, MapPin, ArrowUp, ArrowDown, House, Send, Paperclip, X,
+  XCircle, Calendar, Award, ArrowRight, Zap, Mail, MapPin, ArrowUp, ArrowDown, House, Send, Paperclip, X, Phone,
 } from 'lucide-react';
 import '../styles/ExpertDashboard.css';
 import VideoCall from '../components/VideoCall';
@@ -272,8 +272,10 @@ const ExpertDashboard = () => {
   const [loadingChat, setLoadingChat] = useState(false);
   const [liveSocket, setLiveSocket] = useState(null);
   const [chatImageViewer, setChatImageViewer] = useState({ open: false, src: '', alt: '' });
+  const [incomingCall, setIncomingCall] = useState(null);
   const socketRef = useRef(null);
   const activeRoomRef = useRef('');
+  const conversationsRef = useRef([]);
   const msgsEndRef = useRef(null);
   const chatImageInputRef = useRef(null);
 
@@ -359,6 +361,11 @@ const ExpertDashboard = () => {
     setLiveSocket(s);
 
     s.on('connect', () => s.emit('authenticate', { token }));
+    s.on('auth_success', () => {
+      conversationsRef.current.forEach((c) => {
+        if (c?.room) s.emit('join-room', { room: c.room });
+      });
+    });
     s.on('receive_message', (msg) => {
       if (!msg?.room || msg.room !== activeRoomRef.current) return;
       // Ignore echo of own message because it is already added optimistically.
@@ -378,12 +385,33 @@ const ExpertDashboard = () => {
       });
       setTimeout(() => msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
     });
+    s.on('offer', ({ room, offer, from }) => {
+      if (!room || !offer || String(from || '').toLowerCase() === String(email || '').toLowerCase()) return;
+      setIncomingCall((prev) => {
+        if (prev?.room === room) return prev;
+        return {
+          room,
+          offer,
+          from: from || 'Client',
+          time: Date.now(),
+        };
+      });
+      setNotifOpen(true);
+    });
 
     return () => {
       setLiveSocket(null);
       try { s.disconnect(); } catch (err) { console.error(err); }
     };
-  }, [token]);
+  }, [token, email]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+    if (!liveSocket) return;
+    conversations.forEach((c) => {
+      if (c?.room) liveSocket.emit('join-room', { room: c.room });
+    });
+  }, [conversations, liveSocket]);
 
   const paidPayments = useMemo(
     () => payments.filter((p) => String(p?.status || '').toLowerCase() === 'paid'),
@@ -578,6 +606,19 @@ const ExpertDashboard = () => {
     }
   }, [token]);
 
+  const openIncomingCall = useCallback(async () => {
+    if (!incomingCall?.room) return;
+    const conversation = conversations.find((item) => item.room === incomingCall.room);
+    setActiveTab('chat');
+    if (conversation) {
+      await openConversation(conversation);
+    } else {
+      setActiveRoom(incomingCall.room);
+      activeRoomRef.current = incomingCall.room;
+    }
+    setNotifOpen(false);
+  }, [incomingCall, conversations, openConversation]);
+
   const sendChatMessage = useCallback(() => {
     const room = activeRoomRef.current || activeRoom;
     const txt = chatInput.trim();
@@ -755,6 +796,12 @@ const ExpertDashboard = () => {
               {notifOpen && (
                 <div className="ed-notif-panel">
                   <div className="ed-notif-head">Notifications</div>
+                  {incomingCall ? (
+                    <button className="ed-notif-item ed-notif-item-btn" type="button" onClick={openIncomingCall}>
+                      <span className="ed-notif-icon"><Phone size={15} /></span>
+                      <div><div className="ed-notif-text">{incomingCall.from} is calling you</div><div className="ed-notif-time">Tap to open the chat and connect</div></div>
+                    </button>
+                  ) : null}
                   {activity.slice(0, 3).map((item, i) => (
                     <div key={i} className="ed-notif-item"><span className="ed-notif-icon">{item.icon}</span><div><div className="ed-notif-text">{item.text}</div><div className="ed-notif-time">{item.time}</div></div></div>
                   ))}
@@ -795,6 +842,20 @@ const ExpertDashboard = () => {
 
       <main className="ed-main">
         <div className="ed-shell">
+          {incomingCall && (
+            <div className="ed-call-alert">
+              <div className="ed-call-alert-copy">
+                <span className="ed-call-alert-kicker">Incoming call</span>
+                <strong>{incomingCall.from} is calling you</strong>
+                <span>Open the private chat to accept the video call.</span>
+              </div>
+              <button className="ed-btn ed-btn-primary ed-btn-sm" type="button" onClick={openIncomingCall}>
+                <Phone size={14} />
+                Open call
+              </button>
+            </div>
+          )}
+
           {loadError && (
             <section className="ed-section"><div className="ed-card"><div className="ed-empty-state"><div className="ed-empty-icon">!</div><p>{loadError}</p><button className="ed-btn ed-btn-primary" onClick={loadDashboardData}>Retry</button></div></div></section>
           )}
@@ -973,6 +1034,10 @@ const ExpertDashboard = () => {
                           peerLabel={activeConversation?.otherEmail || 'Client'}
                           enabled={Boolean(activeRoom)}
                           compact
+                          externalIncomingCall={incomingCall?.room === activeRoom ? incomingCall : null}
+                          onIncomingCallCleared={() => {
+                            setIncomingCall((prev) => (prev?.room === activeRoom ? null : prev));
+                          }}
                         />
                       </div>
                       <div className="ed-chat-msgs">

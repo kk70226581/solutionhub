@@ -9,6 +9,16 @@
   gap: 14px;
 }
 
+.vc-panel:fullscreen,
+.vc-panel-fullscreen {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  padding: 20px;
+}
+
 .vc-header {
   display: flex;
   align-items: flex-start;
@@ -53,6 +63,11 @@
   gap: 12px;
 }
 
+.vc-grid-live {
+  grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.55fr);
+  align-items: stretch;
+}
+
 .vc-video-card {
   position: relative;
   min-height: 220px;
@@ -62,6 +77,18 @@
   background: rgba(3, 7, 18, 0.94);
 }
 
+.vc-video-card-remote {
+  min-height: 260px;
+}
+
+.vc-grid-live .vc-video-card-remote {
+  min-height: 340px;
+}
+
+.vc-grid-live .vc-video-card-local {
+  min-height: 220px;
+}
+
 .vc-video {
   width: 100%;
   height: 100%;
@@ -69,6 +96,14 @@
   object-fit: cover;
   display: block;
   background: #020510;
+}
+
+.vc-grid-live .vc-video-card-remote .vc-video {
+  min-height: 340px;
+}
+
+.vc-grid-live .vc-video-card-local .vc-video {
+  min-height: 220px;
 }
 
 .vc-video-label {
@@ -230,8 +265,42 @@
   min-height: 168px;
 }
 
+.vc-panel-compact.vc-panel-live .vc-grid-live {
+  grid-template-columns: minmax(0, 1.7fr) minmax(140px, 0.55fr);
+}
+
+.vc-panel-compact.vc-panel-live .vc-video-card-remote,
+.vc-panel-compact.vc-panel-live .vc-video-card-remote .vc-video {
+  min-height: 220px;
+}
+
+.vc-panel-compact.vc-panel-live .vc-video-card-local,
+.vc-panel-compact.vc-panel-live .vc-video-card-local .vc-video {
+  min-height: 160px;
+}
+
 .vc-panel-compact .vc-footer {
   font-size: 10px;
+}
+
+.vc-panel:fullscreen .vc-grid-live,
+.vc-panel-fullscreen .vc-grid-live {
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.45fr);
+  flex: 1;
+}
+
+.vc-panel:fullscreen .vc-video-card-remote,
+.vc-panel:fullscreen .vc-video-card-remote .vc-video,
+.vc-panel-fullscreen .vc-video-card-remote,
+.vc-panel-fullscreen .vc-video-card-remote .vc-video {
+  min-height: min(72vh, 860px);
+}
+
+.vc-panel:fullscreen .vc-video-card-local,
+.vc-panel:fullscreen .vc-video-card-local .vc-video,
+.vc-panel-fullscreen .vc-video-card-local,
+.vc-panel-fullscreen .vc-video-card-local .vc-video {
+  min-height: min(36vh, 340px);
 }
 
 @media (max-width: 800px) {
@@ -239,8 +308,25 @@
     grid-template-columns: 1fr;
   }
 
+  .vc-grid-live,
+  .vc-panel-compact.vc-panel-live .vc-grid-live,
+  .vc-panel:fullscreen .vc-grid-live,
+  .vc-panel-fullscreen .vc-grid-live {
+    grid-template-columns: 1fr;
+  }
+
   .vc-video-card,
   .vc-video {
+    min-height: 180px;
+  }
+
+  .vc-grid-live .vc-video-card-remote,
+  .vc-grid-live .vc-video-card-remote .vc-video {
+    min-height: 260px;
+  }
+
+  .vc-grid-live .vc-video-card-local,
+  .vc-grid-live .vc-video-card-local .vc-video {
     min-height: 180px;
   }
 
@@ -323,5 +409,15 @@
     gap: 6px;
     font-size: 9px;
     line-height: 1.4;
+  }
+
+  .vc-grid-live .vc-video-card-remote,
+  .vc-grid-live .vc-video-card-remote .vc-video {
+    min-height: 220px;
+  }
+
+  .vc-grid-live .vc-video-card-local,
+  .vc-grid-live .vc-video-card-local .vc-video {
+    min-height: 150px;
   }
 }
