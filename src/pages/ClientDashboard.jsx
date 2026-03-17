@@ -362,7 +362,6 @@ const ClientDashboard = () => {
       <header className={`cd-header ${headerScrolled ? 'cd-header--scrolled' : ''}`} role="banner">
         <div className="cd-shell cd-header-inner">
           <button className="cd-logo" onClick={() => go('/')} aria-label="Solvenut home">
-            <div className="cd-logo-mark">🥜</div>
             <div className="cd-logo-info">
               <span className="cd-logo-name">Solve<span className="cd-logo-accent">nut</span></span>
               <span className="cd-logo-sub">Client workspace</span>
@@ -450,6 +449,19 @@ const ClientDashboard = () => {
                   <div className="cd-tip-icon"><Zap size={13} /></div>
                   <p className="cd-tip-text">{TIPS[tipIndex]}</p>
                 </div>
+                <div className="cd-workflow">
+                  {[
+                    { step: '01', title: 'Capture the decision', text: 'Log the exact question you are trying to solve.' },
+                    { step: '02', title: 'Use AI first', text: 'Get a quick first draft before spending time on calls.' },
+                    { step: '03', title: 'Escalate with context', text: 'Book the right expert with your board and readiness already prepared.' },
+                  ].map(({ step, title, text }) => (
+                    <div key={step} className="cd-workflow-card">
+                      <div className="cd-workflow-step">{step}</div>
+                      <div className="cd-workflow-title">{title}</div>
+                      <div className="cd-workflow-text">{text}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Right profile card */}
@@ -525,7 +537,8 @@ const ClientDashboard = () => {
           <section className="cd-section">
             <div className="cd-section-head">
               <div className="cd-kicker">Quick actions</div>
-              <h2 className="cd-section-title">Do the next best thing right now</h2>
+              <h2 className="cd-section-title">Move from confusion to execution</h2>
+              <p className="cd-section-sub">Use Solvenut the same way every time: define the decision, get fast clarity, then involve the right expert only when it adds real value.</p>
             </div>
             <div className="cd-quick-grid">
               {[
@@ -538,7 +551,7 @@ const ClientDashboard = () => {
                 {
                   icon: <Sparkles size={20} />, color: '#fbbf24',
                   title: 'Ask the AI assistant',
-                  sub: 'Get a structured first-draft analysis before booking a session.',
+                  sub: 'Pressure-test your thinking before you spend time or money on a session.',
                   cta: 'Open AI chat', onClick: () => setChatOpen(true),
                 },
                 {
@@ -740,8 +753,8 @@ const ClientDashboard = () => {
             <div className="cd-cta-glow" aria-hidden />
             <div className="cd-cta-content">
               <div className="cd-kicker" style={{ color: 'rgba(34,211,238,.8)' }}>Ready to move forward</div>
-              <h2 className="cd-cta-title">Turn your next decision into a clear plan.</h2>
-              <p className="cd-cta-sub">Pick an expert, run a focused session, and walk away with a written roadmap.</p>
+              <h2 className="cd-cta-title">Turn one open question into one clear next move.</h2>
+              <p className="cd-cta-sub">Use AI to frame the issue, then bring in a vetted expert when you need judgment, accountability, or domain experience.</p>
               <div className="cd-cta-actions">
                 <button className="cd-btn cd-btn-primary cd-btn-lg" onClick={() => go('/experts')}>
                   <Rocket size={16} />
@@ -768,7 +781,6 @@ const ClientDashboard = () => {
         <div className="cd-shell cd-footer-main">
           <div className="cd-footer-brand-col">
             <div className="cd-footer-logo">
-              <span className="cd-footer-logo-mark">🥜</span>
               <span className="cd-footer-brand-name">Solve<span>nut</span></span>
             </div>
             <p className="cd-footer-desc">Decision support that combines expert insight, structure, and practical execution plans.</p>

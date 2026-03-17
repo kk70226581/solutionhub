@@ -231,7 +231,6 @@ const Home = () => {
       <header className={`hp-header ${headerScrolled ? 'hp-header--scrolled' : ''}`} role="banner">
         <div className="hp-shell hp-header-inner">
           <button className="hp-logo" onClick={() => go('/')} aria-label="Solvenut home">
-            <div className="hp-logo-mark" aria-hidden>🥜</div>
             <span className="hp-logo-text">Solve<span className="hp-logo-accent">nut</span></span>
           </button>
 
@@ -518,7 +517,7 @@ const Home = () => {
                   details: ['Written action roadmap', 'Prioritized first 30 days', 'Measurable checkpoints', 'Follow-up session option'],
                   icon: '🚀', color: '#fbbf24',
                 },
-              ].map(({ step, title, body, details, icon, color }, idx) => (
+              ].map(({ step, title, body, details, icon, color }) => (
                 <div key={step} className="hp-step" style={{ '--step-color': color }}>
                   <div className="hp-step-number">{step}</div>
                   <div className="hp-step-connector" aria-hidden />
@@ -697,7 +696,6 @@ const Home = () => {
           <div className="hp-footer-main">
             <div className="hp-footer-brand-col">
               <div className="hp-footer-brand">
-                <span className="hp-footer-logo-mark">🥜</span>
                 <span className="hp-footer-brand-name">Solve<span>nut</span></span>
               </div>
               <p className="hp-footer-desc">

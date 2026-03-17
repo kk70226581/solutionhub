@@ -198,6 +198,7 @@ const Experts = () => {
     return () => { mounted = false; };
   }, []);
 
+
   /* ── Razorpay script ── */
   useEffect(() => {
     if (document.getElementById('razorpay-checkout')) return;
@@ -350,7 +351,6 @@ const Experts = () => {
       <header className={`ex-header ${headerScrolled ? 'ex-header--scrolled' : ''}`} role="banner">
         <div className="ex-shell ex-header-inner">
           <button className="ex-logo" onClick={() => navigate('/')} aria-label="Solvenut home">
-            <div className="ex-logo-mark">🥜</div>
             <div className="ex-logo-info">
               <span className="ex-logo-name">Solve<span className="ex-logo-accent">nut</span></span>
               <span className="ex-logo-sub">Expert marketplace</span>
@@ -595,7 +595,6 @@ const Experts = () => {
         <div className="ex-shell ex-footer-inner">
           <div className="ex-footer-brand-col">
             <div className="ex-footer-logo">
-              <span className="ex-footer-logo-mark">🥜</span>
               <span className="ex-footer-brand-name">Solve<span>nut</span></span>
             </div>
             <p className="ex-footer-desc">Connecting professionals with vetted domain experts for structured, high-quality decision guidance.</p>

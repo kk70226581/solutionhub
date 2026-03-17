@@ -27,7 +27,7 @@ const ChatBot = ({ open, onClose, onEscalate, user }) => {
   const rawEnvApi =
     typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE
       ? import.meta.env.VITE_API_BASE
-      : process?.env?.REACT_APP_API_BASE || "";
+      : globalThis?.process?.env?.REACT_APP_API_BASE || "";
 
   const apiBase = rawEnvApi && rawEnvApi.trim() ? rawEnvApi.replace(/\/+$/, "") : "";
 
@@ -86,10 +86,10 @@ const ChatBot = ({ open, onClose, onEscalate, user }) => {
         try {
           const json = await res.json();
           body = json?.error || json?.message || JSON.stringify(json);
-        } catch (e) {
+        } catch {
           try {
             body = await res.text();
-          } catch (e2) {
+          } catch {
             body = "(no body)";
           }
         }
@@ -110,7 +110,7 @@ const ChatBot = ({ open, onClose, onEscalate, user }) => {
       let data;
       try {
         data = await res.json();
-      } catch (e) {
+      } catch {
         const txt = await res.text().catch(() => "");
         data = { answer: txt };
       }

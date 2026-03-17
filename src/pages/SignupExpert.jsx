@@ -143,7 +143,6 @@ const SignupExpert = () => {
       <header>
         <div className="container header-inner">
           <div className="logo" onClick={() => navigate('/')}>
-            <div className="mark">🥜</div>
             <div className="txt">
               Solve<span className="nut">nut</span>
             </div>

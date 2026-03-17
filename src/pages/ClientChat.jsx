@@ -1,21 +1,17 @@
-// src/pages/ClientChat.jsx
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import '../styles/ClientChat.css';
+import VideoCall from '../components/VideoCall';
 
-// ✅ STEP 1 — API base from .env (same folder as package.json, restart dev server)
 const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
 const ClientChat = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ===== URL & AUTH STATE =====
   const searchParams = new URLSearchParams(location.search);
   const expertEmailFromQuery = searchParams.get('email');
-
-  // if you navigated with state from Experts.jsx:
   const locationState = location.state || {};
   const expertEmail = locationState.expertEmail || expertEmailFromQuery;
 
@@ -30,7 +26,6 @@ const ClientChat = () => {
   const token =
     typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  // ===== STATE =====
   const [expert, setExpert] = useState({
     name: 'Expert',
     field: 'General expert',
@@ -43,13 +38,14 @@ const ClientChat = () => {
 
   const [roomId, setRoomId] = useState(null);
   const [socketInstance, setSocketInstance] = useState(null);
-  const [messages, setMessages] = useState([]); // {author, message, createdAt, _id?}
+  const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [inputValue, setInputValue] = useState('');
   const [selectedImageDataUrl, setSelectedImageDataUrl] = useState('');
   const [selectedImageName, setSelectedImageName] = useState('');
   const [typingVisible, setTypingVisible] = useState(false);
   const [toast, setToast] = useState({ visible: false, text: '', error: false });
+  const [imageViewer, setImageViewer] = useState({ open: false, src: '', alt: '' });
   const [myRating, setMyRating] = useState(0);
   const [myReview, setMyReview] = useState('');
   const [savingRating, setSavingRating] = useState(false);
@@ -67,7 +63,6 @@ const ClientChat = () => {
   const chatMessagesRef = useRef(null);
   const chatFileInputRef = useRef(null);
 
-  // ===== AUTH GUARD =====
   useEffect(() => {
     if (!token || !clientEmail) {
       window.alert('Please login to chat with an expert');
@@ -75,7 +70,6 @@ const ClientChat = () => {
     }
   }, [token, clientEmail, navigate]);
 
-  // ===== UTILITIES =====
   const escapeHtml = text => {
     const div = document.createElement('div');
     div.textContent = text || '';
@@ -86,6 +80,18 @@ const ClientChat = () => {
     if (!ts) return '';
     const d = new Date(ts);
     return d.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatAccessTime = ts => {
+    if (!ts) return 'Flexible access';
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return 'Flexible access';
+    return d.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -105,7 +111,6 @@ const ClientChat = () => {
     }, 2600);
   };
 
-  // Small helper for avatar URLs (backend domain + path)
   const buildAvatarUrl = avatarPath => {
     if (!avatarPath) return null;
     if (avatarPath.startsWith('data:') || avatarPath.startsWith('blob:')) {
@@ -114,11 +119,9 @@ const ClientChat = () => {
     if (avatarPath.startsWith('http://') || avatarPath.startsWith('https://')) {
       return avatarPath;
     }
-    // normalize leading slash then prefix with API
     return `${API}/${avatarPath.replace(/^\/+/, '')}`;
   };
 
-  // ===== LOAD EXPERT =====
   const loadExpert = useCallback(async () => {
     if (!expertEmail) {
       window.alert('No expert selected');
@@ -168,7 +171,7 @@ const ClientChat = () => {
 
   const loadChatAccess = useCallback(async () => {
     if (!token || !expertEmail) return;
-    setChatAccess((p) => ({ ...p, checking: true }));
+    setChatAccess(prev => ({ ...prev, checking: true }));
     try {
       const res = await fetch(
         `${API}/api/check-payment?expertEmail=${encodeURIComponent(expertEmail)}`,
@@ -194,13 +197,10 @@ const ClientChat = () => {
     }
   }, [expertEmail, token]);
 
-  // ===== LOAD CHAT HISTORY =====
   const loadChatHistory = useCallback(async rid => {
     setLoadingMessages(true);
     try {
-      const res = await fetch(
-        `${API}/api/messages?room=${encodeURIComponent(rid)}`,
-      );
+      const res = await fetch(`${API}/api/messages?room=${encodeURIComponent(rid)}`);
       if (!res.ok) throw new Error('history_fetch_failed');
       const msgs = await res.json();
       const setIds = new Set();
@@ -229,30 +229,35 @@ const ClientChat = () => {
     }
   }, []);
 
-  // ===== SOCKET SETUP =====
   useEffect(() => {
     if (!expertEmail || !clientEmail) return;
     if (!API) return;
 
-    const rid = [clientEmail, expertEmail].sort().join('_');
+    const rid = [clientEmail, expertEmail]
+      .map(value => String(value || '').trim().toLowerCase())
+      .filter(Boolean)
+      .sort()
+      .join('_');
     setRoomId(rid);
 
-    // ✅ connect socket to backend origin, not same-origin
     const s = io(API, {
+      auth: token ? { token } : undefined,
       transports: ['websocket'],
     });
 
     s.on('connect', () => {
+      if (token) {
+        s.emit('authenticate', { token });
+      }
       s.emit('join_private', rid);
       s.emit('user_online', {
-        email: clientEmail,
+        email: String(clientEmail || '').toLowerCase(),
         name: clientName,
         role: 'client',
       });
     });
 
     s.on('receive_message', data => {
-      // ignore echo of own message
       if (data.author === clientEmail) return;
 
       const id =
@@ -297,9 +302,8 @@ const ClientChat = () => {
     return () => {
       s.disconnect();
     };
-  }, [expertEmail, clientEmail, clientName, loadChatHistory]);
+  }, [expertEmail, clientEmail, clientName, loadChatHistory, token]);
 
-  // ===== SEND MESSAGE =====
   const handleSend = () => {
     if (!socketInstance || !roomId) return;
     if (!chatAccess.allowed) {
@@ -324,11 +328,10 @@ const ClientChat = () => {
       createdAt: new Date().toISOString(),
     };
 
-    // Add locally
     setMessages(prev => [...prev, localMsg]);
     setTimeout(scrollToBottom, 20);
 
-    const payload = {
+    socketInstance.emit('send_private_message', {
       room: roomId,
       author: clientEmail,
       authorRole: 'client',
@@ -336,9 +339,7 @@ const ClientChat = () => {
       messageType: hasImage ? 'image' : 'text',
       imageUrl: hasImage ? selectedImageDataUrl : '',
       imageName: hasImage ? selectedImageName : '',
-    };
-
-    socketInstance.emit('send_private_message', payload);
+    });
     socketInstance.emit('stop_typing', { room: roomId });
 
     setInputValue('');
@@ -347,7 +348,7 @@ const ClientChat = () => {
     if (chatFileInputRef.current) chatFileInputRef.current.value = '';
   };
 
-  const handlePickImage = (ev) => {
+  const handlePickImage = ev => {
     const file = ev.target.files?.[0];
     if (!file) return;
     if (!file.type?.startsWith('image/')) {
@@ -380,14 +381,6 @@ const ClientChat = () => {
     }
   };
 
-  const quickPrompts = [
-    'Can you review my current situation and suggest next steps?',
-    'What should I prioritize in the next 30 days?',
-    'Can you give me a simple plan with milestones?',
-    'What are the risks I should avoid right now?',
-  ];
-
-  // ===== TYPING =====
   const handleTyping = () => {
     if (!socketInstance || !roomId) return;
     if (!isTypingRef.current) {
@@ -407,7 +400,6 @@ const ClientChat = () => {
     }, 900);
   };
 
-  // ===== EFFECT: LOAD EXPERT ON MOUNT =====
   useEffect(() => {
     loadExpert();
   }, [loadExpert]);
@@ -422,9 +414,9 @@ const ClientChat = () => {
 
   useEffect(() => {
     if (!socketInstance) return;
-    const onDenied = (data) => {
-      setChatAccess((p) => ({
-        ...p,
+    const onDenied = data => {
+      setChatAccess(prev => ({
+        ...prev,
         allowed: false,
         reason: String(data?.reason || 'access_denied'),
       }));
@@ -468,42 +460,38 @@ const ClientChat = () => {
     }
   };
 
-  // ===== RENDER =====
-  const avatarInitial =
-    (expert.name || 'E').trim()[0]?.toUpperCase() || 'E';
+  const avatarInitial = (expert.name || 'E').trim()[0]?.toUpperCase() || 'E';
   const expertAvatarSrc = buildAvatarUrl(expert.avatar);
 
   return (
     <div className="client-chat-page">
-      {/* Toast */}
       {toast.visible && (
         <div className={`toast ${toast.error ? 'error' : ''}`}>
           {toast.text}
         </div>
       )}
 
-      {/* HEADER */}
-      <header>
+      <header className="chat-topbar">
         <div className="shell header-inner">
-          <div
-            className="brand-row"
-            onClick={() => navigate('/experts')}
-          >
-            <div className="brand-logo">🥜</div>
+          <div className="brand-row" onClick={() => navigate('/experts')}>
             <div>
               <div className="brand-text">
                 Solve<span>nut</span>
               </div>
-              <div className="chat-sub">
-                Live 1‑to‑1 with verified experts
+              <div className="brand-subtext">
+                Private guidance room with a verified expert
               </div>
             </div>
           </div>
 
           <div className="header-meta">
-            <div className="pill online-dot">
+            <div className="pill secure-pill">
               <span className="dot" />
-              <span>Secure private room</span>
+              <span>Encrypted session</span>
+            </div>
+            <div className="pill subtle-pill">
+              <i className="fa-regular fa-clock" />
+              <span>{chatAccess.allowed && chatAccess.hoursLeft ? `${chatAccess.hoursLeft}h left` : 'Live support'}</span>
             </div>
           </div>
 
@@ -512,92 +500,111 @@ const ClientChat = () => {
               <div className="user-avatar-small">
                 {clientName[0]?.toUpperCase() || 'U'}
               </div>
-              <span>{clientName}</span>
+              <div className="user-tag-copy">
+                <span className="user-tag-label">Client</span>
+                <span className="user-tag-name">{clientName}</span>
+              </div>
             </div>
-            <button
-              className="back-btn"
-              onClick={() => navigate('/experts')}
-            >
+            <button className="back-btn" onClick={() => navigate('/experts')}>
               <i className="fa-solid fa-arrow-left" />
-              Back
+              Experts
             </button>
           </div>
         </div>
       </header>
 
-      {/* MAIN */}
       <main>
         <div className="shell">
           <div className="chat-layout">
-            {/* Expert sidebar */}
             <aside className="expert-card">
-              <div className="expert-avatar-wrap">
-                {expertAvatarSrc ? (
-                  <img
-                    src={expertAvatarSrc}
-                    alt={expert.name || 'Expert'}
-                    className="expert-avatar"
-                    onError={e => {
-                      e.target.style.display = 'none';
-                      const sib = e.target.nextElementSibling;
-                      if (sib) sib.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
-                <div
-                  className="avatar-fallback"
-                  style={{
-                    display: expertAvatarSrc ? 'none' : 'flex',
-                  }}
-                >
-                  {avatarInitial}
+              <div className="expert-card-head">
+                <div className="expert-card-kicker">About Expert</div>
+                <div className="expert-card-window">
+                  {chatAccess.allowed ? formatAccessTime(chatAccess.accessUntil) : 'Locked'}
                 </div>
               </div>
+              <div className="expert-card-top">
+                <button
+                  type="button"
+                  className="expert-avatar-wrap"
+                  onClick={() => {
+                    if (!expertAvatarSrc) return;
+                    setImageViewer({
+                      open: true,
+                      src: expertAvatarSrc,
+                      alt: expert.name || 'Expert',
+                    });
+                  }}
+                  aria-label={expertAvatarSrc ? 'View expert photo' : 'Expert avatar'}
+                >
+                  {expertAvatarSrc ? (
+                    <img
+                      src={expertAvatarSrc}
+                      alt={expert.name || 'Expert'}
+                      className="expert-avatar"
+                      onError={e => {
+                        e.target.style.display = 'none';
+                        const sibling = e.target.nextElementSibling;
+                        if (sibling) sibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="avatar-fallback"
+                    style={{ display: expertAvatarSrc ? 'none' : 'flex' }}
+                  >
+                    {avatarInitial}
+                  </div>
+                  {expertAvatarSrc ? (
+                    <span className="expert-avatar-hint">
+                      <i className="fa-solid fa-expand" />
+                      View photo
+                    </span>
+                  ) : null}
+                </button>
 
-              <div className="expert-name">{expert.name}</div>
-              <div className="expert-field">
-                {expert.field || 'Expert'}
-              </div>
-              <div className="expert-rating-line">
-                <i className="fa-solid fa-star" />
-                <span>{expert.avgRating ? expert.avgRating.toFixed(1) : 'New'} ({expert.ratingsCount || 0})</span>
+                <div className="expert-badge-row">
+                  <span className="expert-badge primary">Verified expert</span>
+                  <span className="expert-badge neutral">{expert.experience || 0}+ yrs</span>
+                </div>
+                <div className="expert-name">{expert.name}</div>
+                <div className="expert-field">{expert.field || 'Expert'}</div>
+                <div className="expert-rating-line">
+                  <i className="fa-solid fa-star" />
+                  <span>{expert.avgRating ? expert.avgRating.toFixed(1) : 'New'} ({expert.ratingsCount || 0})</span>
+                </div>
               </div>
 
               <div className="expert-info">
                 <div className="info-row">
                   <i className="fa-solid fa-briefcase" />
-                  <span>
-                    <span>{expert.experience}</span>+ years
-                    experience
-                  </span>
+                  <span>{expert.experience}+ years experience</span>
                 </div>
                 <div className="info-row">
                   <i className="fa-solid fa-envelope" />
-                  <span style={{ fontSize: 11 }}>
-                    {expert.email}
-                  </span>
+                  <span className="expert-email">{expert.email}</span>
                 </div>
                 <div className="info-row">
-                  <i
-                    className="fa-solid fa-circle-check"
-                    style={{ color: 'var(--success)' }}
-                  />
-                  <span>Verified SolutionHub expert</span>
+                  <i className="fa-solid fa-circle-check" />
+                  <span>Matched for private structured guidance</span>
                 </div>
               </div>
 
-              <div className="launch-box">
-                <strong>Launch offer</strong>
+              <div className="expert-note expert-note-highlight">
+                <strong>Best way to use this chat</strong>
                 <span>
-                  Free or discounted sessions while the
-                  network is in early access.
+                  Share your situation clearly, ask one topic at a time, and keep each message focused
+                  on one decision or blocker.
                 </span>
               </div>
 
               <div className="rate-box">
-                <strong>Rate this expert</strong>
+                <div className="rate-box-head">
+                  <strong>Rate this expert</strong>
+                  <span>Help improve future matching</span>
+                </div>
                 <div className="rate-stars">
-                  {[1, 2, 3, 4, 5].map((v) => (
+                  {[1, 2, 3, 4, 5].map(v => (
                     <button
                       key={v}
                       type="button"
@@ -611,11 +618,11 @@ const ClientChat = () => {
                 </div>
                 <textarea
                   className="rate-review"
-                  rows={2}
+                  rows={3}
                   maxLength={500}
-                  placeholder="Optional review..."
+                  placeholder="Share a quick review if you want..."
                   value={myReview}
-                  onChange={(e) => setMyReview(e.target.value)}
+                  onChange={e => setMyReview(e.target.value)}
                 />
                 <button className="rate-submit" type="button" onClick={submitRating} disabled={savingRating}>
                   {savingRating ? 'Saving...' : 'Submit rating'}
@@ -623,142 +630,116 @@ const ClientChat = () => {
               </div>
             </aside>
 
-            {/* Chat section */}
             <section className="chat-section">
-              <div className="chat-header">
-                <div>
-                  <div className="chat-title">
-                    <i className="fa-solid fa-comments" />
-                    <span>Live chat</span>
-                  </div>
-                  <div className="chat-sub">
-                    Ask, clarify, share screenshots, and get direct guidance.
-                  </div>
-                </div>
-                <div className="chat-status">
-                  <div className="status-dot" />
-                  <span>Connected</span>
-                </div>
-              </div>
-
-              <div className={`chat-access-banner ${chatAccess.allowed ? 'ok' : 'locked'}`}>
-                {chatAccess.checking ? (
-                  <span>Checking chat access...</span>
-                ) : chatAccess.allowed ? (
-                  <span>
-                    {chatAccess.reason === 'awaiting_first_expert_reply'
-                      ? 'Chat unlocked after payment. 24-hour timer starts after expert first reply.'
-                      : `Chat unlocked${chatAccess.hoursLeft ? ` · ${chatAccess.hoursLeft}h left` : ''}`}
-                  </span>
-                ) : (
-                  <span>
-                    {chatAccess.reason === 'window_expired'
-                      ? '24-hour chat window expired. Please pay again to continue.'
-                      : 'Chat locked. Complete payment to start chat.'}
-                  </span>
-                )}
-              </div>
-
               <div className="chat-box">
-                <div
-                  className="chat-messages"
-                  ref={chatMessagesRef}
-                >
+                <div className="chat-top-stack">
+                  <VideoCall
+                    socket={socketInstance}
+                    roomId={roomId}
+                    currentUserEmail={clientEmail || ''}
+                    currentUserName={clientName}
+                    peerLabel={expert.name || 'Expert'}
+                    enabled={Boolean(chatAccess.allowed)}
+                    compact
+                  />
+                  <div className="chat-thread-head">
+                    <div>
+                      <strong>{typingVisible ? 'Expert is typing...' : expert.name || 'Expert'}</strong>
+                      <span>
+                        {chatAccess.allowed
+                          ? 'Private room active'
+                          : chatAccess.reason === 'window_expired'
+                            ? 'Chat window expired'
+                            : 'Payment required to chat'}
+                      </span>
+                    </div>
+                    <button type="button" className="chat-jump-btn" onClick={scrollToBottom}>
+                      Latest
+                    </button>
+                  </div>
+                </div>
+                <div className="chat-messages" ref={chatMessagesRef}>
                   {loadingMessages ? (
                     <div className="loading-messages">
                       <i className="fa-solid fa-spinner fa-spin" />
-                      Loading previous messages…
+                      Loading previous messages...
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="empty-state">
                       <i className="fa-solid fa-comments" />
-                      <h4 style={{ marginBottom: 4 }}>
-                        Start the conversation
-                      </h4>
-                      <p>
-                        Send your first message to this
-                        expert.
-                      </p>
+                      <h4>Start the conversation</h4>
+                      <p>Send your first message to this expert.</p>
                     </div>
                   ) : (
                     <>
                       {messages.map((msg, idx) => {
                         if (msg.author === 'system') {
                           return (
-                            <div
-                              key={msg._id || idx}
-                              className="empty-state"
-                            >
+                            <div key={msg._id || idx} className="empty-state">
                               <i className="fa-solid fa-triangle-exclamation" />
-                              <h4
-                                style={{
-                                  marginBottom: 4,
-                                }}
-                              >
-                                Could not load messages
-                              </h4>
-                              <p>
-                                You can still start a new
-                                chat below.
-                              </p>
+                              <h4>Could not load messages</h4>
+                              <p>You can still start a new chat below.</p>
                             </div>
                           );
                         }
 
-                        const isMe =
-                          msg.author === clientEmail;
-                        const senderName = isMe
-                          ? 'You'
-                          : expert.name || 'Expert';
+                        const isMe = msg.author === clientEmail;
+                        const senderName = isMe ? 'You' : expert.name || 'Expert';
 
                         return (
                           <div
                             key={msg._id || idx}
-                            className={
-                              'message ' + (isMe ? 'me' : 'other')
-                            }
+                            className={`message-row ${isMe ? 'me' : 'other'}`}
                           >
-                            <div className="message-sender">
-                              {senderName}
+                            <div className="message-avatar">
+                              {isMe ? (clientName[0]?.toUpperCase() || 'Y') : avatarInitial}
                             </div>
-                            {msg.messageType === 'image' && msg.imageUrl ? (
-                              <div className="chat-image-wrap">
-                                <img
-                                  src={msg.imageUrl}
-                                  alt={msg.imageName || 'Chat image'}
-                                  className="chat-message-image"
-                                />
-                                {msg.message ? (
-                                  <div
-                                    dangerouslySetInnerHTML={{
-                                      __html: escapeHtml(msg.message || ''),
-                                    }}
-                                  />
-                                ) : null}
+                            <div className={`message ${isMe ? 'me' : 'other'}`}>
+                              <div className="message-meta">
+                                <div className="message-sender">{senderName}</div>
+                                <div className="message-time">{formatTime(msg.createdAt)}</div>
                               </div>
-                            ) : (
-                              <div
-                                dangerouslySetInnerHTML={{
-                                  __html: escapeHtml(
-                                    msg.message || '',
-                                  ),
-                                }}
-                              />
-                            )}
-                            <div className="message-time">
-                              {formatTime(msg.createdAt)}
+                              {msg.messageType === 'image' && msg.imageUrl ? (
+                                <div className="chat-image-wrap">
+                                  <img
+                                    src={msg.imageUrl}
+                                    alt={msg.imageName || 'Chat image'}
+                                    className="chat-message-image"
+                                    onClick={() =>
+                                      setImageViewer({
+                                        open: true,
+                                        src: msg.imageUrl,
+                                        alt: msg.imageName || 'Chat image',
+                                      })
+                                    }
+                                  />
+                                  {msg.message ? (
+                                    <div
+                                      className="message-body"
+                                      dangerouslySetInnerHTML={{
+                                        __html: escapeHtml(msg.message || ''),
+                                      }}
+                                    />
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <div
+                                  className="message-body"
+                                  dangerouslySetInnerHTML={{
+                                    __html: escapeHtml(msg.message || ''),
+                                  }}
+                                />
+                              )}
                             </div>
                           </div>
                         );
                       })}
                       {typingVisible && (
-                        <div
-                          id="typingIndicator"
-                          className="typing-indicator"
-                        >
+                        <div className="typing-indicator">
                           <div className="typing-dot" />
                           <div className="typing-dot" />
                           <div className="typing-dot" />
+                          <span>Expert is typing...</span>
                         </div>
                       )}
                     </>
@@ -773,18 +754,7 @@ const ClientChat = () => {
                     className="chat-file-input"
                     onChange={handlePickImage}
                   />
-                  <div className="quick-prompts">
-                    {quickPrompts.map((q, i) => (
-                      <button
-                        key={i}
-                        className="quick-prompt-btn"
-                        onClick={() => setInputValue(q)}
-                        type="button"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
+
                   {selectedImageDataUrl ? (
                     <div className="chat-image-preview">
                       <img src={selectedImageDataUrl} alt={selectedImageName || 'Attachment'} />
@@ -802,32 +772,36 @@ const ClientChat = () => {
                       </button>
                     </div>
                   ) : null}
-                  <button
-                    className="attach-btn"
-                    type="button"
-                    onClick={() => chatFileInputRef.current?.click()}
-                  >
-                    <i className="fa-solid fa-paperclip" />
-                    Image
-                  </button>
-                  <input
-                    type="text"
-                    placeholder="Type your message and press Enter…"
-                    value={inputValue}
-                    onChange={e =>
-                      setInputValue(e.target.value)
-                    }
-                    onKeyDown={handleKeyPress}
-                    onInput={handleTyping}
-                  />
-                  <button
-                    className="send-btn"
-                    onClick={handleSend}
-                    disabled={(!inputValue.trim() && !selectedImageDataUrl) || !chatAccess.allowed}
-                  >
-                    <i className="fa-solid fa-paper-plane" />
-                    Send
-                  </button>
+
+                  <div className="composer-row">
+                    <button
+                      className="attach-btn"
+                      type="button"
+                      onClick={() => chatFileInputRef.current?.click()}
+                    >
+                      <i className="fa-solid fa-paperclip" />
+                      <span>Image</span>
+                    </button>
+                    <input
+                      type="text"
+                      placeholder="Type your message..."
+                      value={inputValue}
+                      onChange={e => setInputValue(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      onInput={handleTyping}
+                    />
+                    <button
+                      className="send-btn"
+                      onClick={handleSend}
+                      disabled={(!inputValue.trim() && !selectedImageDataUrl) || !chatAccess.allowed}
+                    >
+                      <i className="fa-solid fa-paper-plane" />
+                      <span>Send</span>
+                    </button>
+                  </div>
+                  <div className="composer-note">
+                    Press `Enter` to send. Use one message for one question or update.
+                  </div>
                 </div>
               </div>
             </section>
@@ -835,25 +809,48 @@ const ClientChat = () => {
         </div>
       </main>
 
-      {/* FOOTER */}
-      <footer>
+      <footer className="chat-footer">
         <div className="footer-row">
-          <span>
-            © 2026 SolutionHub. Human experts + smart tools, for
-            real‑world problems.
-          </span>
+          <span>© 2026 Solvenut. Guided conversations for real-world decisions.</span>
           <span>
             <i
               className="fa-solid fa-shield-halved"
               style={{
-                marginRight: 4,
+                marginRight: 6,
                 color: 'var(--success)',
               }}
             />
-            Private, encrypted room between you and your expert.
+            Private room between you and your expert.
           </span>
         </div>
       </footer>
+
+      {imageViewer.open ? (
+        <div
+          className="image-viewer-overlay"
+          onClick={() => setImageViewer({ open: false, src: '', alt: '' })}
+        >
+          <div className="image-viewer-dialog" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              className="image-viewer-close"
+              onClick={() => setImageViewer({ open: false, src: '', alt: '' })}
+              aria-label="Close image viewer"
+            >
+              <i className="fa-solid fa-xmark" />
+            </button>
+            <img
+              src={imageViewer.src}
+              alt={imageViewer.alt}
+              className="image-viewer-image"
+            />
+            <div className="image-viewer-caption">
+              <strong>{expert.name || 'Expert'}</strong>
+              <span>{expert.field || 'Verified expert'}</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

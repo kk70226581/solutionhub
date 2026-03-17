@@ -2010,14 +2010,81 @@ app.post("/api/ai/ask", async (req, res) => {
    SOCKET.IO - LIVE CHAT
 ============================================================ */
 io.on("connection", (socket) => {
+  socket.data.user = null;
+  socket.data.callRooms = new Set();
+
+  const getSocketIdentity = () => {
+    if (socket.data.user?.email) return socket.data.user;
+
+    const senderEntry = Object.entries(onlineUsers).find(
+      ([, info]) => info.socketId === socket.id
+    );
+
+    return {
+      email: String(senderEntry?.[0] || "").toLowerCase(),
+      role: String(senderEntry?.[1]?.role || "").toLowerCase(),
+      name: String(senderEntry?.[1]?.name || "").trim(),
+    };
+  };
+
+  const parseRoomEmails = (roomRaw) =>
+    String(roomRaw || "")
+      .split("_")
+      .map((email) => String(email || "").toLowerCase())
+      .filter(Boolean);
+
+  const normalizePrivateRoom = (roomRaw) =>
+    parseRoomEmails(roomRaw)
+      .sort()
+      .join("_");
+
+  const validatePrivateRoomAccess = async (roomRaw) => {
+    const identity = getSocketIdentity();
+    const room = normalizePrivateRoom(roomRaw);
+    const emails = parseRoomEmails(room);
+
+    if (!identity?.email || !identity?.role) {
+      return { ok: false, code: "unauthenticated", message: "Authenticate first" };
+    }
+
+    if (!room || emails.length !== 2 || !emails.includes(identity.email)) {
+      return { ok: false, code: "invalid_room", message: "Invalid private room" };
+    }
+
+    const otherEmail = emails.find((email) => email !== identity.email) || "";
+    const expertEmail = identity.role === "expert" ? identity.email : otherEmail;
+    const clientEmail = identity.role === "client" ? identity.email : otherEmail;
+
+    if (!clientEmail || !expertEmail) {
+      return { ok: false, code: "invalid_room", message: "Invalid room participants" };
+    }
+
+    if (identity.role === "client") {
+      const access = await getClientExpertChatAccess(clientEmail, expertEmail);
+      if (!access.hasAccess) {
+        return {
+          ok: false,
+          code: access.reason || "payment_required",
+          message:
+            access.reason === "window_expired"
+              ? "Your 24-hour call window has expired."
+              : "Payment verification is required for calls.",
+        };
+      }
+    }
+
+    return { ok: true, room, identity };
+  };
   console.log("🔌 Socket connected:", socket.id);
 
   socket.on("authenticate", async ({ token }) => {
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      const { email, role, name } = decoded;
+      const email = String(decoded.email || "").toLowerCase();
+      const role = String(decoded.role || "").toLowerCase();
+      const name = String(decoded.name || email.split("@")[0] || "").trim();
 
-      const expert = await Expert.findOne({ email: email.toLowerCase() });
+      const expert = await Expert.findOne({ email });
       if (role === "expert" && (!expert || expert.status !== "approved")) {
         socket.emit("auth_error", "Expert not approved yet");
         return;
@@ -2025,12 +2092,14 @@ io.on("connection", (socket) => {
 
       onlineUsers[email] = {
         socketId: socket.id,
-        name: name || email.split("@")[0],
+        name,
         role,
         field: expert?.field,
         status: expert?.status || "client",
         connectedAt: new Date(),
       };
+
+      socket.data.user = { email, role, name };
 
       console.log("✅ User authenticated:", email, role);
       socket.emit("auth_success", { email, role });
@@ -2042,11 +2111,20 @@ io.on("connection", (socket) => {
   });
 
   socket.on("user_online", ({ email, name, role }) => {
-    onlineUsers[email] = {
+    const normalizedEmail = String(email || "").toLowerCase();
+    const normalizedRole = String(role || "").toLowerCase();
+    const normalizedName = String(name || normalizedEmail.split("@")[0] || "").trim();
+
+    onlineUsers[normalizedEmail] = {
       socketId: socket.id,
-      name,
-      role,
+      name: normalizedName,
+      role: normalizedRole,
       connectedAt: new Date(),
+    };
+    socket.data.user = {
+      email: normalizedEmail,
+      role: normalizedRole,
+      name: normalizedName,
     };
     io.emit("online_users", onlineUsers);
   });
@@ -2134,7 +2212,120 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("join-room", async ({ room }) => {
+    try {
+      const access = await validatePrivateRoomAccess(room);
+      if (!access.ok) {
+        socket.emit("call_access_denied", {
+          room,
+          reason: access.code,
+          message: access.message,
+        });
+        return;
+      }
+
+      socket.join(access.room);
+      socket.data.callRooms.add(access.room);
+      socket.emit("room_joined", { room: access.room });
+    } catch (err) {
+      console.error("âŒ join-room failed:", err);
+      socket.emit("call_access_denied", {
+        room,
+        reason: "server_error",
+        message: "Could not join the call room.",
+      });
+    }
+  });
+
+  socket.on("offer", async ({ room, offer }) => {
+    try {
+      const access = await validatePrivateRoomAccess(room);
+      if (!access.ok) {
+        socket.emit("call_access_denied", {
+          room,
+          reason: access.code,
+          message: access.message,
+        });
+        return;
+      }
+
+      socket.to(access.room).emit("offer", {
+        room: access.room,
+        offer,
+        from: access.identity.email,
+      });
+    } catch (err) {
+      console.error("âŒ offer relay failed:", err);
+    }
+  });
+
+  socket.on("answer", async ({ room, answer }) => {
+    try {
+      const access = await validatePrivateRoomAccess(room);
+      if (!access.ok) {
+        socket.emit("call_access_denied", {
+          room,
+          reason: access.code,
+          message: access.message,
+        });
+        return;
+      }
+
+      socket.to(access.room).emit("answer", {
+        room: access.room,
+        answer,
+        from: access.identity.email,
+      });
+    } catch (err) {
+      console.error("âŒ answer relay failed:", err);
+    }
+  });
+
+  socket.on("ice-candidate", async ({ room, candidate }) => {
+    try {
+      const access = await validatePrivateRoomAccess(room);
+      if (!access.ok) {
+        socket.emit("call_access_denied", {
+          room,
+          reason: access.code,
+          message: access.message,
+        });
+        return;
+      }
+
+      socket.to(access.room).emit("ice-candidate", {
+        room: access.room,
+        candidate,
+        from: access.identity.email,
+      });
+    } catch (err) {
+      console.error("âŒ ICE relay failed:", err);
+    }
+  });
+
+  socket.on("call-ended", async ({ room }) => {
+    try {
+      const access = await validatePrivateRoomAccess(room);
+      if (!access.ok) return;
+      socket.to(access.room).emit("call-ended", {
+        room: access.room,
+        from: access.identity.email,
+      });
+    } catch (err) {
+      console.error("âŒ call-ended relay failed:", err);
+    }
+  });
+
   socket.on("disconnect", () => {
+    if (socket.data.callRooms?.size) {
+      for (const room of socket.data.callRooms) {
+        socket.to(room).emit("peer-disconnected", {
+          room,
+          socketId: socket.id,
+        });
+      }
+    }
+
     for (const email in onlineUsers) {
       if (onlineUsers[email].socketId === socket.id) {
         delete onlineUsers[email];

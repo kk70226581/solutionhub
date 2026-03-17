@@ -8,6 +8,7 @@ import {
   XCircle, Calendar, Award, ArrowRight, Zap, Mail, MapPin, ArrowUp, ArrowDown, House, Send, Paperclip, X,
 } from 'lucide-react';
 import '../styles/ExpertDashboard.css';
+import VideoCall from '../components/VideoCall';
 
 const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
@@ -269,6 +270,8 @@ const ExpertDashboard = () => {
   const [chatImageDataUrl, setChatImageDataUrl] = useState('');
   const [chatImageName, setChatImageName] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
+  const [liveSocket, setLiveSocket] = useState(null);
+  const [chatImageViewer, setChatImageViewer] = useState({ open: false, src: '', alt: '' });
   const socketRef = useRef(null);
   const activeRoomRef = useRef('');
   const msgsEndRef = useRef(null);
@@ -353,6 +356,7 @@ const ExpertDashboard = () => {
     if (!token) return;
     const s = io(API, { auth: { token }, transports: ['websocket'] });
     socketRef.current = s;
+    setLiveSocket(s);
 
     s.on('connect', () => s.emit('authenticate', { token }));
     s.on('receive_message', (msg) => {
@@ -376,6 +380,7 @@ const ExpertDashboard = () => {
     });
 
     return () => {
+      setLiveSocket(null);
       try { s.disconnect(); } catch (err) { console.error(err); }
     };
   }, [token]);
@@ -698,6 +703,14 @@ const ExpertDashboard = () => {
 
   const usernameInitial = (computedProfile.name?.charAt(0) || 'E').toUpperCase();
   const avatarSrc = toAssetUrl(computedProfile.avatar);
+  const activeConversation = useMemo(
+    () => conversations.find((item) => item.room === activeRoom) || null,
+    [conversations, activeRoom]
+  );
+  const activeClientName = useMemo(
+    () => String(activeConversation?.otherEmail || 'Client').split('@')[0] || 'Client',
+    [activeConversation]
+  );
 
   const TABS = [
     { id: 'overview', label: 'Overview', icon: <BarChart3 size={15} /> },
@@ -724,7 +737,6 @@ const ExpertDashboard = () => {
       <header className={`ed-header ${headerScrolled ? 'ed-header--scrolled' : ''}`} role="banner">
         <div className="ed-shell ed-header-inner">
           <button className="ed-logo" onClick={() => go('/')} aria-label="Solvenut home">
-            <div className="ed-logo-mark" aria-hidden>🥜</div>
             <div className="ed-logo-info"><span className="ed-logo-name">Solve<span className="ed-logo-accent">nut</span></span><span className="ed-logo-sub">Expert workspace</span></div>
           </button>
 
@@ -916,6 +928,12 @@ const ExpertDashboard = () => {
               <div className="ed-section-head"><div className="ed-kicker">Client Chat</div><h2 className="ed-section-title">Private conversations</h2><p className="ed-section-sub">Select a client and continue the conversation.</p></div>
               <div className="ed-chat-grid">
                 <div className="ed-chat-list ed-card">
+                  <div className="ed-chat-list-head">
+                    <div>
+                      <strong>Inbox</strong>
+                      <span>{conversations.length} active conversation{conversations.length === 1 ? '' : 's'}</span>
+                    </div>
+                  </div>
                   {conversations.length === 0 ? (
                     <div className="ed-empty-state"><div className="ed-empty-icon">...</div><p>No conversations yet.</p></div>
                   ) : conversations.map((c) => {
@@ -924,7 +942,7 @@ const ExpertDashboard = () => {
                       <button key={c.room} className={`ed-chat-item ${activeRoom === c.room ? 'active' : ''}`} onClick={() => openConversation(c)}>
                         <div className="ed-chat-av">{who[0].toUpperCase()}</div>
                         <div className="ed-chat-meta"><div className="ed-chat-name">{who}</div><div className="ed-chat-prev">{c.lastMessage || 'Open chat'}</div></div>
-                        <div className="ed-chat-time">{formatRelative(c.lastMessageTime)}</div>
+                        <div className="ed-chat-side"><div className="ed-chat-time">{formatRelative(c.lastMessageTime)}</div><span className="ed-chat-open-tag">{activeRoom === c.room ? 'Open' : 'Chat'}</span></div>
                       </button>
                     );
                   })}
@@ -934,16 +952,48 @@ const ExpertDashboard = () => {
                     <div className="ed-empty-state"><div className="ed-empty-icon">...</div><p>Choose a conversation from the left.</p></div>
                   ) : (
                     <>
-                      <div className="ed-chat-head">Room: {activeRoom}</div>
+                      <div className="ed-chat-top-stack">
+                        <div className="ed-chat-head">
+                          <div className="ed-chat-head-main">
+                            <div className="ed-chat-head-avatar">{activeClientName[0]?.toUpperCase() || 'C'}</div>
+                            <div className="ed-chat-head-copy">
+                              <strong>{activeConversation?.otherEmail || 'Client'}</strong>
+                              <span>Private 1 to 1 chat • {chatMessages.length} message{chatMessages.length === 1 ? '' : 's'}</span>
+                            </div>
+                          </div>
+                          <button type="button" className="ed-chat-jump" onClick={() => msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' })}>
+                            Latest
+                          </button>
+                        </div>
+                        <VideoCall
+                          socket={liveSocket}
+                          roomId={activeRoom}
+                          currentUserEmail={email || ''}
+                          currentUserName={computedProfile.name || email || 'Expert'}
+                          peerLabel={activeConversation?.otherEmail || 'Client'}
+                          enabled={Boolean(activeRoom)}
+                          compact
+                        />
+                      </div>
                       <div className="ed-chat-msgs">
                         {loadingChat ? <div className="ed-chat-loading">Loading messages...</div> : chatMessages.map((m, i) => {
                           const mine = m.author === email;
                           return (
                             <div key={m._id || i} className={`ed-chat-msg ${mine ? 'mine' : ''}`}>
+                              <div className="ed-chat-msg-author">{mine ? 'You' : activeClientName}</div>
                               <div className="ed-chat-bub">
                                 {m.messageType === 'image' && m.imageUrl ? (
                                   <>
-                                    <img className="ed-chat-image" src={m.imageUrl} alt={m.imageName || 'Chat image'} />
+                                    <img
+                                      className="ed-chat-image"
+                                      src={m.imageUrl}
+                                      alt={m.imageName || 'Chat image'}
+                                      onClick={() => setChatImageViewer({
+                                        open: true,
+                                        src: m.imageUrl,
+                                        alt: m.imageName || 'Chat image',
+                                      })}
+                                    />
                                     {m.message ? <div className="ed-chat-image-caption">{m.message}</div> : null}
                                   </>
                                 ) : (
@@ -991,6 +1041,7 @@ const ExpertDashboard = () => {
                           }
                         }} />
                         <button className="ed-btn ed-btn-primary" onClick={sendChatMessage} disabled={!chatInput.trim() && !chatImageDataUrl}><Send size={14} />Send</button>
+                        <div className="ed-chat-compose-note">Press `Enter` to send. Use `Shift + Enter` for a new line.</div>
                       </div>
                     </>
                   )}
@@ -1044,6 +1095,19 @@ const ExpertDashboard = () => {
       </main>
 
       {editModalOpen && (<EditProfileModal profile={computedProfile} onSave={handleSaveProfile} onClose={() => setEditModalOpen(false)} saving={savingProfile} />)}
+      {chatImageViewer.open ? (
+        <div className="ed-modal-overlay" onClick={() => setChatImageViewer({ open: false, src: '', alt: '' })}>
+          <div className="ed-modal ed-chat-image-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ed-modal-head">
+              <h3>Shared image</h3>
+              <button className="ed-modal-close" onClick={() => setChatImageViewer({ open: false, src: '', alt: '' })}>x</button>
+            </div>
+            <div className="ed-modal-body">
+              <img className="ed-chat-image-modal-img" src={chatImageViewer.src} alt={chatImageViewer.alt} />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
