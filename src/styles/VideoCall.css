@@ -17,6 +17,7 @@
   max-height: none;
   border-radius: 0;
   padding: 20px;
+  background: radial-gradient(circle at top, rgba(17, 28, 54, 0.98), rgba(2, 6, 18, 1) 70%);
 }
 
 .vc-header {
@@ -75,6 +76,12 @@
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   background: rgba(3, 7, 18, 0.94);
+}
+
+.vc-panel-fullscreen .vc-video-card,
+.vc-panel:fullscreen .vc-video-card {
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
 }
 
 .vc-video-card-remote {
@@ -285,22 +292,43 @@
 
 .vc-panel:fullscreen .vc-grid-live,
 .vc-panel-fullscreen .vc-grid-live {
-  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 0.45fr);
+  grid-template-columns: 1fr;
   flex: 1;
+  min-height: calc(100vh - 188px);
+  position: relative;
 }
 
 .vc-panel:fullscreen .vc-video-card-remote,
 .vc-panel:fullscreen .vc-video-card-remote .vc-video,
 .vc-panel-fullscreen .vc-video-card-remote,
 .vc-panel-fullscreen .vc-video-card-remote .vc-video {
-  min-height: min(72vh, 860px);
+  min-height: calc(100vh - 188px);
+  border-radius: 24px;
 }
 
 .vc-panel:fullscreen .vc-video-card-local,
 .vc-panel:fullscreen .vc-video-card-local .vc-video,
 .vc-panel-fullscreen .vc-video-card-local,
 .vc-panel-fullscreen .vc-video-card-local .vc-video {
-  min-height: min(36vh, 340px);
+  min-height: 190px;
+}
+
+.vc-panel:fullscreen .vc-video-card-local,
+.vc-panel-fullscreen .vc-video-card-local {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  width: min(24vw, 320px);
+  min-width: 220px;
+  z-index: 3;
+  border-radius: 22px;
+  backdrop-filter: blur(10px);
+}
+
+.vc-panel:fullscreen .vc-video-label,
+.vc-panel-fullscreen .vc-video-label {
+  background: rgba(3, 7, 18, 0.82);
+  backdrop-filter: blur(10px);
 }
 
 @media (max-width: 800px) {
@@ -313,6 +341,7 @@
   .vc-panel:fullscreen .vc-grid-live,
   .vc-panel-fullscreen .vc-grid-live {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
 
   .vc-video-card,
@@ -328,6 +357,16 @@
   .vc-grid-live .vc-video-card-local,
   .vc-grid-live .vc-video-card-local .vc-video {
     min-height: 180px;
+  }
+
+  .vc-panel:fullscreen .vc-video-card-local,
+  .vc-panel-fullscreen .vc-video-card-local {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    min-width: 0;
+    z-index: auto;
   }
 
   .vc-incoming,

@@ -18,6 +18,22 @@ const RTC_CONFIG = {
   ],
 };
 
+const AUDIO_CONSTRAINTS = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  channelCount: { ideal: 1 },
+  sampleRate: { ideal: 48000 },
+  sampleSize: { ideal: 16 },
+};
+
+const VIDEO_CONSTRAINTS = {
+  width: { ideal: 1280, max: 1920 },
+  height: { ideal: 720, max: 1080 },
+  frameRate: { ideal: 30, max: 30 },
+  facingMode: 'user',
+};
+
 function normalizeRoomId(roomRaw) {
   return String(roomRaw || '')
     .split('_')
@@ -62,6 +78,33 @@ function getMediaErrorMessage(error) {
     default:
       return 'Could not access camera or microphone';
   }
+}
+
+async function tuneLocalStream(stream) {
+  if (!stream) return stream;
+
+  const [audioTrack] = stream.getAudioTracks();
+  const [videoTrack] = stream.getVideoTracks();
+
+  if (audioTrack) {
+    audioTrack.contentHint = 'speech';
+    try {
+      await audioTrack.applyConstraints(AUDIO_CONSTRAINTS);
+    } catch (err) {
+      console.warn('Could not apply enhanced audio constraints', err);
+    }
+  }
+
+  if (videoTrack) {
+    videoTrack.contentHint = 'motion';
+    try {
+      await videoTrack.applyConstraints(VIDEO_CONSTRAINTS);
+    } catch (err) {
+      console.warn('Could not apply enhanced video constraints', err);
+    }
+  }
+
+  return stream;
 }
 
 export default function VideoCall({
@@ -299,8 +342,8 @@ export default function VideoCall({
 
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
+        video: VIDEO_CONSTRAINTS,
+        audio: AUDIO_CONSTRAINTS,
       });
       setIsAudioOnly(false);
       setIsCameraOff(false);
@@ -317,13 +360,14 @@ export default function VideoCall({
 
       stream = await navigator.mediaDevices.getUserMedia({
         video: false,
-        audio: true,
+        audio: AUDIO_CONSTRAINTS,
       });
       setIsAudioOnly(true);
       setIsCameraOff(true);
       setCallError('Camera unavailable, continuing with audio only');
     }
 
+    await tuneLocalStream(stream);
     localStreamRef.current = stream;
     setIsMuted(false);
 
@@ -821,6 +865,7 @@ export default function VideoCall({
       ) : null}
 
       <div className="vc-footer">
+        <span>Audio cleanup: echo cancellation, noise suppression, auto gain</span>
         <span>STUN: Google public server</span>
         <span>{enabled ? 'Payment verified for room' : 'Call locked until access is verified'}</span>
         <span>{currentUserName || currentUserEmail}</span>
