@@ -1,6 +1,6 @@
 ﻿
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import {
   TrendingUp, Star, Clock, MessageCircle, Users, Briefcase,
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import '../styles/ExpertDashboard.css';
 import VideoCall from '../components/VideoCall';
+import { clearStoredIncomingCall, getStoredIncomingCall } from '../utils/incomingCallStorage';
 
 const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
@@ -226,6 +227,7 @@ function EditProfileModal({ profile, onSave, onClose, saving }) {
 
 const ExpertDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const token = localStorage.getItem('token');
   const email = localStorage.getItem('email');
@@ -272,12 +274,17 @@ const ExpertDashboard = () => {
   const [loadingChat, setLoadingChat] = useState(false);
   const [liveSocket, setLiveSocket] = useState(null);
   const [chatImageViewer, setChatImageViewer] = useState({ open: false, src: '', alt: '' });
-  const [incomingCall, setIncomingCall] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(() => getStoredIncomingCall());
+  const [typingUsers, setTypingUsers] = useState(new Set());
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const [clientOnlineStatus, setClientOnlineStatus] = useState({});
+  const [conversationSearch, setConversationSearch] = useState('');
   const socketRef = useRef(null);
   const activeRoomRef = useRef('');
   const conversationsRef = useRef([]);
   const msgsEndRef = useRef(null);
   const chatImageInputRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const [statsRef, statsInView] = useInView(0.25);
 
@@ -367,7 +374,16 @@ const ExpertDashboard = () => {
       });
     });
     s.on('receive_message', (msg) => {
-      if (!msg?.room || msg.room !== activeRoomRef.current) return;
+      if (!msg?.room || msg.room !== activeRoomRef.current) {
+        // Update unread count for messages from other rooms
+        if (msg?.room) {
+          setUnreadCounts((prev) => ({
+            ...prev,
+            [msg.room]: (prev[msg.room] || 0) + 1,
+          }));
+        }
+        return;
+      }
       // Ignore echo of own message because it is already added optimistically.
       if (msg.author === email) return;
       setChatMessages((prev) => {
@@ -384,6 +400,24 @@ const ExpertDashboard = () => {
         return [...prev, msg];
       });
       setTimeout(() => msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
+    });
+    s.on('typing', ({ room, user, isTyping }) => {
+      if (room !== activeRoomRef.current) return;
+      setTypingUsers((prev) => {
+        const next = new Set(prev);
+        if (isTyping) {
+          next.add(user);
+        } else {
+          next.delete(user);
+        }
+        return next;
+      });
+    });
+    s.on('user_online', ({ email: userEmail, online }) => {
+      setClientOnlineStatus((prev) => ({
+        ...prev,
+        [userEmail]: online,
+      }));
     });
     s.on('offer', ({ room, offer, from }) => {
       if (!room || !offer || String(from || '').toLowerCase() === String(email || '').toLowerCase()) return;
@@ -591,6 +625,13 @@ const ExpertDashboard = () => {
     setChatImageName('');
     if (chatImageInputRef.current) chatImageInputRef.current.value = '';
     setLoadingChat(true);
+    
+    // Clear unread count for this room
+    setUnreadCounts((prev) => ({
+      ...prev,
+      [c.room]: 0,
+    }));
+    
     try {
       const r = await fetch(`${API}/api/messages?room=${encodeURIComponent(c.room)}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -619,6 +660,12 @@ const ExpertDashboard = () => {
     setNotifOpen(false);
   }, [incomingCall, conversations, openConversation]);
 
+  useEffect(() => {
+    if (!location.state?.openIncomingCall || !incomingCall?.room || conversations.length === 0) return;
+    openIncomingCall();
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, incomingCall, conversations.length, openIncomingCall, navigate]);
+
   const sendChatMessage = useCallback(() => {
     const room = activeRoomRef.current || activeRoom;
     const txt = chatInput.trim();
@@ -634,12 +681,18 @@ const ExpertDashboard = () => {
       imageUrl: hasImage ? chatImageDataUrl : '',
       imageName: hasImage ? chatImageName : '',
       createdAt: new Date().toISOString(),
+      status: 'sending',
     };
     setChatMessages((prev) => [...prev, local]);
     setChatInput('');
     setChatImageDataUrl('');
     setChatImageName('');
     if (chatImageInputRef.current) chatImageInputRef.current.value = '';
+    
+    // Clear typing indicator
+    socketRef.current?.emit('typing', { room, user: email, isTyping: false });
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    
     socketRef.current?.emit('send_private_message', {
       room,
       author: email,
@@ -677,6 +730,57 @@ const ExpertDashboard = () => {
     };
     reader.readAsDataURL(file);
   }, []);
+
+  const handleChatInputChange = useCallback((value) => {
+    setChatInput(value);
+    const room = activeRoomRef.current || activeRoom;
+    if (!room || !email) return;
+
+    // Emit typing indicator
+    socketRef.current?.emit('typing', { room, user: email, isTyping: Boolean(value.trim()) });
+
+    // Clear previous timeout
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    // Set new timeout to clear typing after 2 seconds of inactivity
+    if (value.trim()) {
+      typingTimeoutRef.current = setTimeout(() => {
+        socketRef.current?.emit('typing', { room, user: email, isTyping: false });
+      }, 2000);
+    }
+  }, [activeRoom, email]);
+
+  const filteredConversations = useMemo(() => {
+    if (!conversationSearch.trim()) return conversations;
+    const q = conversationSearch.toLowerCase();
+    return conversations.filter((c) => {
+      const email = String(c.otherEmail || '').toLowerCase();
+      const message = String(c.lastMessage || '').toLowerCase();
+      return email.includes(q) || message.includes(q);
+    });
+  }, [conversations, conversationSearch]);
+
+  const groupedChatMessages = useMemo(() => {
+    const groups = [];
+    let currentGroup = null;
+
+    chatMessages.forEach((msg, idx) => {
+      const isFromSameAuthor = currentGroup && currentGroup.author === msg.author;
+      const isTimeClose =
+        currentGroup &&
+        Math.abs(new Date(msg.createdAt || 0) - new Date(currentGroup.messages[currentGroup.messages.length - 1].createdAt || 0)) < 300000; // 5 minutes
+
+      if (isFromSameAuthor && isTimeClose) {
+        currentGroup.messages.push(msg);
+      } else {
+        if (currentGroup) groups.push(currentGroup);
+        currentGroup = { author: msg.author, messages: [msg] };
+      }
+    });
+
+    if (currentGroup) groups.push(currentGroup);
+    return groups;
+  }, [chatMessages]);
 
   const handleLogout = () => {
     ['token', 'email', 'name', 'username', 'role', 'field', 'headline', 'price', 'experience'].forEach((k) => localStorage.removeItem(k));
@@ -986,127 +1090,195 @@ const ExpertDashboard = () => {
 
           {activeTab === 'chat' && (
             <section className="ed-section">
-              <div className="ed-section-head"><div className="ed-kicker">Client Chat</div><h2 className="ed-section-title">Private conversations</h2><p className="ed-section-sub">Select a client and continue the conversation.</p></div>
-              <div className="ed-chat-grid">
-                <div className="ed-chat-list ed-card">
-                  <div className="ed-chat-list-head">
-                    <div>
-                      <strong>Inbox</strong>
-                      <span>{conversations.length} active conversation{conversations.length === 1 ? '' : 's'}</span>
-                    </div>
+              <div className="ed-section-head"><div className="ed-kicker">Chat Hub</div><h2 className="ed-section-title">Real-time Conversations</h2><p className="ed-section-sub">Connect instantly with your clients.</p></div>
+              <div className="ed-chat-container">
+                <div className="ed-chat-sidebar">
+                  <div className="ed-sidebar-header">
+                    <h3>Messages</h3>
+                    <span className="ed-badge-total">{filteredConversations.length}</span>
                   </div>
-                  {conversations.length === 0 ? (
-                    <div className="ed-empty-state"><div className="ed-empty-icon">...</div><p>No conversations yet.</p></div>
-                  ) : conversations.map((c) => {
-                    const who = c.otherEmail || 'client';
-                    return (
-                      <button key={c.room} className={`ed-chat-item ${activeRoom === c.room ? 'active' : ''}`} onClick={() => openConversation(c)}>
-                        <div className="ed-chat-av">{who[0].toUpperCase()}</div>
-                        <div className="ed-chat-meta"><div className="ed-chat-name">{who}</div><div className="ed-chat-prev">{c.lastMessage || 'Open chat'}</div></div>
-                        <div className="ed-chat-side"><div className="ed-chat-time">{formatRelative(c.lastMessageTime)}</div><span className="ed-chat-open-tag">{activeRoom === c.room ? 'Open' : 'Chat'}</span></div>
-                      </button>
-                    );
-                  })}
+                  <input
+                    className="ed-chat-search-input"
+                    placeholder="🔍 Search chats..."
+                    value={conversationSearch}
+                    onChange={(e) => setConversationSearch(e.target.value)}
+                  />
+                  <div className="ed-conversations-list">
+                    {filteredConversations.length === 0 ? (
+                      <div className="ed-no-chats"><div>💬</div><p>{conversationSearch ? 'No chats found' : 'No conversations yet'}</p></div>
+                    ) : filteredConversations.map((c) => {
+                      const who = c.otherEmail || 'client';
+                      const isOnline = clientOnlineStatus[c.otherEmail] || false;
+                      const unreadCount = unreadCounts[c.room] || 0;
+                      const isActive = activeRoom === c.room;
+                      return (
+                        <button key={c.room} className={`ed-conv-card ${isActive ? 'active' : ''}`} onClick={() => openConversation(c)}>
+                          <div className="ed-conv-avatar-section">
+                            <div className={`ed-conv-avatar ${isOnline ? 'online' : ''}`}>{who[0].toUpperCase()}</div>
+                            <div className={`ed-status-dot ${isOnline ? 'online' : 'offline'}`} />
+                          </div>
+                          <div className="ed-conv-info">
+                            <div className="ed-conv-name">{who}</div>
+                            <div className="ed-conv-preview">{c.lastMessage || 'Open chat'}</div>
+                          </div>
+                          <div className="ed-conv-right">
+                            <div className="ed-conv-time">{formatRelative(c.lastMessageTime)}</div>
+                            {unreadCount > 0 && <span className="ed-unread-count">{unreadCount}</span>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="ed-chat-win ed-card">
+
+                <div className="ed-chat-main">
                   {!activeRoom ? (
-                    <div className="ed-empty-state"><div className="ed-empty-icon">...</div><p>Choose a conversation from the left.</p></div>
+                    <div className="ed-chat-welcome">
+                      <div className="ed-welcome-icon">💌</div>
+                      <h2>Select a conversation</h2>
+                      <p>Choose a client from the left to start messaging</p>
+                    </div>
                   ) : (
                     <>
-                      <div className="ed-chat-top-stack">
-                        <div className="ed-chat-head">
-                          <div className="ed-chat-head-main">
-                            <div className="ed-chat-head-avatar">{activeClientName[0]?.toUpperCase() || 'C'}</div>
-                            <div className="ed-chat-head-copy">
-                              <strong>{activeConversation?.otherEmail || 'Client'}</strong>
-                              <span>Private 1 to 1 chat • {chatMessages.length} message{chatMessages.length === 1 ? '' : 's'}</span>
-                            </div>
+                      <div className="ed-chat-header-new">
+                        <div className="ed-header-left">
+                          <div className={`ed-header-avatar ${clientOnlineStatus[activeConversation?.otherEmail] ? 'online' : ''}`}>
+                            {activeClientName[0]?.toUpperCase() || 'C'}
                           </div>
-                          <button type="button" className="ed-chat-jump" onClick={() => msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' })}>
-                            Latest
-                          </button>
+                          <div className="ed-header-info">
+                            <h3>{activeConversation?.otherEmail || 'Client'}</h3>
+                            <p className="ed-status-text">{clientOnlineStatus[activeConversation?.otherEmail] ? '🟢 Online' : '⚫ Offline'} • {chatMessages.length} messages</p>
+                          </div>
                         </div>
-                        <VideoCall
-                          socket={liveSocket}
-                          roomId={activeRoom}
-                          currentUserEmail={email || ''}
-                          currentUserName={computedProfile.name || email || 'Expert'}
-                          peerLabel={activeConversation?.otherEmail || 'Client'}
-                          enabled={Boolean(activeRoom)}
-                          compact
-                          externalIncomingCall={incomingCall?.room === activeRoom ? incomingCall : null}
-                          onIncomingCallCleared={() => {
-                            setIncomingCall((prev) => (prev?.room === activeRoom ? null : prev));
-                          }}
-                        />
+                        <button type="button" className="ed-scroll-btn" onClick={() => msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' })} title="Scroll to latest">
+                          ↓ Latest
+                        </button>
                       </div>
-                      <div className="ed-chat-msgs">
-                        {loadingChat ? <div className="ed-chat-loading">Loading messages...</div> : chatMessages.map((m, i) => {
-                          const mine = m.author === email;
+
+                      <VideoCall
+                        socket={liveSocket}
+                        roomId={activeRoom}
+                        currentUserEmail={email || ''}
+                        currentUserName={computedProfile.name || email || 'Expert'}
+                        peerLabel={activeConversation?.otherEmail || 'Client'}
+                        enabled={Boolean(activeRoom)}
+                        compact
+                        externalIncomingCall={incomingCall?.room === activeRoom ? incomingCall : null}
+                        onIncomingCallCleared={() => {
+                          setIncomingCall((prev) => (prev?.room === activeRoom ? null : prev));
+                          clearStoredIncomingCall();
+                        }}
+                      />
+
+                      <div className="ed-messages-area">
+                        {loadingChat ? (
+                          <div className="ed-loading-state">
+                            <div className="ed-spinner"></div>
+                            <p>Loading conversations...</p>
+                          </div>
+                        ) : groupedChatMessages.map((group, groupIdx) => {
+                          const mine = group.author === email;
                           return (
-                            <div key={m._id || i} className={`ed-chat-msg ${mine ? 'mine' : ''}`}>
-                              <div className="ed-chat-msg-author">{mine ? 'You' : activeClientName}</div>
-                              <div className="ed-chat-bub">
-                                {m.messageType === 'image' && m.imageUrl ? (
-                                  <>
-                                    <img
-                                      className="ed-chat-image"
-                                      src={m.imageUrl}
-                                      alt={m.imageName || 'Chat image'}
-                                      onClick={() => setChatImageViewer({
-                                        open: true,
-                                        src: m.imageUrl,
-                                        alt: m.imageName || 'Chat image',
-                                      })}
-                                    />
-                                    {m.message ? <div className="ed-chat-image-caption">{m.message}</div> : null}
-                                  </>
-                                ) : (
-                                  m.message
-                                )}
-                              </div>
-                              <div className="ed-chat-msg-time">{formatRelative(m.createdAt)}</div>
+                            <div key={`group-${groupIdx}`} className={`ed-msg-group ${mine ? 'mine' : 'theirs'}`}>
+                              {group.messages.map((m, i) => (
+                                <div key={m._id || i} className="ed-msg-bubble-wrapper">
+                                  <div className="ed-msg-bubble">
+                                    {m.messageType === 'image' && m.imageUrl ? (
+                                      <>
+                                        <img
+                                          className="ed-msg-image"
+                                          src={m.imageUrl}
+                                          alt={m.imageName || 'Shared image'}
+                                          onClick={() => setChatImageViewer({
+                                            open: true,
+                                            src: m.imageUrl,
+                                            alt: m.imageName || 'Chat image',
+                                          })}
+                                        />
+                                        {m.message && <p className="ed-msg-caption">{m.message}</p>}
+                                      </>
+                                    ) : (
+                                      <p className="ed-msg-text">{m.message}</p>
+                                    )}
+                                    <span className="ed-msg-timestamp">
+                                      {formatRelative(m.createdAt)}
+                                      {mine && m.status && <span className="ed-msg-status-icon">{m.status === 'sending' ? '⏱' : m.status === 'sent' ? '✓' : '✓✓'}</span>}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           );
                         })}
+                        {typingUsers.size > 0 && (
+                          <div className="ed-typing-bubble">
+                            <div className="ed-dot"></div>
+                            <div className="ed-dot"></div>
+                            <div className="ed-dot"></div>
+                          </div>
+                        )}
                         <div ref={msgsEndRef} />
                       </div>
-                      <div className="ed-chat-compose">
+
+                      <div className="ed-compose-area">
                         <input
                           ref={chatImageInputRef}
                           type="file"
                           accept="image/*"
-                          className="ed-chat-file-input"
+                          className="ed-file-input-hidden"
                           onChange={onPickChatImage}
                         />
-                        {chatImageDataUrl ? (
-                          <div className="ed-chat-attachment-preview">
-                            <img src={chatImageDataUrl} alt={chatImageName || 'Attachment'} />
-                            <span className="ed-chat-attachment-name">{chatImageName || 'image'}</span>
-                            <button
-                              className="ed-chat-attachment-clear"
-                              onClick={() => {
-                                setChatImageDataUrl('');
-                                setChatImageName('');
-                                if (chatImageInputRef.current) chatImageInputRef.current.value = '';
-                              }}
-                              aria-label="Remove attached image"
-                            >
-                              <X size={14} />
-                            </button>
+                        
+                        {chatImageDataUrl && (
+                          <div className="ed-attachment-card">
+                            <img src={chatImageDataUrl} alt="Attachment" />
+                            <div className="ed-attachment-info">
+                              <span>{chatImageName}</span>
+                              <button
+                                className="ed-remove-btn"
+                                onClick={() => {
+                                  setChatImageDataUrl('');
+                                  setChatImageName('');
+                                  if (chatImageInputRef.current) chatImageInputRef.current.value = '';
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
                           </div>
-                        ) : null}
-                        <button className="ed-btn ed-btn-ghost ed-btn-sm" onClick={() => chatImageInputRef.current?.click()} type="button">
-                          <Paperclip size={14} />Image
-                        </button>
-                        <textarea className="ed-chat-input" rows={2} value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type message... (Enter to send)" onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            sendChatMessage();
-                          }
-                        }} />
-                        <button className="ed-btn ed-btn-primary" onClick={sendChatMessage} disabled={!chatInput.trim() && !chatImageDataUrl}><Send size={14} />Send</button>
-                        <div className="ed-chat-compose-note">Press `Enter` to send. Use `Shift + Enter` for a new line.</div>
+                        )}
+
+                        <div className="ed-input-wrapper">
+                          <button 
+                            className="ed-attach-btn" 
+                            onClick={() => chatImageInputRef.current?.click()} 
+                            type="button"
+                            title="Attach image"
+                          >
+                            📎
+                          </button>
+                          <textarea 
+                            className="ed-msg-input-field" 
+                            rows={1}
+                            value={chatInput} 
+                            onChange={(e) => handleChatInputChange(e.target.value)} 
+                            placeholder="Type your message..." 
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                sendChatMessage();
+                              }
+                            }}
+                          />
+                          <button 
+                            className="ed-send-btn" 
+                            onClick={sendChatMessage} 
+                            disabled={!chatInput.trim() && !chatImageDataUrl}
+                          >
+                            ✈️
+                          </button>
+                        </div>
+                        <p className="ed-helper-text">Press Enter to send • Shift+Enter for new line</p>
                       </div>
                     </>
                   )}

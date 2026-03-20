@@ -9,6 +9,7 @@ import {
   MonitorUp,
   Maximize2,
   Minimize2,
+  Move,
 } from 'lucide-react';
 import '../styles/VideoCall.css';
 
@@ -21,7 +22,7 @@ const RTC_CONFIG = {
 const AUDIO_CONSTRAINTS = {
   echoCancellation: true,
   noiseSuppression: true,
-  autoGainControl: true,
+  autoGainControl: false,
   channelCount: { ideal: 1 },
   sampleRate: { ideal: 48000 },
   sampleSize: { ideal: 16 },
@@ -80,6 +81,28 @@ function getMediaErrorMessage(error) {
   }
 }
 
+function setMediaTrackEnabled(track, enabled) {
+  if (!track) return;
+  track.enabled = enabled;
+}
+
+function clampFloatingRect(rect) {
+  if (typeof window === 'undefined') return rect;
+  const margin = 8;
+  const maxWidth = Math.max(300, window.innerWidth - margin * 2);
+  const maxHeight = Math.max(220, window.innerHeight - margin * 2);
+  const width = Math.min(Math.max(rect.width, 320), maxWidth);
+  const height = Math.min(Math.max(rect.height, 260), maxHeight);
+  const maxX = window.innerWidth - width - margin;
+  const maxY = window.innerHeight - height - margin;
+  return {
+    x: Math.min(Math.max(rect.x, margin), Math.max(margin, maxX)),
+    y: Math.min(Math.max(rect.y, margin), Math.max(margin, maxY)),
+    width,
+    height,
+  };
+}
+
 async function tuneLocalStream(stream) {
   if (!stream) return stream;
 
@@ -89,7 +112,12 @@ async function tuneLocalStream(stream) {
   if (audioTrack) {
     audioTrack.contentHint = 'speech';
     try {
-      await audioTrack.applyConstraints(AUDIO_CONSTRAINTS);
+      const supported = navigator.mediaDevices?.getSupportedConstraints?.() || {};
+      const audioConstraints = {
+        ...AUDIO_CONSTRAINTS,
+        ...(supported.voiceIsolation ? { voiceIsolation: true } : {}),
+      };
+      await audioTrack.applyConstraints(audioConstraints);
     } catch (err) {
       console.warn('Could not apply enhanced audio constraints', err);
     }
@@ -107,6 +135,63 @@ async function tuneLocalStream(stream) {
   return stream;
 }
 
+async function createProcessedAudioTrack(stream, store) {
+  const [audioTrack] = stream.getAudioTracks();
+  if (!audioTrack) return null;
+
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return audioTrack;
+
+  if (!store.context) {
+    store.context = new AudioCtx();
+  }
+
+  if (store.context.state === 'suspended') {
+    try {
+      await store.context.resume();
+    } catch (err) {
+      console.warn('Could not resume processing audio context', err);
+    }
+  }
+
+  if (store.track) return store.track;
+
+  const source = store.context.createMediaStreamSource(new MediaStream([audioTrack]));
+  const highpass = store.context.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 120;
+
+  const lowpass = store.context.createBiquadFilter();
+  lowpass.type = 'lowpass';
+  lowpass.frequency.value = 7200;
+
+  const compressor = store.context.createDynamicsCompressor();
+  compressor.threshold.value = -24;
+  compressor.knee.value = 20;
+  compressor.ratio.value = 4;
+  compressor.attack.value = 0.003;
+  compressor.release.value = 0.2;
+
+  const gain = store.context.createGain();
+  gain.gain.value = 0.88;
+
+  const destination = store.context.createMediaStreamDestination();
+
+  source.connect(highpass);
+  highpass.connect(lowpass);
+  lowpass.connect(compressor);
+  compressor.connect(gain);
+  gain.connect(destination);
+
+  const processedTrack = destination.stream.getAudioTracks()[0];
+  if (!processedTrack) return audioTrack;
+
+  processedTrack.contentHint = 'speech';
+  store.nodes = [source, highpass, lowpass, compressor, gain, destination];
+  store.track = processedTrack;
+  return processedTrack;
+}
+
 export default function VideoCall({
   socket,
   roomId,
@@ -117,11 +202,15 @@ export default function VideoCall({
   compact = false,
   externalIncomingCall = null,
   onIncomingCallCleared = null,
+  onCallStateChange = null,
 }) {
   const panelRef = useRef(null);
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const audioContextRef = useRef(null);
+  const audioProcessingContextRef = useRef(null);
+  const processedAudioNodesRef = useRef([]);
+  const outgoingAudioTrackRef = useRef(null);
   const ringtoneTimeoutRef = useRef(null);
   const activeNodesRef = useRef([]);
   const peerConnectionRef = useRef(null);
@@ -146,6 +235,22 @@ export default function VideoCall({
   const [hasLocalPreview, setHasLocalPreview] = useState(false);
   const [hasRemotePreview, setHasRemotePreview] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFloating, setIsFloating] = useState(false);
+  const [floatingRect, setFloatingRect] = useState({
+    x: 24,
+    y: 96,
+    width: 460,
+    height: 360,
+  });
+  const dragStateRef = useRef({
+    active: false,
+    startX: 0,
+    startY: 0,
+    startLeft: 0,
+    startTop: 0,
+  });
+  const isResizingRef = useRef(false);
+  const resizeObserverRef = useRef(null);
   const signalingRoomId = useMemo(() => normalizeRoomId(roomId), [roomId]);
   const normalizedCurrentUserEmail = useMemo(
     () => String(currentUserEmail || '').trim().toLowerCase(),
@@ -288,6 +393,31 @@ export default function VideoCall({
     setHasRemotePreview(false);
   };
 
+  const clearProcessedAudio = useCallback(() => {
+    if (outgoingAudioTrackRef.current) {
+      try {
+        outgoingAudioTrackRef.current.stop();
+      } catch (err) {
+        void err;
+      }
+      outgoingAudioTrackRef.current = null;
+    }
+
+    processedAudioNodesRef.current.forEach((node) => {
+      try {
+        node.disconnect();
+      } catch (err) {
+        void err;
+      }
+    });
+    processedAudioNodesRef.current = [];
+
+    if (audioProcessingContextRef.current) {
+      audioProcessingContextRef.current.close().catch(() => {});
+      audioProcessingContextRef.current = null;
+    }
+  }, []);
+
   const stopScreenSharing = async () => {
     const screenTrack = activeScreenTrackRef.current;
     if (!screenTrack) return;
@@ -310,6 +440,7 @@ export default function VideoCall({
 
   const stopLocalMedia = async () => {
     await stopScreenSharing();
+    clearProcessedAudio();
 
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -369,7 +500,17 @@ export default function VideoCall({
 
     await tuneLocalStream(stream);
     localStreamRef.current = stream;
+    const audioProcessingStore = {
+      context: audioProcessingContextRef.current,
+      nodes: processedAudioNodesRef.current,
+      track: outgoingAudioTrackRef.current,
+    };
+    const processedTrack = await createProcessedAudioTrack(stream, audioProcessingStore);
+    audioProcessingContextRef.current = audioProcessingStore.context;
+    processedAudioNodesRef.current = audioProcessingStore.nodes || [];
     setIsMuted(false);
+
+    outgoingAudioTrackRef.current = processedTrack || stream.getAudioTracks()[0] || null;
 
     syncVideoElement(localVideoRef.current, stream, { muted: true });
     setHasLocalPreview(stream.getVideoTracks().length > 0);
@@ -405,9 +546,13 @@ export default function VideoCall({
     remoteStreamRef.current = new MediaStream();
     syncVideoElement(remoteVideoRef.current, remoteStreamRef.current);
 
-    stream.getTracks().forEach((track) => {
+    stream.getVideoTracks().forEach((track) => {
       connection.addTrack(track, stream);
     });
+
+    if (outgoingAudioTrackRef.current) {
+      connection.addTrack(outgoingAudioTrackRef.current, new MediaStream([outgoingAudioTrackRef.current]));
+    }
 
     connection.onicecandidate = (event) => {
       if (!event.candidate || !socket || !signalingRoomId) return;
@@ -539,10 +684,11 @@ export default function VideoCall({
   };
 
   const toggleMute = () => {
-    const audioTrack = localStreamRef.current?.getAudioTracks?.()[0];
+    const audioTrack = outgoingAudioTrackRef.current || localStreamRef.current?.getAudioTracks?.()[0];
     if (!audioTrack) return;
-    audioTrack.enabled = !audioTrack.enabled;
-    setIsMuted(!audioTrack.enabled);
+    const nextEnabled = !audioTrack.enabled;
+    setMediaTrackEnabled(audioTrack, nextEnabled);
+    setIsMuted(!nextEnabled);
   };
 
   const toggleCamera = () => {
@@ -706,6 +852,15 @@ export default function VideoCall({
   }, [callStatus]);
 
   useEffect(() => {
+    if (typeof onCallStateChange !== 'function') return;
+    onCallStateChange({
+      status: callStatus,
+      connected: callStatus === 'connected',
+      active: isCallActive,
+    });
+  }, [onCallStateChange, callStatus, isCallActive]);
+
+  useEffect(() => {
     if (hasIncomingRequest) {
       startToneLoop('incoming');
       return () => stopToneLoop();
@@ -741,6 +896,7 @@ export default function VideoCall({
     if (!panel) return;
 
     try {
+      if (isFloating) setIsFloating(false);
       if (document.fullscreenElement === panel) {
         await document.exitFullscreen();
       } else {
@@ -752,12 +908,116 @@ export default function VideoCall({
     }
   };
 
+  const toggleFloating = () => {
+    if (isFloating) {
+      setIsFloating(false);
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (panel) {
+      const box = panel.getBoundingClientRect();
+      setFloatingRect((prev) => clampFloatingRect({
+        x: box.left || prev.x,
+        y: box.top || prev.y,
+        width: box.width || prev.width,
+        height: box.height || prev.height,
+      }));
+    }
+    setIsFloating(true);
+  };
+
+  useEffect(() => {
+    const onMove = (event) => {
+      if (!dragStateRef.current.active) return;
+      const next = clampFloatingRect({
+        x: dragStateRef.current.startLeft + (event.clientX - dragStateRef.current.startX),
+        y: dragStateRef.current.startTop + (event.clientY - dragStateRef.current.startY),
+        width: floatingRect.width,
+        height: floatingRect.height,
+      });
+      setFloatingRect((prev) => ({ ...prev, x: next.x, y: next.y }));
+    };
+
+    const onUp = () => {
+      dragStateRef.current.active = false;
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [floatingRect.width, floatingRect.height]);
+
+  const startDragging = (event) => {
+    if (!isFloating || !compact || isFullscreen) return;
+    if (event.button !== 0) return;
+    const targetTag = event.target?.tagName?.toLowerCase();
+    if (targetTag === 'button' || targetTag === 'svg' || targetTag === 'path') return;
+    dragStateRef.current = {
+      active: true,
+      startX: event.clientX,
+      startY: event.clientY,
+      startLeft: floatingRect.x,
+      startTop: floatingRect.y,
+    };
+  };
+
+  useEffect(() => {
+    if (!isFloating || !compact || !panelRef.current) return undefined;
+
+    const panel = panelRef.current;
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry || !isFloating) return;
+      if (dragStateRef.current.active) return;
+      if (isResizingRef.current) return;
+      isResizingRef.current = true;
+      const { width, height } = entry.contentRect;
+      setFloatingRect((prev) => {
+        const next = clampFloatingRect({ ...prev, width, height });
+        return next;
+      });
+      window.requestAnimationFrame(() => {
+        isResizingRef.current = false;
+      });
+    });
+
+    resizeObserver.observe(panel);
+    resizeObserverRef.current = resizeObserver;
+    return () => {
+      resizeObserver.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, [isFloating, compact]);
+
+  useEffect(() => {
+    if (!isFloating) return undefined;
+    const onWindowResize = () => {
+      setFloatingRect((prev) => clampFloatingRect(prev));
+    };
+    window.addEventListener('resize', onWindowResize);
+    return () => window.removeEventListener('resize', onWindowResize);
+  }, [isFloating]);
+
   return (
     <section
       ref={panelRef}
-      className={`vc-panel ${compact ? 'vc-panel-compact' : ''} ${isCallActive ? 'vc-panel-live' : ''} ${isFullscreen ? 'vc-panel-fullscreen' : ''}`}
+      className={`vc-panel ${compact ? 'vc-panel-compact' : ''} ${isCallActive ? 'vc-panel-live' : ''} ${isFullscreen ? 'vc-panel-fullscreen' : ''} ${isFloating ? 'vc-panel-floating' : ''}`}
+      style={
+        isFloating && compact
+          ? {
+              left: `${floatingRect.x}px`,
+              top: `${floatingRect.y}px`,
+              width: `${floatingRect.width}px`,
+              height: `${floatingRect.height}px`,
+            }
+          : undefined
+      }
     >
-      <div className="vc-header">
+      <div className="vc-header" onPointerDown={startDragging}>
         <div>
           <div className="vc-kicker">{compact ? 'Call controls' : 'Private call'}</div>
           <h3>{compact ? peerLabel : `Video and audio with ${peerLabel}`}</h3>
@@ -827,6 +1087,16 @@ export default function VideoCall({
         <button
           type="button"
           className="vc-icon-btn"
+          onClick={toggleFloating}
+          aria-label={isFloating ? 'Dock panel' : 'Move and resize panel'}
+          title={isFloating ? 'Dock panel' : 'Move and resize panel'}
+        >
+          <Move size={16} />
+        </button>
+
+        <button
+          type="button"
+          className="vc-icon-btn"
           onClick={toggleFullscreen}
           aria-label={isFullscreen ? 'Exit fullscreen' : 'Open fullscreen'}
         >
@@ -848,7 +1118,7 @@ export default function VideoCall({
         <div className={`vc-grid ${isCallActive ? 'vc-grid-live' : ''}`}>
           <div className="vc-video-card vc-video-card-remote">
             <div className="vc-video-label">{peerLabel}</div>
-            <video ref={remoteVideoRef} autoPlay playsInline className="vc-video" />
+            <video ref={remoteVideoRef} autoPlay playsInline className={`vc-video ${isSharingScreen ? 'vc-screen-share' : 'vc-camera'}`} />
             {!hasRemotePreview ? (
               <div className="vc-video-empty">Waiting for remote stream</div>
             ) : null}
@@ -856,7 +1126,7 @@ export default function VideoCall({
 
           <div className="vc-video-card vc-video-card-local">
             <div className="vc-video-label">You</div>
-            <video ref={localVideoRef} autoPlay muted playsInline className="vc-video" />
+            <video ref={localVideoRef} autoPlay muted playsInline className={`vc-video ${isSharingScreen ? 'vc-screen-share' : 'vc-camera'}`} />
             {!hasLocalPreview ? (
               <div className="vc-video-empty">{isAudioOnly ? 'Audio only' : 'Camera preview'}</div>
             ) : null}

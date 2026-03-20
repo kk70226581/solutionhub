@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import '../styles/ClientChat.css';
 import VideoCall from '../components/VideoCall';
+import { clearStoredIncomingCall, getStoredIncomingCall } from '../utils/incomingCallStorage';
 
 const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
@@ -49,6 +50,8 @@ const ClientChat = () => {
   const [myRating, setMyRating] = useState(0);
   const [myReview, setMyReview] = useState('');
   const [savingRating, setSavingRating] = useState(false);
+  const [incomingCall, setIncomingCall] = useState(() => getStoredIncomingCall());
+  const [isCallConnected, setIsCallConnected] = useState(false);
   const [chatAccess, setChatAccess] = useState({
     checking: true,
     allowed: false,
@@ -515,7 +518,7 @@ const ClientChat = () => {
 
       <main>
         <div className="shell">
-          <div className="chat-layout">
+          <div className={`chat-layout ${isCallConnected ? 'chat-layout-call-connected' : ''}`}>
             <aside className="expert-card">
               <div className="expert-card-head">
                 <div className="expert-card-kicker">About Expert</div>
@@ -612,7 +615,7 @@ const ClientChat = () => {
                       onClick={() => setMyRating(v)}
                       aria-label={`Rate ${v} star`}
                     >
-                      ★
+                      <i className="fa-solid fa-star" />
                     </button>
                   ))}
                 </div>
@@ -630,18 +633,29 @@ const ClientChat = () => {
               </div>
             </aside>
 
+            <section className="video-stage">
+              <VideoCall
+                socket={socketInstance}
+                roomId={roomId}
+                currentUserEmail={clientEmail || ''}
+                currentUserName={clientName}
+                peerLabel={expert.name || 'Expert'}
+                enabled={Boolean(chatAccess.allowed)}
+                compact
+                externalIncomingCall={incomingCall?.room === roomId ? incomingCall : null}
+                onIncomingCallCleared={() => {
+                  setIncomingCall(null);
+                  clearStoredIncomingCall();
+                }}
+                onCallStateChange={({ connected }) => {
+                  setIsCallConnected(Boolean(connected));
+                }}
+              />
+            </section>
+
             <section className="chat-section">
               <div className="chat-box">
                 <div className="chat-top-stack">
-                  <VideoCall
-                    socket={socketInstance}
-                    roomId={roomId}
-                    currentUserEmail={clientEmail || ''}
-                    currentUserName={clientName}
-                    peerLabel={expert.name || 'Expert'}
-                    enabled={Boolean(chatAccess.allowed)}
-                    compact
-                  />
                   <div className="chat-thread-head">
                     <div>
                       <strong>{typingVisible ? 'Expert is typing...' : expert.name || 'Expert'}</strong>
@@ -811,7 +825,7 @@ const ClientChat = () => {
 
       <footer className="chat-footer">
         <div className="footer-row">
-          <span>© 2026 Solvenut. Guided conversations for real-world decisions.</span>
+          <span>(c) 2026 Solvenut. Guided conversations for real-world decisions.</span>
           <span>
             <i
               className="fa-solid fa-shield-halved"
@@ -856,3 +870,4 @@ const ClientChat = () => {
 };
 
 export default ClientChat;
+

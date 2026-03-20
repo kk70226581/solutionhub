@@ -9,6 +9,34 @@
   gap: 14px;
 }
 
+.vc-panel-floating {
+  position: fixed;
+  z-index: 2600;
+  margin-bottom: 0;
+  resize: both;
+  overflow: auto;
+  min-width: 320px;
+  min-height: 260px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.58);
+  border-color: rgba(34, 211, 238, 0.24);
+}
+
+.vc-panel-floating .vc-header {
+  cursor: move;
+}
+
+.vc-panel-floating .vc-grid-live .vc-video-card-remote,
+.vc-panel-floating .vc-grid-live .vc-video-card-remote .vc-video {
+  min-height: 220px;
+}
+
+.vc-panel-floating .vc-grid-live .vc-video-card-local,
+.vc-panel-floating .vc-grid-live .vc-video-card-local .vc-video {
+  min-height: 150px;
+}
+
 .vc-panel:fullscreen,
 .vc-panel-fullscreen {
   width: 100%;
@@ -103,14 +131,52 @@
   object-fit: cover;
   display: block;
   background: #020510;
+  aspect-ratio: auto;
+}
+
+.vc-video.vc-screen-share {
+  object-fit: contain !important;
+  aspect-ratio: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+.vc-video-card-local .vc-video {
+  transform: scaleX(-1);
+}
+
+.vc-video-card-local .vc-video.vc-screen-share {
+  transform: none;
+}
+
+.vc-video-card-remote .vc-video {
+  transform: scaleX(-1);
+}
+
+.vc-video-card-remote .vc-video.vc-screen-share {
+  transform: none !important;
 }
 
 .vc-grid-live .vc-video-card-remote .vc-video {
   min-height: 340px;
+  transform: scaleX(-1);
 }
 
 .vc-grid-live .vc-video-card-local .vc-video {
   min-height: 220px;
+  transform: scaleX(-1);
+}
+
+.vc-grid-live .vc-video-card-local .vc-video.vc-screen-share {
+  transform: none;
+}
+
+.vc-video.vc-screen-share {
+  orientation: portrait;
+  image-orientation: from-image;
 }
 
 .vc-video-label {
@@ -458,5 +524,15 @@
   .vc-grid-live .vc-video-card-local,
   .vc-grid-live .vc-video-card-local .vc-video {
     min-height: 150px;
+  }
+
+  .vc-panel-floating {
+    left: 8px !important;
+    top: 8px !important;
+    width: calc(100vw - 16px) !important;
+    height: auto !important;
+    max-height: calc(100vh - 16px);
+    resize: none;
+    min-width: 0;
   }
 }

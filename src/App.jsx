@@ -14,6 +14,7 @@ import Login from './pages/Login';
 import SignupClient from './pages/SignupClient';
 import SignupExpert from './pages/SignupExpert';
 import ProtectedRoute from './components/ProtectedRoute';
+import GlobalCallNotifier from './components/GlobalCallNotifier';
 
 function App() {
   // HashRouter in production prevents refresh 404 on hosts without SPA rewrites.
@@ -60,6 +61,7 @@ function App() {
         <Route path="/pricing" element={<div>Pricing coming soon...</div>} />
         <Route path="*" element={<Home />} />
       </Routes>
+      <GlobalCallNotifier />
     </Router>
   );
 }

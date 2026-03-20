@@ -17,10 +17,10 @@
   --cc-blue: #38bdf8;
   --cc-pink: #fb7185;
   --cc-grad: linear-gradient(110deg, #22d3ee 0%, #34d399 100%);
-  --cc-shadow: 0 32px 80px rgba(0, 0, 0, 0.72);
-  --cc-radius-xl: 24px;
-  --cc-radius-lg: 18px;
-  --cc-radius-md: 14px;
+  --cc-shadow: 0 18px 42px rgba(0, 0, 0, 0.45);
+  --cc-radius-xl: 20px;
+  --cc-radius-lg: 16px;
+  --cc-radius-md: 12px;
 }
 
 .client-chat-page,
@@ -75,9 +75,9 @@ a {
 
 .shell {
   width: 100%;
-  max-width: 1260px;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 20px;
   position: relative;
   z-index: 1;
 }
@@ -92,7 +92,7 @@ a {
 }
 
 .header-inner {
-  min-height: 78px;
+  min-height: 70px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -223,7 +223,7 @@ a {
 
 main {
   flex: 1;
-  padding: 18px 0 28px;
+  padding: 14px 0 20px;
   position: relative;
   z-index: 1;
 }
@@ -310,13 +310,29 @@ main {
 
 .chat-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.5fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "expert video"
+    "expert chat";
+  gap: 12px;
   align-items: stretch;
-  min-height: min(calc(100vh - 158px), 980px);
+  min-height: 0;
+  max-height: min(calc(100vh - 140px), 900px);
+  height: auto;
+  width: 100%;
+  overflow: hidden;
+}
+
+.chat-layout-call-connected {
+  grid-template-columns: 1.25fr 0.75fr;
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "video chat";
+  gap: 16px;
 }
 
 .expert-card,
+.video-stage,
 .chat-section {
   background: var(--cc-surface);
   border: 1px solid var(--cc-border);
@@ -326,13 +342,80 @@ main {
 }
 
 .expert-card {
-  padding: 22px;
+  grid-area: expert;
+  padding: 16px;
   position: sticky;
-  top: 84px;
+  top: 76px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   align-self: start;
+  overflow-y: auto;
+  max-height: min(calc(100vh - 150px), 900px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
+}
+
+.video-stage {
+  grid-area: video;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.video-stage .vc-panel {
+  margin-bottom: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.chat-layout-call-connected .expert-card {
+  display: none;
+}
+
+.chat-layout-call-connected .video-stage,
+.chat-layout-call-connected .chat-section {
+  min-height: min(calc(100vh - 150px), 900px);
+  max-height: min(calc(100vh - 150px), 900px);
+  height: auto;
+}
+
+.chat-layout-call-connected .video-stage {
+  padding: 12px;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, rgba(10, 18, 40, 0.98), rgba(3, 7, 18, 0.96));
+}
+
+.chat-layout-call-connected .chat-section {
+  padding: 14px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-layout-call-connected .chat-box {
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  height: 100%;
+}
+
+.chat-layout-call-connected .video-stage .vc-panel {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .expert-card-head {
@@ -451,7 +534,7 @@ main {
 }
 
 .expert-name {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
@@ -609,17 +692,20 @@ main {
 }
 
 .chat-section {
-  padding: 20px;
+  grid-area: chat;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  height: min(calc(100vh - 158px), 980px);
-  min-height: 760px;
-  max-height: min(calc(100vh - 158px), 980px);
+  gap: 10px;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .chat-box {
   flex: 1;
   min-height: 0;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   border-radius: 22px;
@@ -631,9 +717,13 @@ main {
 .chat-top-stack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 10px 0;
+  gap: 6px;
+  padding: 8px 8px 0;
   background: rgba(6, 12, 28, 0.28);
+  flex-shrink: 0;
+  min-height: 0;
+  max-height: fit-content;
+  overflow: hidden;
 }
 
 .chat-thread-head {
@@ -641,7 +731,7 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px 12px;
+  padding: 9px 12px 10px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
   background: rgba(6, 12, 28, 0.44);
 }
@@ -678,12 +768,17 @@ main {
   max-height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px 18px;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
   gap: 14px;
   scrollbar-gutter: stable;
   scroll-behavior: smooth;
+}
+
+.chat-layout-call-connected .chat-messages {
+  padding: 12px 10px;
+  gap: 10px;
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -736,10 +831,13 @@ main {
 }
 
 .message {
-  max-width: min(76%, 560px);
-  padding: 14px 16px;
-  border-radius: 20px;
+  max-width: min(80%, 540px);
+  padding: 12px 14px;
+  border-radius: 16px;
   animation: messageIn 0.2s ease-out;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 .message.other {
@@ -881,7 +979,7 @@ main {
 }
 
 .chat-input-area {
-  padding: 16px;
+  padding: 12px;
   border-top: 1px solid var(--cc-border);
   background: rgba(10, 18, 40, 0.94);
   display: flex;
@@ -935,6 +1033,12 @@ main {
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
   align-items: stretch;
+  flex-shrink: 0;
+  min-height: 0;
+  max-height: fit-content;
+  padding: 12px;
+  background: rgba(3, 7, 18, 0.9);
+  border-top: 1px solid rgba(148, 163, 184, 0.08);
 }
 
 .attach-btn {
@@ -954,14 +1058,15 @@ main {
 
 .composer-row input {
   width: 100%;
-  min-height: 54px;
-  border-radius: 18px;
+  min-height: 42px;
+  border-radius: 12px;
   border: 1px solid var(--cc-border-hi);
   background: rgba(3, 7, 18, 0.96);
   color: var(--cc-text);
-  padding: 14px 16px;
-  font-size: 14px;
+  padding: 10px 12px;
+  font-size: 13px;
   outline: none;
+  font-family: inherit;
 }
 
 .composer-row input::placeholder {
@@ -975,14 +1080,14 @@ main {
 
 .send-btn {
   border: none;
-  border-radius: 18px;
-  min-width: 118px;
-  min-height: 54px;
-  padding: 0 18px;
+  border-radius: 12px;
+  min-width: 100px;
+  min-height: 42px;
+  padding: 0 16px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   background: linear-gradient(135deg, #17b7d3 0%, #109882 100%);
   color: #fff;
   font-size: 13px;
@@ -1009,6 +1114,38 @@ main {
   background: rgba(3, 7, 18, 0.9);
   position: relative;
   z-index: 1;
+}
+
+/* VIDEO CALL STYLING FOR CLIENT CHAT */
+.vc-panel {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(52, 211, 153, 0.05)) !important;
+  border: 1px solid rgba(34, 211, 238, 0.2) !important;
+  margin: 0 !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3) !important;
+  padding: 8px !important;
+  gap: 10px !important;
+}
+
+.vc-video-elem {
+  border-radius: 12px !important;
+  border: 1px solid rgba(34, 211, 238, 0.2) !important;
+  overflow: hidden !important;
+}
+
+.vc-container {
+  gap: 8px !important;
+  padding: 6px !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border-radius: 12px !important;
+}
+
+video {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
 }
 
 .footer-row {
@@ -1107,17 +1244,34 @@ main {
 
 @media (max-width: 1100px) {
   .chat-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.2fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "expert video"
+      "expert chat";
   }
 
   .expert-card {
-    position: static;
+    position: sticky;
+    top: 72px;
   }
 
   .chat-section {
-    height: min(80vh, 940px);
-    min-height: 700px;
-    max-height: min(80vh, 940px);
+    height: min(calc(100dvh - 132px), 860px);
+    min-height: 620px;
+    max-height: min(calc(100dvh - 132px), 860px);
+  }
+
+  .chat-layout-call-connected {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "video chat";
+  }
+
+  .chat-layout-call-connected .video-stage,
+  .chat-layout-call-connected .chat-section {
+    min-height: min(calc(100dvh - 132px), 860px);
+    max-height: min(calc(100dvh - 132px), 860px);
   }
 
   .chat-box {
@@ -1139,18 +1293,28 @@ main {
 
   .chat-layout {
     grid-template-columns: 1fr;
-    gap: 14px;
+    grid-template-rows: auto auto auto;
+    grid-template-areas:
+      "video"
+      "chat"
+      "expert";
+    gap: 8px;
+  }
+
+  .video-stage {
+    order: 1;
+    padding: 10px;
   }
 
   .chat-section {
-    order: 1;
-    height: clamp(620px, 80svh, 860px);
-    min-height: clamp(620px, 80svh, 860px);
-    max-height: clamp(620px, 80svh, 860px);
+    order: 2;
+    height: clamp(560px, calc(100svh - 126px), 760px);
+    min-height: clamp(560px, calc(100svh - 126px), 760px);
+    max-height: clamp(560px, calc(100svh - 126px), 760px);
   }
 
   .expert-card {
-    order: 2;
+    order: 3;
     position: static;
     top: auto;
     padding: 18px;
@@ -1159,6 +1323,20 @@ main {
 
   .chat-box {
     min-height: 0;
+  }
+
+  .chat-layout-call-connected {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "video"
+      "chat";
+  }
+
+  .chat-layout-call-connected .video-stage,
+  .chat-layout-call-connected .chat-section {
+    min-height: auto;
+    max-height: none;
   }
 }
 
@@ -1178,13 +1356,18 @@ main {
   }
 
   .expert-card,
+  .video-stage,
   .chat-section,
   .chat-box {
-    border-radius: 20px;
+    border-radius: 16px;
   }
 
   .chat-layout {
-    gap: 12px;
+    gap: 10px;
+  }
+
+  .video-stage {
+    padding: 8px;
   }
 
   .expert-card {
@@ -1295,14 +1478,14 @@ main {
   }
 
   .chat-section {
-    padding: 12px;
-    height: clamp(560px, calc(100svh - 132px), 760px);
-    min-height: clamp(560px, calc(100svh - 132px), 760px);
-    max-height: clamp(560px, calc(100svh - 132px), 760px);
+    padding: 10px;
+    height: clamp(520px, calc(100svh - 120px), 700px);
+    min-height: clamp(520px, calc(100svh - 120px), 700px);
+    max-height: clamp(520px, calc(100svh - 120px), 700px);
   }
 
   .chat-box {
-    border-radius: 18px;
+  border-radius: 14px;
   }
 
   .chat-top-stack {
@@ -1316,24 +1499,24 @@ main {
   }
 
   .chat-messages {
-    padding: 14px 12px;
+    padding: 12px 10px;
     gap: 12px;
   }
 
   .chat-input-area {
-    padding: 10px;
+    padding: 9px;
     gap: 8px;
   }
 
   .composer-row input {
-    min-height: 44px;
+    min-height: 42px;
     padding: 11px 12px;
     font-size: 13px;
   }
 
   .send-btn {
     min-width: 44px;
-    min-height: 44px;
+    min-height: 42px;
     padding: 0;
     border-radius: 14px;
   }
@@ -1380,9 +1563,9 @@ main {
 
 @media (max-width: 420px) {
   .chat-section {
-    height: clamp(540px, calc(100svh - 124px), 720px);
-    min-height: clamp(540px, calc(100svh - 124px), 720px);
-    max-height: clamp(540px, calc(100svh - 124px), 720px);
+    height: clamp(500px, calc(100svh - 110px), 680px);
+    min-height: clamp(500px, calc(100svh - 110px), 680px);
+    max-height: clamp(500px, calc(100svh - 110px), 680px);
   }
 
   .expert-card-top {
