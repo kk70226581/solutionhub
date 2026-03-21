@@ -234,6 +234,9 @@ export default function VideoCall({
   const [callError, setCallError] = useState('');
   const [hasLocalPreview, setHasLocalPreview] = useState(false);
   const [hasRemotePreview, setHasRemotePreview] = useState(false);
+  const [localVideoIsPortrait, setLocalVideoIsPortrait] = useState(false);
+  const [remoteVideoIsPortrait, setRemoteVideoIsPortrait] = useState(false);
+  const [remoteMediaMode, setRemoteMediaMode] = useState('camera');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFloating, setIsFloating] = useState(false);
   const [floatingRect, setFloatingRect] = useState({
@@ -273,6 +276,29 @@ export default function VideoCall({
     if (callStatus === 'connected') return `Live • ${formatDuration(callSeconds)}`;
     return canCall ? 'Ready for a private call' : 'Call unavailable';
   }, [callError, hasIncomingRequest, effectiveIncomingFrom, peerLabel, callStatus, callSeconds, canCall]);
+
+  const localMediaMode = isSharingScreen ? 'screen-share' : isAudioOnly ? 'audio-only' : 'camera';
+
+  const updateVideoOrientation = useCallback((element, setter) => {
+    if (!element) {
+      setter(false);
+      return;
+    }
+    const { videoWidth = 0, videoHeight = 0 } = element;
+    if (!videoWidth || !videoHeight) {
+      setter(false);
+      return;
+    }
+    setter(videoHeight > videoWidth * 1.05);
+  }, []);
+
+  const emitMediaMode = useCallback((mode) => {
+    if (!socket || !signalingRoomId) return;
+    socket.emit('media-mode-changed', {
+      room: signalingRoomId,
+      mode,
+    });
+  }, [socket, signalingRoomId]);
 
   const syncVideoElement = async (element, stream, { muted = false } = {}) => {
     if (!element) return;
@@ -391,6 +417,8 @@ export default function VideoCall({
     remoteStreamRef.current = null;
     syncVideoElement(remoteVideoRef.current, null);
     setHasRemotePreview(false);
+    setRemoteVideoIsPortrait(false);
+    setRemoteMediaMode('camera');
   };
 
   const clearProcessedAudio = useCallback(() => {
@@ -418,7 +446,7 @@ export default function VideoCall({
     }
   }, []);
 
-  const stopScreenSharing = async () => {
+  const stopScreenSharing = useCallback(async () => {
     const screenTrack = activeScreenTrackRef.current;
     if (!screenTrack) return;
 
@@ -436,7 +464,14 @@ export default function VideoCall({
     if (sender && cameraTrack) {
       await sender.replaceTrack(cameraTrack);
     }
-  };
+
+    if (localVideoRef.current) {
+      await syncVideoElement(localVideoRef.current, localStreamRef.current, { muted: true });
+    }
+    setHasLocalPreview(Boolean(cameraTrack));
+    setIsCameraOff(cameraTrack ? !cameraTrack.enabled : true);
+    emitMediaMode(cameraTrack ? 'camera' : 'audio-only');
+  }, [emitMediaMode]);
 
   const stopLocalMedia = async () => {
     await stopScreenSharing();
@@ -449,6 +484,7 @@ export default function VideoCall({
 
     syncVideoElement(localVideoRef.current, null, { muted: true });
     setHasLocalPreview(false);
+    setLocalVideoIsPortrait(false);
     setIsAudioOnly(false);
   };
 
@@ -466,7 +502,7 @@ export default function VideoCall({
     }
   };
 
-  const ensureLocalMedia = async () => {
+  const ensureLocalMedia = useCallback(async () => {
     if (localStreamRef.current) return localStreamRef.current;
 
     let stream;
@@ -514,9 +550,10 @@ export default function VideoCall({
 
     syncVideoElement(localVideoRef.current, stream, { muted: true });
     setHasLocalPreview(stream.getVideoTracks().length > 0);
+    emitMediaMode(stream.getVideoTracks().length > 0 ? 'camera' : 'audio-only');
 
     return stream;
-  };
+  }, [emitMediaMode]);
 
   const flushPendingCandidates = async () => {
     if (
@@ -698,7 +735,7 @@ export default function VideoCall({
     setIsCameraOff(!videoTrack.enabled);
   };
 
-  const toggleScreenShare = async () => {
+  const toggleScreenShare = useCallback(async () => {
     if (!peerConnectionRef.current || !localStreamRef.current) return;
 
     if (isSharingScreen) {
@@ -720,6 +757,7 @@ export default function VideoCall({
       activeScreenTrackRef.current = screenTrack;
       await sender.replaceTrack(screenTrack);
       setIsSharingScreen(true);
+      emitMediaMode('screen-share');
 
       if (localVideoRef.current) {
         syncVideoElement(localVideoRef.current, displayStream, { muted: true });
@@ -735,7 +773,33 @@ export default function VideoCall({
       console.error('Screen sharing failed', err);
       setCallError('Could not share screen');
     }
-  };
+  }, [emitMediaMode, isSharingScreen, stopScreenSharing]);
+
+  useEffect(() => {
+    const localVideo = localVideoRef.current;
+    const remoteVideo = remoteVideoRef.current;
+    if (!localVideo && !remoteVideo) return undefined;
+
+    const bindOrientation = (element, setter) => {
+      if (!element) return () => {};
+      const update = () => updateVideoOrientation(element, setter);
+      element.addEventListener('loadedmetadata', update);
+      element.addEventListener('resize', update);
+      update();
+      return () => {
+        element.removeEventListener('loadedmetadata', update);
+        element.removeEventListener('resize', update);
+      };
+    };
+
+    const cleanupLocal = bindOrientation(localVideo, setLocalVideoIsPortrait);
+    const cleanupRemote = bindOrientation(remoteVideo, setRemoteVideoIsPortrait);
+
+    return () => {
+      cleanupLocal();
+      cleanupRemote();
+    };
+  }, [updateVideoOrientation, hasLocalPreview, hasRemotePreview, isSharingScreen, remoteMediaMode]);
 
   useEffect(() => {
     if (!canCall) {
@@ -821,6 +885,11 @@ export default function VideoCall({
       setCallError(message || 'Call access denied');
     };
 
+    const handleMediaModeChanged = ({ room, mode }) => {
+      if (room !== signalingRoomId) return;
+      setRemoteMediaMode(mode || 'camera');
+    };
+
     socket.on('room_joined', handleRoomJoined);
     socket.on('offer', handleOffer);
     socket.on('answer', handleAnswer);
@@ -828,6 +897,7 @@ export default function VideoCall({
     socket.on('call-ended', handleCallEnded);
     socket.on('peer-disconnected', handlePeerDisconnected);
     socket.on('call_access_denied', handleCallDenied);
+    socket.on('media-mode-changed', handleMediaModeChanged);
 
     return () => {
       socket.off('room_joined', handleRoomJoined);
@@ -837,8 +907,14 @@ export default function VideoCall({
       socket.off('call-ended', handleCallEnded);
       socket.off('peer-disconnected', handlePeerDisconnected);
       socket.off('call_access_denied', handleCallDenied);
+      socket.off('media-mode-changed', handleMediaModeChanged);
     };
   }, [socket, signalingRoomId, normalizedCurrentUserEmail, peerLabel]);
+
+  useEffect(() => {
+    if (!canCall) return;
+    emitMediaMode(localMediaMode);
+  }, [canCall, emitMediaMode, localMediaMode]);
 
   useEffect(() => {
     if (callStatus !== 'connected') return undefined;
@@ -1118,7 +1194,7 @@ export default function VideoCall({
         <div className={`vc-grid ${isCallActive ? 'vc-grid-live' : ''}`}>
           <div className="vc-video-card vc-video-card-remote">
             <div className="vc-video-label">{peerLabel}</div>
-            <video ref={remoteVideoRef} autoPlay playsInline className={`vc-video ${isSharingScreen ? 'vc-screen-share' : 'vc-camera'}`} />
+            <video ref={remoteVideoRef} autoPlay playsInline className={`vc-video vc-${remoteMediaMode} ${remoteVideoIsPortrait ? 'vc-video-portrait' : ''}`} />
             {!hasRemotePreview ? (
               <div className="vc-video-empty">Waiting for remote stream</div>
             ) : null}
@@ -1126,7 +1202,7 @@ export default function VideoCall({
 
           <div className="vc-video-card vc-video-card-local">
             <div className="vc-video-label">You</div>
-            <video ref={localVideoRef} autoPlay muted playsInline className={`vc-video ${isSharingScreen ? 'vc-screen-share' : 'vc-camera'}`} />
+            <video ref={localVideoRef} autoPlay muted playsInline className={`vc-video vc-${localMediaMode} ${localVideoIsPortrait ? 'vc-video-portrait' : ''}`} />
             {!hasLocalPreview ? (
               <div className="vc-video-empty">{isAudioOnly ? 'Audio only' : 'Camera preview'}</div>
             ) : null}

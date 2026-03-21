@@ -2316,6 +2316,20 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("media-mode-changed", async ({ room, mode }) => {
+    try {
+      const access = await validatePrivateRoomAccess(room);
+      if (!access.ok) return;
+      socket.to(access.room).emit("media-mode-changed", {
+        room: access.room,
+        mode: String(mode || "camera"),
+        from: access.identity.email,
+      });
+    } catch (err) {
+      console.error("media mode relay failed:", err);
+    }
+  });
+
   socket.on("disconnect", () => {
     if (socket.data.callRooms?.size) {
       for (const room of socket.data.callRooms) {

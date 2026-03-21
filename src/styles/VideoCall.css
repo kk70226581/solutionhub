@@ -144,7 +144,7 @@
   max-height: 100% !important;
 }
 
-.vc-video-card-local .vc-video {
+.vc-video-card-local .vc-video.vc-camera {
   transform: scaleX(-1);
 }
 
@@ -165,7 +165,7 @@
   transform: scaleX(-1);
 }
 
-.vc-grid-live .vc-video-card-local .vc-video {
+.vc-grid-live .vc-video-card-local .vc-video.vc-camera {
   min-height: 220px;
   transform: scaleX(-1);
 }
@@ -177,6 +177,12 @@
 .vc-video.vc-screen-share {
   orientation: portrait;
   image-orientation: from-image;
+}
+
+.vc-video.vc-video-portrait {
+  object-fit: contain;
+  background:
+    radial-gradient(circle at center, rgba(22, 32, 58, 0.95), rgba(2, 5, 16, 1) 72%);
 }
 
 .vc-video-label {
@@ -470,6 +476,21 @@
   .vc-btn span {
     display: none;
   }
+
+  .vc-header h3 {
+    font-size: 15px;
+  }
+
+  .vc-status {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .vc-video-card,
+  .vc-video {
+    min-height: 160px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -496,6 +517,7 @@
 
   .vc-panel-compact .vc-actions {
     gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .vc-panel-compact .vc-btn,
@@ -511,19 +533,17 @@
   }
 
   .vc-panel-compact .vc-footer {
-    gap: 6px;
-    font-size: 9px;
-    line-height: 1.4;
+    display: none;
   }
 
   .vc-grid-live .vc-video-card-remote,
   .vc-grid-live .vc-video-card-remote .vc-video {
-    min-height: 220px;
+    min-height: 180px;
   }
 
   .vc-grid-live .vc-video-card-local,
   .vc-grid-live .vc-video-card-local .vc-video {
-    min-height: 150px;
+    min-height: 120px;
   }
 
   .vc-panel-floating {
@@ -534,5 +554,52 @@
     max-height: calc(100vh - 16px);
     resize: none;
     min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .vc-panel {
+    padding: 10px;
+    border-radius: 14px;
+    gap: 8px;
+  }
+
+  .vc-actions,
+  .vc-panel-compact .vc-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .vc-btn,
+  .vc-icon-btn,
+  .vc-panel-compact .vc-btn,
+  .vc-panel-compact .vc-icon-btn {
+    min-height: 34px;
+    border-radius: 9px;
+    font-size: 11px;
+  }
+
+  .vc-video-card,
+  .vc-video,
+  .vc-grid-live .vc-video-card-remote,
+  .vc-grid-live .vc-video-card-remote .vc-video {
+    min-height: 120px;
+  }
+
+  .vc-grid-live .vc-video-card-local,
+  .vc-grid-live .vc-video-card-local .vc-video {
+    min-height: 92px;
+  }
+
+  .vc-video-label {
+    top: 8px;
+    left: 8px;
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .vc-footer {
+    gap: 4px;
+    font-size: 8px;
+    line-height: 1.35;
   }
 }

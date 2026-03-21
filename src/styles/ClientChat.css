@@ -1327,7 +1327,7 @@ video {
 
   .chat-layout-call-connected {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
     grid-template-areas:
       "video"
       "chat";
@@ -1335,8 +1335,21 @@ video {
 
   .chat-layout-call-connected .video-stage,
   .chat-layout-call-connected .chat-section {
-    min-height: auto;
-    max-height: none;
+    min-height: 0;
+  }
+
+  .chat-layout-call-connected .video-stage {
+    max-height: clamp(180px, 28svh, 260px);
+  }
+
+  .chat-layout-call-connected .chat-section {
+    height: clamp(300px, 46svh, 420px);
+    min-height: clamp(300px, 46svh, 420px);
+    max-height: clamp(300px, 46svh, 420px);
+  }
+
+  .chat-layout-call-connected .chat-messages {
+    min-height: 0;
   }
 }
 
@@ -1364,10 +1377,12 @@ video {
 
   .chat-layout {
     gap: 10px;
+    max-height: none;
   }
 
   .video-stage {
     padding: 8px;
+    min-width: 0;
   }
 
   .expert-card {
@@ -1459,6 +1474,7 @@ video {
   .chat-thread-head {
     flex-direction: column;
     align-items: flex-start;
+    min-width: 0;
   }
 
   .chat-jump-btn {
@@ -1482,6 +1498,7 @@ video {
     height: clamp(520px, calc(100svh - 120px), 700px);
     min-height: clamp(520px, calc(100svh - 120px), 700px);
     max-height: clamp(520px, calc(100svh - 120px), 700px);
+    min-width: 0;
   }
 
   .chat-box {
@@ -1501,6 +1518,12 @@ video {
   .chat-messages {
     padding: 12px 10px;
     gap: 12px;
+  }
+
+  .chat-top-stack,
+  .chat-input-area,
+  .composer-row {
+    min-width: 0;
   }
 
   .chat-input-area {
@@ -1548,6 +1571,7 @@ video {
     max-width: 92%;
     padding: 12px 13px;
     border-radius: 18px;
+    min-width: 0;
   }
 
   .message-meta {
@@ -1563,9 +1587,28 @@ video {
 
 @media (max-width: 420px) {
   .chat-section {
-    height: clamp(500px, calc(100svh - 110px), 680px);
-    min-height: clamp(500px, calc(100svh - 110px), 680px);
-    max-height: clamp(500px, calc(100svh - 110px), 680px);
+    height: clamp(430px, calc(100svh - 96px), 620px);
+    min-height: clamp(430px, calc(100svh - 96px), 620px);
+    max-height: clamp(430px, calc(100svh - 96px), 620px);
+  }
+
+  .page-wrap {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .chat-layout {
+    gap: 8px;
+  }
+
+  .expert-card,
+  .video-stage,
+  .chat-section,
+  .chat-box {
+    border-radius: 14px;
+  }
+
+  .expert-card {
+    padding: 12px;
   }
 
   .expert-card-top {
@@ -1593,13 +1636,58 @@ video {
     line-height: 1.4;
   }
 
+  .chat-top-stack {
+    padding: 6px 6px 0;
+  }
+
+  .chat-thread-head {
+    padding: 9px 10px;
+  }
+
+  .chat-messages {
+    padding: 10px 8px;
+    gap: 10px;
+  }
+
   .composer-row {
     grid-template-columns: 42px minmax(0, 1fr) 42px;
+    gap: 6px;
   }
 
   .attach-btn,
   .send-btn {
     min-width: 42px;
     min-height: 42px;
+  }
+
+  .composer-row input {
+    padding: 10px 11px;
+    font-size: 12px;
+  }
+
+  .message {
+    max-width: 96%;
+    padding: 10px 11px;
+    border-radius: 16px;
+  }
+
+  .message-body,
+  .message-meta {
+    font-size: 12px;
+  }
+
+  .chat-message-image {
+    max-width: min(72vw, 220px);
+    max-height: 200px;
+  }
+
+  .chat-layout-call-connected .video-stage {
+    max-height: clamp(160px, 24svh, 220px);
+  }
+
+  .chat-layout-call-connected .chat-section {
+    height: clamp(260px, 42svh, 360px);
+    min-height: clamp(260px, 42svh, 360px);
+    max-height: clamp(260px, 42svh, 360px);
   }
 }
