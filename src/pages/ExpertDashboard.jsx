@@ -371,6 +371,7 @@ const ExpertDashboard = () => {
   const [isCallConnected, setIsCallConnected] = useState(false);
   const [callSplit, setCallSplit] = useState(50);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobilePane, setMobilePane] = useState('chat');
   const [msgReactions, setMsgReactions] = useState({});
   const [showEmojiHint, setShowEmojiHint] = useState(false);
   const [msgSearch, setMsgSearch] = useState('');
@@ -688,6 +689,7 @@ const ExpertDashboard = () => {
     if (chatImageInputRef.current) chatImageInputRef.current.value = '';
     setUnreadCounts((prev) => ({ ...prev, [c.room]: 0 }));
     setMobileSidebarOpen(false);
+    setMobilePane('chat');
     setLoadingChat(true);
     try {
       const r = await fetch(`${API}/api/messages?room=${encodeURIComponent(c.room)}`, {
@@ -710,9 +712,11 @@ const ExpertDashboard = () => {
     setActiveTab('chat');
     if (conversation) {
       await openConversation(conversation);
+      setMobilePane('call');
     } else {
       setActiveRoom(incomingCall.room);
       activeRoomRef.current = incomingCall.room;
+      setMobilePane('call');
     }
     setNotifOpen(false);
   }, [incomingCall, conversations, openConversation]);
@@ -1272,7 +1276,7 @@ const ExpertDashboard = () => {
             <section className="ed-section ed-section--chat">
               <div
                 ref={connectedLayoutRef}
-                className={`ed-chat-shell ${isCallConnected ? 'call-active' : ''}`}
+                className={`ed-chat-shell ${isCallConnected ? 'call-active' : ''} mobile-pane-${mobilePane}`}
                 style={isCallConnected ? { '--call-left': `${callSplit}%`, '--call-right': `${100 - callSplit}%` } : undefined}
               >
 
@@ -1382,6 +1386,28 @@ const ExpertDashboard = () => {
                         </div>
                       </div>
 
+                      <div className="ed-mobile-pane-switcher" aria-label="Mobile sections">
+                        <button
+                          type="button"
+                          className={`ed-mobile-pane-btn ${mobilePane === 'chat' ? 'active' : ''}`}
+                          onClick={() => setMobilePane('chat')}
+                        >
+                          <MessageSquare size={15} />
+                          <span>Chat</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`ed-mobile-pane-btn ${mobilePane === 'call' ? 'active' : ''}`}
+                          onClick={() => {
+                            setShowMsgSearch(false);
+                            setMobilePane('call');
+                          }}
+                        >
+                          <Phone size={15} />
+                          <span>Call</span>
+                        </button>
+                      </div>
+
                       {/* Message search bar */}
                       {showMsgSearch && (
                         <div className="ed-msg-search-bar">
@@ -1412,7 +1438,11 @@ const ExpertDashboard = () => {
                             setIncomingCall((prev) => (prev?.room === activeRoom ? null : prev));
                             clearStoredIncomingCall();
                           }}
-                          onCallStateChange={({ connected }) => setIsCallConnected(Boolean(connected))}
+                          onCallStateChange={({ connected }) => {
+                            const nextConnected = Boolean(connected);
+                            setIsCallConnected(nextConnected);
+                            if (nextConnected) setMobilePane('call');
+                          }}
                         />
                       </div>
 
@@ -1499,6 +1529,7 @@ const ExpertDashboard = () => {
                             title="Send"
                           >
                             <Send size={15} />
+                            <span className="ed-send-btn-label">Send</span>
                           </button>
                         </div>
                         <div className="ed-compose-hint">Enter to send · Shift+Enter for new line</div>

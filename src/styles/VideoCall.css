@@ -372,18 +372,47 @@
   min-height: 168px;
 }
 
+.vc-panel-compact.vc-panel-live {
+  min-height: 100%;
+}
+
 .vc-panel-compact.vc-panel-live .vc-grid-live {
-  grid-template-columns: minmax(0, 1.7fr) minmax(140px, 0.55fr);
+  grid-template-columns: 1fr;
+  min-height: clamp(260px, 40vh, 420px);
+  align-items: stretch;
+  position: relative;
 }
 
 .vc-panel-compact.vc-panel-live .vc-video-card-remote,
 .vc-panel-compact.vc-panel-live .vc-video-card-remote .vc-video {
-  min-height: 220px;
+  min-height: clamp(240px, 38vh, 420px);
+  height: 100%;
 }
 
-.vc-panel-compact.vc-panel-live .vc-video-card-local,
+.vc-panel-compact.vc-panel-live .vc-video-card-local {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: min(30%, 150px);
+  min-width: 112px;
+  min-height: 132px;
+  height: clamp(132px, 24vh, 184px);
+  z-index: 3;
+  border-radius: 16px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+}
+
 .vc-panel-compact.vc-panel-live .vc-video-card-local .vc-video {
-  min-height: 160px;
+  min-height: 132px;
+  height: 100%;
+}
+
+.vc-panel-compact.vc-panel-live .vc-video-card-local .vc-video-label {
+  top: 8px;
+  left: 8px;
+  padding: 5px 8px;
+  font-size: 10px;
 }
 
 .vc-panel-compact .vc-footer {
@@ -574,6 +603,20 @@
     min-height: 120px;
   }
 
+  .vc-panel-compact.vc-panel-live .vc-video-card-local {
+    right: 10px;
+    bottom: 10px;
+    width: min(34%, 122px);
+    min-width: 96px;
+    min-height: 112px;
+    height: 112px;
+    border-radius: 14px;
+  }
+
+  .vc-panel-compact.vc-panel-live .vc-video-card-local .vc-video {
+    min-height: 112px;
+  }
+
   .vc-panel-floating {
     left: 8px !important;
     top: 8px !important;
@@ -616,6 +659,20 @@
   .vc-grid-live .vc-video-card-local,
   .vc-grid-live .vc-video-card-local .vc-video {
     min-height: 92px;
+  }
+
+  .vc-panel-compact.vc-panel-live .vc-video-card-local {
+    right: 8px;
+    bottom: 8px;
+    width: min(36%, 104px);
+    min-width: 84px;
+    min-height: 96px;
+    height: 96px;
+    border-radius: 12px;
+  }
+
+  .vc-panel-compact.vc-panel-live .vc-video-card-local .vc-video {
+    min-height: 96px;
   }
 
   .vc-video-label {
