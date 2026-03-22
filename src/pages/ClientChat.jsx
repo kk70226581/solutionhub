@@ -567,9 +567,6 @@ const ClientChat = () => {
     : chatAccess.reason === 'window_expired'
       ? 'Chat window expired'
       : 'Payment required to chat';
-  const mobileExpertAccess = chatAccess.allowed
-    ? `Chat access until ${formatAccessTime(chatAccess.accessUntil)}`
-    : conversationStatus;
 
   return (
     <div className="client-chat-page">
@@ -724,29 +721,6 @@ const ClientChat = () => {
                 </div>
               </div>
 
-              <div className="expert-info">
-                <div className="info-row">
-                  <i className="fa-solid fa-briefcase" />
-                  <span>{expert.experience}+ years experience</span>
-                </div>
-                <div className="info-row">
-                  <i className="fa-solid fa-envelope" />
-                  <span className="expert-email">{expert.email}</span>
-                </div>
-                <div className="info-row">
-                  <i className="fa-solid fa-circle-check" />
-                  <span>Matched for private structured guidance</span>
-                </div>
-              </div>
-
-              <div className="expert-note expert-note-highlight">
-                <strong>Best way to use this chat</strong>
-                <span>
-                  Share your situation clearly, ask one topic at a time, and keep each message focused
-                  on one decision or blocker.
-                </span>
-              </div>
-
               <div className="rate-box">
                 <div className="rate-box-head">
                   <strong>Rate this expert</strong>
@@ -776,6 +750,21 @@ const ClientChat = () => {
                 <button className="rate-submit" type="button" onClick={submitRating} disabled={savingRating}>
                   {savingRating ? 'Saving...' : 'Submit rating'}
                 </button>
+              </div>
+
+              <div className="expert-info">
+                <div className="info-row">
+                  <i className="fa-solid fa-briefcase" />
+                  <span>{expert.experience}+ years experience</span>
+                </div>
+                <div className="info-row">
+                  <i className="fa-solid fa-envelope" />
+                  <span className="expert-email">{expert.email}</span>
+                </div>
+                <div className="info-row">
+                  <i className="fa-solid fa-circle-check" />
+                  <span>Matched for private structured guidance</span>
+                </div>
               </div>
             </aside>
 
@@ -830,61 +819,6 @@ const ClientChat = () => {
                         Latest
                       </button>
                     </div>
-                  </div>
-                  <div className="chat-mobile-expert-card">
-                    <div className="chat-mobile-expert-main">
-                      <button
-                        type="button"
-                        className="chat-mobile-expert-avatar"
-                        onClick={() => {
-                          if (!expertAvatarSrc) return;
-                          setImageViewer({
-                            open: true,
-                            src: expertAvatarSrc,
-                            alt: expert.name || 'Expert',
-                          });
-                        }}
-                        aria-label={expertAvatarSrc ? 'View expert photo' : 'Expert avatar'}
-                      >
-                        {expertAvatarSrc ? (
-                          <img
-                            src={expertAvatarSrc}
-                            alt={expert.name || 'Expert'}
-                            className="chat-mobile-expert-avatar-image"
-                            onError={e => {
-                              e.target.style.display = 'none';
-                              const sibling = e.target.nextElementSibling;
-                              if (sibling) sibling.style.display = 'grid';
-                            }}
-                          />
-                        ) : null}
-                        <span
-                          className="chat-mobile-expert-avatar-fallback"
-                          style={{ display: expertAvatarSrc ? 'none' : 'grid' }}
-                        >
-                          {avatarInitial}
-                        </span>
-                      </button>
-                      <div className="chat-mobile-expert-copy">
-                        <div className="chat-mobile-expert-headline">
-                          <strong>{expert.name || 'Expert'}</strong>
-                          <span>{expert.field || 'Verified expert'}</span>
-                        </div>
-                        <div className="chat-mobile-expert-tags">
-                          <span>{expert.experience || 0}+ yrs</span>
-                          <span>{expert.avgRating ? `${expert.avgRating.toFixed(1)} rating` : 'New expert'}</span>
-                          <span>{chatAccess.allowed ? 'Chat open' : 'Chat locked'}</span>
-                        </div>
-                        <p>{mobileExpertAccess}</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="chat-mobile-expert-link"
-                      onClick={() => setMobilePane('expert')}
-                    >
-                      Open full expert card
-                    </button>
                   </div>
                 </div>
                 <div className="chat-messages" ref={chatMessagesRef}>

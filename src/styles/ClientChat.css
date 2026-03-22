@@ -336,8 +336,8 @@ main {
   gap: 12px;
   align-items: stretch;
   min-height: 0;
-  max-height: min(calc(100vh - 140px), 900px);
-  height: auto;
+  max-height: min(calc(100vh - 86px), 980px);
+  height: min(calc(100vh - 86px), 980px);
   width: 100%;
   overflow: hidden;
 }
@@ -381,15 +381,15 @@ main {
 
 .expert-card {
   grid-area: expert;
-  padding: 16px;
+  padding: 14px;
   position: sticky;
   top: 76px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   align-self: start;
   overflow-y: auto;
-  max-height: min(calc(100vh - 150px), 900px);
+  max-height: min(calc(100vh - 96px), 980px);
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
   transition: all 0.3s ease, min-width 0.3s ease, width 0.3s ease;
@@ -516,10 +516,11 @@ main {
 
 .video-stage {
   grid-area: video;
-  padding: 12px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
   max-height: 100%;
   overflow: hidden;
 }
@@ -646,15 +647,21 @@ main {
 }
 
 .expert-card-top {
-  text-align: center;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 8px;
+  text-align: left;
+  align-items: center;
 }
 
 .expert-avatar-wrap {
   position: relative;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  margin-bottom: 14px;
+  grid-row: 1 / span 4;
+  margin-bottom: 0;
   padding: 0;
   border: none;
   background: transparent;
@@ -711,10 +718,10 @@ main {
 
 .expert-badge-row {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 6px;
+  margin-bottom: 0;
 }
 
 .expert-badge {
@@ -736,13 +743,13 @@ main {
 }
 
 .expert-name {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.03em;
 }
 
 .expert-field {
-  margin-top: 4px;
+  margin-top: 0;
   color: var(--cc-gold);
   font-size: 12px;
   font-weight: 700;
@@ -751,7 +758,7 @@ main {
 }
 
 .expert-rating-line {
-  margin-top: 10px;
+  margin-top: 0;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -772,13 +779,13 @@ main {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: 10px 12px;
+  border-radius: 14px;
   background: rgba(10, 18, 40, 0.9);
   border: 1px solid var(--cc-border);
   color: var(--cc-muted-2);
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 12.5px;
+  line-height: 1.45;
 }
 
 .info-row i {
@@ -792,10 +799,7 @@ main {
 }
 
 .expert-note-highlight {
-  padding: 16px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(52, 211, 153, 0.08));
-  border: 1px solid rgba(34, 211, 238, 0.14);
+  display: none;
 }
 
 .expert-note-highlight strong {
@@ -811,8 +815,8 @@ main {
 }
 
 .rate-box {
-  padding: 18px;
-  border-radius: 20px;
+  padding: 14px;
+  border-radius: 18px;
   background: rgba(10, 18, 40, 0.92);
   border: 1px solid var(--cc-border);
 }
@@ -836,6 +840,7 @@ main {
 .rate-stars {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
   margin-bottom: 10px;
 }
 
@@ -848,6 +853,16 @@ main {
   color: #7d93b5;
   font-size: 17px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s ease, border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+
+.rate-star-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.28);
+  color: #f7c948;
 }
 
 .rate-star-btn.active {
@@ -895,11 +910,12 @@ main {
 
 .chat-section {
   grid-area: chat;
-  padding: 12px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
+  height: 100%;
   max-height: 100%;
   overflow: hidden;
 }
@@ -907,6 +923,7 @@ main {
 .chat-box {
   flex: 1;
   min-height: 0;
+  height: 100%;
   max-height: 100%;
   display: flex;
   flex-direction: column;
@@ -919,8 +936,8 @@ main {
 .chat-top-stack {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px 8px 0;
+  gap: 0;
+  padding: 4px 4px 0;
   background: rgba(6, 12, 28, 0.28);
   flex-shrink: 0;
   min-height: 0;
@@ -932,30 +949,30 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 9px 10px;
   border: 1px solid rgba(148, 163, 184, 0.1);
-  border-radius: 18px;
+  border-radius: 16px;
   background: linear-gradient(180deg, rgba(14, 24, 50, 0.96), rgba(8, 16, 36, 0.92));
 }
 
 .chat-thread-person {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .chat-thread-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   flex-shrink: 0;
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, rgba(34, 211, 238, 0.92), rgba(52, 211, 153, 0.88));
   color: #04111a;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   box-shadow: 0 12px 24px rgba(34, 211, 238, 0.18);
 }
@@ -966,21 +983,22 @@ main {
 
 .chat-thread-head strong {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.2;
 }
 
 .chat-thread-head span {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--cc-muted);
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .chat-thread-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -1093,12 +1111,12 @@ main {
 .chat-thread-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 30px;
+  padding: 0 10px;
   border-radius: 999px;
   border: 1px solid var(--cc-border);
   background: rgba(240, 246, 255, 0.04);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   color: var(--cc-muted-2);
   white-space: nowrap;
@@ -1118,13 +1136,13 @@ main {
 
 .chat-jump-btn {
   border: 1px solid var(--cc-border-hi);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(240, 246, 255, 0.06);
   color: var(--cc-text);
-  min-width: 74px;
-  min-height: 40px;
-  padding: 0 14px;
-  font-size: 12px;
+  min-width: 62px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 11px;
   font-weight: 800;
   cursor: pointer;
 }
@@ -1135,7 +1153,7 @@ main {
   max-height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 18px 16px 20px;
+  padding: 20px 16px 22px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1199,7 +1217,7 @@ main {
 
 .message {
   max-width: min(84%, 560px);
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-radius: 16px;
   animation: messageIn 0.2s ease-out;
   word-wrap: break-word;
@@ -1269,8 +1287,8 @@ main {
 }
 
 .message-body {
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 15px;
+  line-height: 1.75;
   color: var(--cc-text);
   overflow-wrap: anywhere;
 }
@@ -1357,13 +1375,13 @@ main {
 }
 
 .chat-input-area {
-  padding: 12px;
+  padding: 14px;
   border-top: 1px solid var(--cc-border);
   background: linear-gradient(180deg, rgba(10, 18, 40, 0.92), rgba(6, 12, 28, 0.98));
   box-shadow: 0 -16px 24px rgba(3, 7, 18, 0.28);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .chat-file-input {
@@ -1415,7 +1433,7 @@ main {
   flex-shrink: 0;
   min-height: 0;
   max-height: fit-content;
-  padding: 12px;
+  padding: 14px;
   background: rgba(3, 7, 18, 0.82);
   border: 1px solid rgba(148, 163, 184, 0.08);
   border-radius: 18px;
@@ -1426,7 +1444,8 @@ main {
   border-radius: 16px;
   background: rgba(240, 246, 255, 0.07);
   color: var(--cc-text);
-  min-width: 56px;
+  min-width: 64px;
+  min-height: 52px;
   padding: 0 16px;
   display: inline-flex;
   align-items: center;
@@ -1438,18 +1457,18 @@ main {
 
 .composer-row textarea {
   width: 100%;
-  min-height: 46px;
-  max-height: 140px;
+  min-height: 58px;
+  max-height: 180px;
   border-radius: 12px;
   border: 1px solid var(--cc-border-hi);
   background: rgba(3, 7, 18, 0.96);
   color: var(--cc-text);
-  padding: 12px 13px;
-  font-size: 13px;
+  padding: 15px 16px;
+  font-size: 14px;
   outline: none;
   font-family: inherit;
   resize: none;
-  line-height: 1.5;
+  line-height: 1.6;
   overflow-y: auto;
 }
 
@@ -1465,16 +1484,16 @@ main {
 .send-btn {
   border: none;
   border-radius: 12px;
-  min-width: 100px;
-  min-height: 42px;
-  padding: 0 16px;
+  min-width: 110px;
+  min-height: 52px;
+  padding: 0 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   background: linear-gradient(135deg, #17b7d3 0%, #109882 100%);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 14px 30px rgba(16, 152, 130, 0.26);
@@ -1493,11 +1512,7 @@ main {
 }
 
 .chat-footer {
-  padding: 14px 20px 20px;
-  border-top: 1px solid rgba(148, 163, 184, 0.08);
-  background: rgba(3, 7, 18, 0.9);
-  position: relative;
-  z-index: 1;
+  display: none;
 }
 
 /* VIDEO CALL STYLING FOR CLIENT CHAT */
@@ -2146,33 +2161,24 @@ video {
     line-height: 1.45;
   }
 
-  .expert-info .info-row:nth-child(n + 2),
-  .rate-box {
+  .expert-note-highlight {
     display: none;
   }
 
-  .expert-note-highlight {
-    display: block;
-  }
-
-  .expert-info .info-row:nth-child(n + 2) {
-    display: flex;
-  }
-
   .chat-thread-head {
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
   }
 
   .chat-thread-person {
-    gap: 10px;
+    gap: 8px;
   }
 
   .chat-thread-avatar {
-    width: 38px;
-    height: 38px;
-    border-radius: 12px;
-    font-size: 13px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 12px;
   }
 
   .chat-thread-actions {
@@ -2186,27 +2192,28 @@ video {
   }
 
   .chat-jump-btn {
-    width: auto;
-    min-width: 88px;
+    display: none;
   }
 
   .composer-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 8px;
   }
 
-  .attach-btn {
-    min-width: 44px;
+  .attach-btn,
+  .send-btn {
+    min-width: 88px;
     min-height: 44px;
-    padding: 0;
+    padding: 0 10px;
+    gap: 6px;
     justify-content: center;
   }
 
   .chat-section {
-    padding: 10px;
-    height: clamp(520px, calc(100svh - 120px), 700px);
-    min-height: min(520px, calc(100svh - 120px));
-    max-height: clamp(520px, calc(100svh - 120px), 700px);
+    padding: 8px;
+    height: clamp(540px, calc(100svh - 112px), 720px);
+    min-height: min(540px, calc(100svh - 112px));
+    max-height: clamp(540px, calc(100svh - 112px), 720px);
     min-width: 0;
   }
 
@@ -2215,13 +2222,14 @@ video {
   }
 
   .chat-top-stack {
-    gap: 4px;
-    padding: 6px 6px 0;
+    gap: 2px;
+    padding: 4px 4px 0;
   }
 
   .chat-thread-head {
-    padding: 8px 9px;
-    gap: 8px;
+    padding: 7px 8px;
+    gap: 6px;
+    border-radius: 14px;
   }
 
   .chat-thread-head span {
@@ -2233,8 +2241,8 @@ video {
   }
 
   .chat-messages {
-    padding: 12px 10px;
-    gap: 12px;
+    padding: 14px 10px 16px;
+    gap: 10px;
   }
 
   .chat-top-stack,
@@ -2258,10 +2266,13 @@ video {
     font-size: 13px;
   }
 
+  .attach-btn span,
+  .send-btn span {
+    display: inline;
+    line-height: 1;
+  }
+
   .send-btn {
-    min-width: 44px;
-    min-height: 42px;
-    padding: 0;
     border-radius: 14px;
   }
 
@@ -2301,9 +2312,9 @@ video {
   }
 
   .chat-layout.mobile-pane-chat .chat-section {
-    height: min(calc(100dvh - 132px), 740px);
-    min-height: min(500px, calc(100dvh - 132px));
-    max-height: min(calc(100dvh - 132px), 740px);
+    height: min(calc(100dvh - 118px), 760px);
+    min-height: min(540px, calc(100dvh - 118px));
+    max-height: min(calc(100dvh - 118px), 760px);
   }
 
   .chat-layout.mobile-pane-call .video-stage {
@@ -2330,9 +2341,9 @@ video {
   }
 
   .chat-section {
-    height: clamp(450px, calc(100svh - 82px), 640px);
-    min-height: min(450px, calc(100svh - 82px));
-    max-height: clamp(450px, calc(100svh - 82px), 640px);
+    height: clamp(500px, calc(100svh - 76px), 660px);
+    min-height: min(500px, calc(100svh - 76px));
+    max-height: clamp(500px, calc(100svh - 76px), 660px);
   }
 
   .page-wrap {
@@ -2371,7 +2382,7 @@ video {
   }
 
   .chat-thread-head strong {
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .chat-thread-head span {
@@ -2380,11 +2391,11 @@ video {
   }
 
   .chat-top-stack {
-    padding: 6px 6px 0;
+    padding: 4px 4px 0;
   }
 
   .chat-thread-head {
-    padding: 8px 9px;
+    padding: 6px 7px;
   }
 
   .chat-thread-actions {
@@ -2395,15 +2406,47 @@ video {
     display: none;
   }
 
-  .chat-jump-btn {
-    min-width: 0;
-    min-height: 36px;
-    padding: 0 10px;
-    font-size: 11px;
+  .expert-note-highlight {
+    display: none;
+  }
+
+  .rate-box {
+    display: block;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .rate-box-head {
+    margin-bottom: 10px;
+  }
+
+  .rate-stars {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .rate-star-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    font-size: 15px;
+  }
+
+  .rate-review {
+    min-height: 72px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .rate-submit {
+    min-height: 42px;
+    border-radius: 12px;
+    font-size: 12px;
   }
 
   .chat-messages {
-    padding: 8px 7px;
+    padding: 12px 7px 14px;
     gap: 8px;
   }
 
@@ -2475,9 +2518,9 @@ video {
   }
 
   .chat-layout.mobile-pane-chat .chat-section {
-    height: min(calc(100dvh - 118px), 680px);
-    min-height: min(470px, calc(100dvh - 118px));
-    max-height: min(calc(100dvh - 118px), 680px);
+    height: min(calc(100dvh - 104px), 700px);
+    min-height: min(520px, calc(100dvh - 104px));
+    max-height: min(calc(100dvh - 104px), 700px);
   }
 
   .chat-layout.mobile-pane-call .video-stage {
@@ -2514,9 +2557,9 @@ video {
   }
 
   .chat-layout.mobile-pane-chat .chat-section {
-    height: min(calc(100dvh - 112px), 640px);
-    min-height: min(430px, calc(100dvh - 112px));
-    max-height: min(calc(100dvh - 112px), 640px);
+    height: min(calc(100dvh - 98px), 660px);
+    min-height: min(500px, calc(100dvh - 98px));
+    max-height: min(calc(100dvh - 98px), 660px);
   }
 
   .chat-layout.mobile-pane-call .video-stage {
