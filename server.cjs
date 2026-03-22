@@ -502,9 +502,12 @@ const Message = mongoose.model(
       author: String,
       authorRole: String,
       message: String,
-      messageType: { type: String, enum: ["text", "image"], default: "text" },
+      messageType: { type: String, enum: ["text", "image", "audio", "pdf", "file"], default: "text" },
       imageUrl: String,
       imageName: String,
+      attachmentUrl: String,
+      attachmentName: String,
+      attachmentMime: String,
     },
     { timestamps: true }
   )
@@ -861,11 +864,35 @@ const fileToDataUrl = (filePath, mimeType = "image/jpeg") => {
 };
 
 const MAX_CHAT_IMAGE_DATA_URL_LEN = 3 * 1024 * 1024; // ~2MB binary image payload
-const toChatImageDataUrl = (raw) => {
+const MAX_CHAT_FILE_DATA_URL_LEN = 11 * 1024 * 1024; // ~8MB binary payload
+const CHAT_ATTACHMENT_DATA_URL_RE =
+  /^data:(image\/[a-zA-Z0-9+.-]+|audio\/[a-zA-Z0-9+.-]+|application\/pdf|text\/plain|application\/msword|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document);base64,/i;
+
+const getChatAttachmentTypeFromMime = (mimeRaw) => {
+  const mime = String(mimeRaw || "").trim().toLowerCase();
+  if (!mime) return "";
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("audio/")) return "audio";
+  if (mime === "application/pdf") return "pdf";
+  if (
+    mime === "text/plain" ||
+    mime === "application/msword" ||
+    mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  ) {
+    return "file";
+  }
+  return "";
+};
+
+const toChatAttachmentDataUrl = (raw) => {
   const v = String(raw || "").trim();
   if (!v) return "";
-  if (!/^data:image\/[a-zA-Z0-9+.-]+;base64,/i.test(v)) return "";
-  if (v.length > MAX_CHAT_IMAGE_DATA_URL_LEN) return "";
+  const match = v.match(/^data:([^;]+);base64,/i);
+  if (!match || !CHAT_ATTACHMENT_DATA_URL_RE.test(v)) return "";
+  const attachmentType = getChatAttachmentTypeFromMime(match[1]);
+  if (!attachmentType) return "";
+  const maxLen = attachmentType === "image" ? MAX_CHAT_IMAGE_DATA_URL_LEN : MAX_CHAT_FILE_DATA_URL_LEN;
+  if (v.length > maxLen) return "";
   return v;
 };
 
@@ -1278,9 +1305,16 @@ app.get("/api/conversations", async (req, res) => {
     const roomMap = {};
     messages.forEach((msg) => {
       if (!roomMap[msg.room]) {
+        const attachmentName = msg.attachmentName || msg.imageName || "";
         const preview = msg.messageType === "image"
-          ? (msg.imageName ? `[Image] ${msg.imageName}` : "[Image]")
-          : (msg.message || "");
+          ? (attachmentName ? `[Image] ${attachmentName}` : "[Image]")
+          : msg.messageType === "audio"
+            ? (attachmentName ? `[Audio] ${attachmentName}` : "[Audio]")
+            : msg.messageType === "pdf"
+              ? (attachmentName ? `[PDF] ${attachmentName}` : "[PDF]")
+              : msg.messageType === "file"
+                ? (attachmentName ? `[File] ${attachmentName}` : "[File]")
+                : (msg.message || "");
         roomMap[msg.room] = {
           room: msg.room,
           lastMessage: preview,
@@ -2179,20 +2213,33 @@ io.on("connection", (socket) => {
         authorRole: senderRole || data.authorRole,
       };
       const text = String(payload.message || "").trim();
-      const imageUrl = toChatImageDataUrl(payload.imageUrl);
-      const imageName = String(payload.imageName || "").trim().slice(0, 120);
+      const attachmentUrl = toChatAttachmentDataUrl(payload.attachmentUrl || payload.imageUrl);
+      const attachmentMimeMatch = attachmentUrl.match(/^data:([^;]+);base64,/i);
+      const attachmentMime = String(
+        payload.attachmentMime || attachmentMimeMatch?.[1] || ""
+      )
+        .trim()
+        .toLowerCase()
+        .slice(0, 160);
+      const attachmentType = getChatAttachmentTypeFromMime(attachmentMime);
+      const attachmentName = String(payload.attachmentName || payload.imageName || "")
+        .trim()
+        .slice(0, 160);
       const hasText = Boolean(text);
-      const hasImage = Boolean(imageUrl);
+      const hasAttachment = Boolean(attachmentUrl && attachmentType);
 
-      if (!hasText && !hasImage) {
+      if (!hasText && !hasAttachment) {
         socket.emit("error", "Message cannot be empty");
         return;
       }
 
-      payload.messageType = hasImage ? "image" : "text";
+      payload.messageType = hasAttachment ? attachmentType : "text";
       payload.message = text;
-      payload.imageUrl = hasImage ? imageUrl : "";
-      payload.imageName = hasImage ? imageName : "";
+      payload.attachmentUrl = hasAttachment ? attachmentUrl : "";
+      payload.attachmentName = hasAttachment ? attachmentName : "";
+      payload.attachmentMime = hasAttachment ? attachmentMime : "";
+      payload.imageUrl = attachmentType === "image" ? attachmentUrl : "";
+      payload.imageName = attachmentType === "image" ? attachmentName : "";
 
       const msg = await Message.create(payload);
       io.to(room).emit("receive_message", msg);

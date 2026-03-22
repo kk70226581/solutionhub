@@ -4,6 +4,14 @@ import io from 'socket.io-client';
 import '../styles/ClientChat.css';
 import VideoCall from '../components/VideoCall';
 import { clearStoredIncomingCall, getStoredIncomingCall } from '../utils/incomingCallStorage';
+import {
+  CHAT_ATTACHMENT_ACCEPT,
+  getChatAttachmentPayload,
+  getChatAttachmentType,
+  getChatMessageAttachment,
+  readFileAsDataUrl,
+  validateChatAttachmentFile,
+} from '../utils/chatAttachments';
 
 const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
@@ -44,6 +52,7 @@ const ClientChat = () => {
   const [inputValue, setInputValue] = useState('');
   const [selectedImageDataUrl, setSelectedImageDataUrl] = useState('');
   const [selectedImageName, setSelectedImageName] = useState('');
+  const [selectedAttachmentMime, setSelectedAttachmentMime] = useState('');
   const [typingVisible, setTypingVisible] = useState(false);
   const [toast, setToast] = useState({ visible: false, text: '', error: false });
   const [imageViewer, setImageViewer] = useState({ open: false, src: '', alt: '' });
@@ -182,6 +191,85 @@ const ClientChat = () => {
     });
   };
 
+  const renderMessageContent = msg => {
+    const { attachmentType, attachmentUrl, attachmentName, attachmentMime } = getChatMessageAttachment(msg);
+    const messageBody = msg.message ? (
+      <div
+        className="message-body"
+        dangerouslySetInnerHTML={{
+          __html: escapeHtml(msg.message || ''),
+        }}
+      />
+    ) : null;
+
+    if (attachmentType === 'image' && attachmentUrl) {
+      return (
+        <div className="chat-image-wrap">
+          <img
+            src={attachmentUrl}
+            alt={attachmentName || 'Chat image'}
+            className="chat-message-image"
+            onClick={() =>
+              setImageViewer({
+                open: true,
+                src: attachmentUrl,
+                alt: attachmentName || 'Chat image',
+              })
+            }
+          />
+          {messageBody}
+        </div>
+      );
+    }
+
+    if (attachmentType === 'audio' && attachmentUrl) {
+      return (
+        <div className="chat-attachment-wrap">
+          <div className="chat-attachment-card">
+            <div className="chat-attachment-head">
+              <span className="chat-attachment-badge">Audio</span>
+              <span className="chat-attachment-name">{attachmentName || 'Audio attachment'}</span>
+            </div>
+            <audio className="chat-message-audio" controls preload="metadata">
+              <source src={attachmentUrl} type={attachmentMime || undefined} />
+            </audio>
+          </div>
+          {messageBody}
+        </div>
+      );
+    }
+
+    if (attachmentType && attachmentUrl) {
+      return (
+        <div className="chat-attachment-wrap">
+          <a
+            className="chat-attachment-card"
+            href={attachmentUrl}
+            download={attachmentName || undefined}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <div className="chat-attachment-head">
+              <span className="chat-attachment-badge">{attachmentType === 'pdf' ? 'PDF' : 'File'}</span>
+              <span className="chat-attachment-name">{attachmentName || 'Attachment'}</span>
+            </div>
+            <span className="chat-attachment-link">Open or download</span>
+          </a>
+          {messageBody}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        className="message-body"
+        dangerouslySetInnerHTML={{
+          __html: escapeHtml(msg.message || ''),
+        }}
+      />
+    );
+  };
+
   const formatAccessTime = ts => {
     if (!ts) return 'Flexible access';
     const d = new Date(ts);
@@ -303,7 +391,7 @@ const ClientChat = () => {
       const setIds = new Set();
       (msgs || []).forEach(m => {
         const id =
-          (m._id || '') + '|' + (m.createdAt || '') + '|' + (m.message || '') + '|' + (m.imageUrl || '');
+          (m._id || '') + '|' + (m.createdAt || '') + '|' + (m.message || '') + '|' + (m.attachmentUrl || m.imageUrl || '');
         if (id) setIds.add(id);
       });
       displayedMessageIdsRef.current = setIds;
@@ -364,7 +452,7 @@ const ClientChat = () => {
         '|' +
         (data.message || '') +
         '|' +
-        (data.imageUrl || '');
+        (data.attachmentUrl || data.imageUrl || '');
       if (id && displayedMessageIdsRef.current.has(id)) return;
       if (id) displayedMessageIdsRef.current.add(id);
 
@@ -413,16 +501,19 @@ const ClientChat = () => {
       return;
     }
     const trimmed = inputValue.trim();
-    const hasImage = Boolean(selectedImageDataUrl);
-    if (!trimmed && !hasImage) return;
+    const attachmentPayload = getChatAttachmentPayload({
+      dataUrl: selectedImageDataUrl,
+      name: selectedImageName,
+      mime: selectedAttachmentMime,
+    });
+    const hasAttachment = Boolean(attachmentPayload.attachmentUrl);
+    if (!trimmed && !hasAttachment) return;
 
     const localMsg = {
       author: clientEmail,
       message: trimmed,
-      messageType: hasImage ? 'image' : 'text',
-      imageUrl: hasImage ? selectedImageDataUrl : '',
-      imageName: hasImage ? selectedImageName : '',
       createdAt: new Date().toISOString(),
+      ...attachmentPayload,
     };
 
     setMessages(prev => [...prev, localMsg]);
@@ -433,45 +524,38 @@ const ClientChat = () => {
       author: clientEmail,
       authorRole: 'client',
       message: trimmed,
-      messageType: hasImage ? 'image' : 'text',
-      imageUrl: hasImage ? selectedImageDataUrl : '',
-      imageName: hasImage ? selectedImageName : '',
+      ...attachmentPayload,
     });
     socketInstance.emit('stop_typing', { room: roomId });
 
     setInputValue('');
     setSelectedImageDataUrl('');
     setSelectedImageName('');
+    setSelectedAttachmentMime('');
     if (chatFileInputRef.current) chatFileInputRef.current.value = '';
     if (chatComposerRef.current) {
       chatComposerRef.current.style.height = 'auto';
     }
   };
 
-  const handlePickImage = ev => {
+  const handlePickAttachment = async ev => {
     const file = ev.target.files?.[0];
     if (!file) return;
-    if (!file.type?.startsWith('image/')) {
-      showToast('Please select an image file.', true);
+    const error = validateChatAttachmentFile(file);
+    if (error) {
+      showToast(error, true);
       ev.target.value = '';
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Image must be 2MB or smaller.', true);
-      ev.target.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const out = String(reader.result || '');
-      if (!/^data:image\//i.test(out)) {
-        showToast('Invalid image format.', true);
-        return;
-      }
+    try {
+      const out = await readFileAsDataUrl(file);
       setSelectedImageDataUrl(out);
-      setSelectedImageName(file.name || 'image');
-    };
-    reader.readAsDataURL(file);
+      setSelectedImageName(file.name || 'attachment');
+      setSelectedAttachmentMime(file.type || '');
+    } catch {
+      showToast('Could not read the selected file.', true);
+      ev.target.value = '';
+    }
   };
 
   const handleKeyPress = e => {
@@ -862,37 +946,7 @@ const ClientChat = () => {
                                 <div className="message-sender">{senderName}</div>
                                 <div className="message-time">{formatTime(msg.createdAt)}</div>
                               </div>
-                              {msg.messageType === 'image' && msg.imageUrl ? (
-                                <div className="chat-image-wrap">
-                                  <img
-                                    src={msg.imageUrl}
-                                    alt={msg.imageName || 'Chat image'}
-                                    className="chat-message-image"
-                                    onClick={() =>
-                                      setImageViewer({
-                                        open: true,
-                                        src: msg.imageUrl,
-                                        alt: msg.imageName || 'Chat image',
-                                      })
-                                    }
-                                  />
-                                  {msg.message ? (
-                                    <div
-                                      className="message-body"
-                                      dangerouslySetInnerHTML={{
-                                        __html: escapeHtml(msg.message || ''),
-                                      }}
-                                    />
-                                  ) : null}
-                                </div>
-                              ) : (
-                                <div
-                                  className="message-body"
-                                  dangerouslySetInnerHTML={{
-                                    __html: escapeHtml(msg.message || ''),
-                                  }}
-                                />
-                              )}
+                              {renderMessageContent(msg)}
                             </div>
                           </div>
                         );
@@ -913,21 +967,40 @@ const ClientChat = () => {
                   <input
                     ref={chatFileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept={CHAT_ATTACHMENT_ACCEPT}
                     className="chat-file-input"
-                    onChange={handlePickImage}
+                    onChange={handlePickAttachment}
                   />
 
                   {selectedImageDataUrl ? (
                     <div className="chat-image-preview">
-                      <img src={selectedImageDataUrl} alt={selectedImageName || 'Attachment'} />
-                      <span>{selectedImageName || 'image'}</span>
+                      {getChatAttachmentType({
+                        mime: selectedAttachmentMime,
+                        name: selectedImageName,
+                        attachmentUrl: selectedImageDataUrl,
+                      }) === 'image' ? (
+                        <img src={selectedImageDataUrl} alt={selectedImageName || 'Attachment'} />
+                      ) : (
+                        <div className="chat-attachment-thumb">
+                          {getChatAttachmentType({
+                            mime: selectedAttachmentMime,
+                            name: selectedImageName,
+                            attachmentUrl: selectedImageDataUrl,
+                          }) === 'audio' ? 'AUDIO' : getChatAttachmentType({
+                            mime: selectedAttachmentMime,
+                            name: selectedImageName,
+                            attachmentUrl: selectedImageDataUrl,
+                          }) === 'pdf' ? 'PDF' : 'FILE'}
+                        </div>
+                      )}
+                      <span>{selectedImageName || 'attachment'}</span>
                       <button
                         className="chat-image-remove"
                         type="button"
                         onClick={() => {
                           setSelectedImageDataUrl('');
                           setSelectedImageName('');
+                          setSelectedAttachmentMime('');
                           if (chatFileInputRef.current) chatFileInputRef.current.value = '';
                         }}
                       >
@@ -943,7 +1016,7 @@ const ClientChat = () => {
                       onClick={() => chatFileInputRef.current?.click()}
                     >
                       <i className="fa-solid fa-paperclip" />
-                      <span>Image</span>
+                      <span>Attach</span>
                     </button>
                     <textarea
                       ref={chatComposerRef}

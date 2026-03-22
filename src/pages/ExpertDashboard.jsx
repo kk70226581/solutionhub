@@ -11,6 +11,14 @@ import {
 import '../styles/ExpertDashboard.css';
 import VideoCall from '../components/VideoCall';
 import { clearStoredIncomingCall, getStoredIncomingCall } from '../utils/incomingCallStorage';
+import {
+  CHAT_ATTACHMENT_ACCEPT,
+  getChatAttachmentPayload,
+  getChatAttachmentType,
+  getChatMessageAttachment,
+  readFileAsDataUrl,
+  validateChatAttachmentFile,
+} from '../utils/chatAttachments';
 
 const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
@@ -74,8 +82,6 @@ const toAssetUrl = (p) => {
   const normalized = String(p).replace(/\\/g, '/').replace(/^\.?\//, '');
   return `${API}/${normalized}`;
 };
-const isImageDataUrl = (v) => /^data:image\//i.test(String(v || ''));
-
 function useInView(threshold = 0.15) {
   const ref = useRef(null);
   const [inView, setInView] = useState(false);
@@ -264,6 +270,7 @@ function DateSeparator({ date }) {
 // ─── Message Bubble with reactions ───────────────────────
 function MessageBubble({ msg, mine, email, onReact }) {
   const [showReact, setShowReact] = useState(false);
+  const { attachmentType, attachmentUrl, attachmentName, attachmentMime } = getChatMessageAttachment(msg);
 
   return (
     <div
@@ -278,13 +285,43 @@ function MessageBubble({ msg, mine, email, onReact }) {
       )}
       <div className="ed-msg-content-col">
         <div className={`ed-msg-bubble ${mine ? 'mine' : 'theirs'}`}>
-          {msg.messageType === 'image' && msg.imageUrl ? (
+          {attachmentType === 'image' && attachmentUrl ? (
             <>
               <img
                 className="ed-msg-image"
-                src={msg.imageUrl}
-                alt={msg.imageName || 'Shared image'}
+                src={attachmentUrl}
+                alt={attachmentName || 'Shared image'}
               />
+              {msg.message && <p className="ed-msg-caption">{msg.message}</p>}
+            </>
+          ) : attachmentType === 'audio' && attachmentUrl ? (
+            <>
+              <div className="ed-msg-file-card">
+                <div className="ed-msg-file-top">
+                  <span className="ed-msg-file-badge">Audio</span>
+                  <span className="ed-msg-file-name">{attachmentName || 'Audio attachment'}</span>
+                </div>
+                <audio className="ed-msg-audio" controls preload="metadata">
+                  <source src={attachmentUrl} type={attachmentMime || undefined} />
+                </audio>
+              </div>
+              {msg.message && <p className="ed-msg-caption">{msg.message}</p>}
+            </>
+          ) : attachmentType && attachmentUrl ? (
+            <>
+              <a
+                className="ed-msg-file-card"
+                href={attachmentUrl}
+                download={attachmentName || undefined}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <div className="ed-msg-file-top">
+                  <span className="ed-msg-file-badge">{attachmentType === 'pdf' ? 'PDF' : 'File'}</span>
+                  <span className="ed-msg-file-name">{attachmentName || 'Attachment'}</span>
+                </div>
+                <span className="ed-msg-file-link">Open or download</span>
+              </a>
               {msg.message && <p className="ed-msg-caption">{msg.message}</p>}
             </>
           ) : (
@@ -360,6 +397,7 @@ const ExpertDashboard = () => {
   const [chatInput, setChatInput] = useState('');
   const [chatImageDataUrl, setChatImageDataUrl] = useState('');
   const [chatImageName, setChatImageName] = useState('');
+  const [chatAttachmentMime, setChatAttachmentMime] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
   const [liveSocket, setLiveSocket] = useState(null);
   const [chatImageViewer, setChatImageViewer] = useState({ open: false, src: '', alt: '' });
@@ -504,7 +542,7 @@ const ExpertDashboard = () => {
       if (msg.author === email) return;
       setChatMessages((prev) => {
         const last = prev[prev.length - 1];
-        if (last && last.author === msg.author && last.message === msg.message && last.imageUrl === msg.imageUrl && Math.abs(new Date(last.createdAt || 0) - new Date(msg.createdAt || 0)) < 3000) {
+        if (last && last.author === msg.author && last.message === msg.message && (last.attachmentUrl || last.imageUrl) === (msg.attachmentUrl || msg.imageUrl) && Math.abs(new Date(last.createdAt || 0) - new Date(msg.createdAt || 0)) < 3000) {
           return prev;
         }
         return [...prev, msg];
@@ -686,6 +724,7 @@ const ExpertDashboard = () => {
     activeRoomRef.current = c.room;
     setChatImageDataUrl('');
     setChatImageName('');
+    setChatAttachmentMime('');
     if (chatImageInputRef.current) chatImageInputRef.current.value = '';
     setUnreadCounts((prev) => ({ ...prev, [c.room]: 0 }));
     setMobileSidebarOpen(false);
@@ -730,49 +769,52 @@ const ExpertDashboard = () => {
   const sendChatMessage = useCallback(() => {
     const room = activeRoomRef.current || activeRoom;
     const txt = chatInput.trim();
-    const hasImage = Boolean(chatImageDataUrl);
-    if (!room || (!txt && !hasImage) || !email) return;
+    const attachmentPayload = getChatAttachmentPayload({
+      dataUrl: chatImageDataUrl,
+      name: chatImageName,
+      mime: chatAttachmentMime,
+    });
+    const hasAttachment = Boolean(attachmentPayload.attachmentUrl);
+    if (!room || (!txt && !hasAttachment) || !email) return;
     const local = {
       _id: `local-${Date.now()}`,
       room, author: email, authorRole: 'expert',
       message: txt,
-      messageType: hasImage ? 'image' : 'text',
-      imageUrl: hasImage ? chatImageDataUrl : '',
-      imageName: hasImage ? chatImageName : '',
       createdAt: new Date().toISOString(),
       status: 'sending',
+      ...attachmentPayload,
     };
     setChatMessages((prev) => [...prev, local]);
     setChatInput('');
     setChatImageDataUrl('');
     setChatImageName('');
+    setChatAttachmentMime('');
     if (chatImageInputRef.current) chatImageInputRef.current.value = '';
     socketRef.current?.emit('typing', { room, user: email, isTyping: false });
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     socketRef.current?.emit('send_private_message', {
       room, author: email, authorRole: 'expert',
       message: txt,
-      messageType: hasImage ? 'image' : 'text',
-      imageUrl: hasImage ? chatImageDataUrl : '',
-      imageName: hasImage ? chatImageName : '',
+      ...attachmentPayload,
     });
     setTimeout(() => msgsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
     chatInputRef.current?.focus();
-  }, [activeRoom, chatInput, chatImageDataUrl, chatImageName, email]);
+  }, [activeRoom, chatAttachmentMime, chatImageDataUrl, chatImageName, chatInput, email]);
 
-  const onPickChatImage = useCallback((ev) => {
+  const onPickChatAttachment = useCallback(async (ev) => {
     const file = ev.target.files?.[0];
     if (!file) return;
-    if (!file.type?.startsWith('image/')) { alert('Please select an image file.'); ev.target.value = ''; return; }
-    if (file.size > 2 * 1024 * 1024) { alert('Image must be 2MB or smaller.'); ev.target.value = ''; return; }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const v = String(reader.result || '');
-      if (!isImageDataUrl(v)) { alert('Invalid image format.'); return; }
+    const error = validateChatAttachmentFile(file);
+    if (error) { alert(error); ev.target.value = ''; return; }
+    try {
+      const v = await readFileAsDataUrl(file);
       setChatImageDataUrl(v);
-      setChatImageName(file.name || 'image');
-    };
-    reader.readAsDataURL(file);
+      setChatImageName(file.name || 'attachment');
+      setChatAttachmentMime(file.type || '');
+    } catch {
+      alert('Could not read the selected file.');
+      ev.target.value = '';
+    }
   }, []);
 
   const handleChatInputChange = useCallback((value) => {
@@ -1491,14 +1533,32 @@ const ExpertDashboard = () => {
 
                       {/* Compose */}
                       <div className="ed-compose">
-                        <input ref={chatImageInputRef} type="file" accept="image/*" className="ed-file-hidden" onChange={onPickChatImage} />
+                        <input ref={chatImageInputRef} type="file" accept={CHAT_ATTACHMENT_ACCEPT} className="ed-file-hidden" onChange={onPickChatAttachment} />
 
                         {chatImageDataUrl && (
                           <div className="ed-attach-preview">
-                            <img src={chatImageDataUrl} alt="Attachment" />
+                            {getChatAttachmentType({
+                              mime: chatAttachmentMime,
+                              name: chatImageName,
+                              attachmentUrl: chatImageDataUrl,
+                            }) === 'image' ? (
+                              <img src={chatImageDataUrl} alt="Attachment" />
+                            ) : (
+                              <div className="ed-attach-thumb">
+                                {getChatAttachmentType({
+                                  mime: chatAttachmentMime,
+                                  name: chatImageName,
+                                  attachmentUrl: chatImageDataUrl,
+                                }) === 'audio' ? 'AUDIO' : getChatAttachmentType({
+                                  mime: chatAttachmentMime,
+                                  name: chatImageName,
+                                  attachmentUrl: chatImageDataUrl,
+                                }) === 'pdf' ? 'PDF' : 'FILE'}
+                              </div>
+                            )}
                             <div className="ed-attach-meta">
                               <span className="ed-attach-name">{chatImageName}</span>
-                              <button className="ed-attach-rm" onClick={() => { setChatImageDataUrl(''); setChatImageName(''); if (chatImageInputRef.current) chatImageInputRef.current.value = ''; }}>
+                              <button className="ed-attach-rm" onClick={() => { setChatImageDataUrl(''); setChatImageName(''); setChatAttachmentMime(''); if (chatImageInputRef.current) chatImageInputRef.current.value = ''; }}>
                                 <X size={12} />
                               </button>
                             </div>
@@ -1506,7 +1566,7 @@ const ExpertDashboard = () => {
                         )}
 
                         <div className="ed-compose-row">
-                          <button className="ed-compose-btn" onClick={() => chatImageInputRef.current?.click()} title="Attach image">
+                          <button className="ed-compose-btn" onClick={() => chatImageInputRef.current?.click()} title="Attach file">
                             <Paperclip size={16} />
                           </button>
                           <div className="ed-compose-input-wrap">
