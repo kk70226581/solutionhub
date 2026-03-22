@@ -369,6 +369,7 @@ const ExpertDashboard = () => {
   const [clientOnlineStatus, setClientOnlineStatus] = useState({});
   const [conversationSearch, setConversationSearch] = useState('');
   const [isCallConnected, setIsCallConnected] = useState(false);
+  const [callSplit, setCallSplit] = useState(50);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [msgReactions, setMsgReactions] = useState({});
   const [showEmojiHint, setShowEmojiHint] = useState(false);
@@ -382,6 +383,8 @@ const ExpertDashboard = () => {
   const chatImageInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const chatInputRef = useRef(null);
+  const connectedLayoutRef = useRef(null);
+  const callSplitDragRef = useRef({ active: false });
 
   const [statsRef, statsInView] = useInView(0.25);
 
@@ -390,6 +393,33 @@ const ExpertDashboard = () => {
       navigate('/login', { replace: true });
     }
   }, [token, email, normalizedRole, navigate]);
+
+  useEffect(() => {
+    const onMove = (event) => {
+      if (!callSplitDragRef.current.active || !connectedLayoutRef.current) return;
+      const rect = connectedLayoutRef.current.getBoundingClientRect();
+      const next = ((event.clientX - rect.left) / rect.width) * 100;
+      setCallSplit(Math.min(70, Math.max(30, next)));
+    };
+
+    const onUp = () => {
+      callSplitDragRef.current.active = false;
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, []);
+
+  const startCallSplitDrag = (event) => {
+    if (!isCallConnected) return;
+    if (window.innerWidth <= 900) return;
+    event.preventDefault();
+    callSplitDragRef.current.active = true;
+  };
 
   const loadDashboardData = useCallback(async () => {
     if (!token || !email) return;
@@ -1240,7 +1270,11 @@ const ExpertDashboard = () => {
           {/* ─── CHAT TAB ─────────────────────────────────────── */}
           {activeTab === 'chat' && (
             <section className="ed-section ed-section--chat">
-              <div className={`ed-chat-shell ${isCallConnected ? 'call-active' : ''}`}>
+              <div
+                ref={connectedLayoutRef}
+                className={`ed-chat-shell ${isCallConnected ? 'call-active' : ''}`}
+                style={isCallConnected ? { '--call-left': `${callSplit}%`, '--call-right': `${100 - callSplit}%` } : undefined}
+              >
 
                 {/* Sidebar */}
                 <div className={`ed-chat-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
@@ -1298,6 +1332,18 @@ const ExpertDashboard = () => {
                 {/* Sidebar overlay for mobile */}
                 {mobileSidebarOpen && <div className="ed-sidebar-overlay" onClick={() => setMobileSidebarOpen(false)} />}
 
+                {isCallConnected ? (
+                  <div
+                    className="ed-chat-call-divider"
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize video and chat panels"
+                    onPointerDown={startCallSplitDrag}
+                  >
+                    <span />
+                  </div>
+                ) : null}
+
                 {/* Main chat */}
                 <div className="ed-chat-main">
                   {!activeRoom ? (
@@ -1352,21 +1398,23 @@ const ExpertDashboard = () => {
                       )}
 
                       {/* Video Call */}
-                      <VideoCall
-                        socket={liveSocket}
-                        roomId={activeRoom}
-                        currentUserEmail={email || ''}
-                        currentUserName={computedProfile.name || email || 'Expert'}
-                        peerLabel={activeConversation?.otherEmail || 'Client'}
-                        enabled={Boolean(activeRoom)}
-                        compact
-                        externalIncomingCall={incomingCall?.room === activeRoom ? incomingCall : null}
-                        onIncomingCallCleared={() => {
-                          setIncomingCall((prev) => (prev?.room === activeRoom ? null : prev));
-                          clearStoredIncomingCall();
-                        }}
-                        onCallStateChange={({ connected }) => setIsCallConnected(Boolean(connected))}
-                      />
+                      <div className="ed-chat-callrail">
+                        <VideoCall
+                          socket={liveSocket}
+                          roomId={activeRoom}
+                          currentUserEmail={email || ''}
+                          currentUserName={computedProfile.name || email || 'Expert'}
+                          peerLabel={activeConversation?.otherEmail || 'Client'}
+                          enabled={Boolean(activeRoom)}
+                          compact
+                          externalIncomingCall={incomingCall?.room === activeRoom ? incomingCall : null}
+                          onIncomingCallCleared={() => {
+                            setIncomingCall((prev) => (prev?.room === activeRoom ? null : prev));
+                            clearStoredIncomingCall();
+                          }}
+                          onCallStateChange={({ connected }) => setIsCallConnected(Boolean(connected))}
+                        />
+                      </div>
 
                       {/* Messages */}
                       <div className="ed-messages-area">

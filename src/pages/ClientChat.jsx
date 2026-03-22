@@ -52,6 +52,9 @@ const ClientChat = () => {
   const [savingRating, setSavingRating] = useState(false);
   const [incomingCall, setIncomingCall] = useState(() => getStoredIncomingCall());
   const [isCallConnected, setIsCallConnected] = useState(false);
+  const [callSplit, setCallSplit] = useState(50);
+  const [mobilePane, setMobilePane] = useState('chat');
+  const [isExpertPanelCollapsed, setIsExpertPanelCollapsed] = useState(false);
   const [chatAccess, setChatAccess] = useState({
     checking: true,
     allowed: false,
@@ -65,6 +68,10 @@ const ClientChat = () => {
   const isTypingRef = useRef(false);
   const chatMessagesRef = useRef(null);
   const chatFileInputRef = useRef(null);
+  const chatComposerRef = useRef(null);
+  const connectedLayoutRef = useRef(null);
+  const callSplitDragRef = useRef({ active: false });
+  const swipeStartRef = useRef({ x: 0, y: 0, pane: 'chat' });
 
   useEffect(() => {
     if (!token || !clientEmail) {
@@ -72,6 +79,93 @@ const ClientChat = () => {
       navigate('/login', { replace: true });
     }
   }, [token, clientEmail, navigate]);
+
+  useEffect(() => {
+    if (incomingCall?.room === roomId || isCallConnected) {
+      setMobilePane('call');
+    }
+  }, [incomingCall, roomId, isCallConnected]);
+
+  useEffect(() => {
+    const syncMobileExpertPanel = () => {
+      if (window.innerWidth <= 860) {
+        setIsExpertPanelCollapsed(false);
+      }
+    };
+
+    syncMobileExpertPanel();
+    window.addEventListener('resize', syncMobileExpertPanel);
+    return () => {
+      window.removeEventListener('resize', syncMobileExpertPanel);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onMove = event => {
+      if (!callSplitDragRef.current.active || !connectedLayoutRef.current) return;
+      const rect = connectedLayoutRef.current.getBoundingClientRect();
+      const next = ((event.clientX - rect.left) / rect.width) * 100;
+      setCallSplit(Math.min(70, Math.max(30, next)));
+    };
+
+    const onUp = () => {
+      callSplitDragRef.current.active = false;
+    };
+
+    // Swipe gesture handlers for mobile pane switching
+    const onTouchStart = event => {
+      if (window.innerWidth > 860) return; // No swipe on desktop
+      const touch = event.touches?.[0];
+      if (!touch) return;
+      swipeStartRef.current = { x: touch.clientX, y: touch.clientY, pane: mobilePane };
+    };
+
+    const onTouchEnd = event => {
+      if (window.innerWidth > 860) return;
+      const touch = event.changedTouches?.[0];
+      if (!touch) return;
+
+      const deltaX = touch.clientX - swipeStartRef.current.x;
+      const deltaY = touch.clientY - swipeStartRef.current.y;
+      
+      // Only detect horizontal swipes (ignore vertical scrolling)
+      if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+      
+      // Require minimum swipe distance
+      const minSwipeDist = 50;
+      if (Math.abs(deltaX) < minSwipeDist) return;
+
+      const panes = ['chat', 'call', 'expert'];
+      const currentIdx = panes.indexOf(swipeStartRef.current.pane);
+      
+      if (deltaX > 0 && currentIdx > 0) {
+        // Swipe right - go to previous pane
+        setMobilePane(panes[currentIdx - 1]);
+      } else if (deltaX < 0 && currentIdx < panes.length - 1) {
+        // Swipe left - go to next pane
+        setMobilePane(panes[currentIdx + 1]);
+      }
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+    
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [mobilePane]);
+
+  const startCallSplitDrag = event => {
+    if (!isCallConnected) return;
+    if (window.innerWidth <= 860) return;
+    event.preventDefault();
+    callSplitDragRef.current.active = true;
+  };
 
   const escapeHtml = text => {
     const div = document.createElement('div');
@@ -349,6 +443,9 @@ const ClientChat = () => {
     setSelectedImageDataUrl('');
     setSelectedImageName('');
     if (chatFileInputRef.current) chatFileInputRef.current.value = '';
+    if (chatComposerRef.current) {
+      chatComposerRef.current.style.height = 'auto';
+    }
   };
 
   const handlePickImage = ev => {
@@ -465,6 +562,14 @@ const ClientChat = () => {
 
   const avatarInitial = (expert.name || 'E').trim()[0]?.toUpperCase() || 'E';
   const expertAvatarSrc = buildAvatarUrl(expert.avatar);
+  const conversationStatus = chatAccess.allowed
+    ? 'Private room active'
+    : chatAccess.reason === 'window_expired'
+      ? 'Chat window expired'
+      : 'Payment required to chat';
+  const mobileExpertAccess = chatAccess.allowed
+    ? `Chat access until ${formatAccessTime(chatAccess.accessUntil)}`
+    : conversationStatus;
 
   return (
     <div className="client-chat-page">
@@ -517,13 +622,54 @@ const ClientChat = () => {
       </header>
 
       <main>
-        <div className="shell">
-          <div className={`chat-layout ${isCallConnected ? 'chat-layout-call-connected' : ''}`}>
-            <aside className="expert-card">
+        <div className={`shell ${isCallConnected ? 'shell-call-connected' : ''}`}>
+          <div className="mobile-pane-switcher" aria-label="Mobile sections">
+            <button
+              type="button"
+              className={`mobile-pane-btn ${mobilePane === 'chat' ? 'active' : ''}`}
+              onClick={() => setMobilePane('chat')}
+            >
+              <i className="fa-regular fa-comments" />
+              <span>Chat</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-pane-btn ${mobilePane === 'call' ? 'active' : ''}`}
+              onClick={() => setMobilePane('call')}
+            >
+              <i className="fa-solid fa-phone" />
+              <span>Call</span>
+            </button>
+            <button
+              type="button"
+              className={`mobile-pane-btn ${mobilePane === 'expert' ? 'active' : ''}`}
+              onClick={() => setMobilePane('expert')}
+            >
+              <i className="fa-regular fa-user" />
+              <span>Expert</span>
+            </button>
+          </div>
+          <div
+            ref={connectedLayoutRef}
+            className={`chat-layout ${isCallConnected ? 'chat-layout-call-connected' : ''} mobile-pane-${mobilePane}`}
+            style={isCallConnected ? { '--call-left': `${callSplit}%`, '--call-right': `${100 - callSplit}%` } : undefined}
+          >
+            <aside className={`expert-card ${isExpertPanelCollapsed ? 'expert-card-collapsed' : ''}`}>
               <div className="expert-card-head">
                 <div className="expert-card-kicker">About Expert</div>
-                <div className="expert-card-window">
-                  {chatAccess.allowed ? formatAccessTime(chatAccess.accessUntil) : 'Locked'}
+                <div className="expert-card-head-actions">
+                  <div className="expert-card-window">
+                    {chatAccess.allowed ? formatAccessTime(chatAccess.accessUntil) : 'Locked'}
+                  </div>
+                  <button
+                    type="button"
+                    className="expert-card-collapse-btn"
+                    onClick={() => setIsExpertPanelCollapsed(!isExpertPanelCollapsed)}
+                    aria-label={isExpertPanelCollapsed ? 'Expand expert panel' : 'Collapse expert panel'}
+                    title={isExpertPanelCollapsed ? 'Expand' : 'Collapse'}
+                  >
+                    <i className={`fa-solid fa-chevron-${isExpertPanelCollapsed ? 'right' : 'left'}`} />
+                  </button>
                 </div>
               </div>
               <div className="expert-card-top">
@@ -653,22 +799,91 @@ const ClientChat = () => {
               />
             </section>
 
+            {isCallConnected ? (
+              <div
+                className="chat-call-divider"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Resize video and chat panels"
+                onPointerDown={startCallSplitDrag}
+              >
+                <span />
+              </div>
+            ) : null}
+
             <section className="chat-section">
               <div className="chat-box">
                 <div className="chat-top-stack">
                   <div className="chat-thread-head">
-                    <div>
-                      <strong>{typingVisible ? 'Expert is typing...' : expert.name || 'Expert'}</strong>
-                      <span>
-                        {chatAccess.allowed
-                          ? 'Private room active'
-                          : chatAccess.reason === 'window_expired'
-                            ? 'Chat window expired'
-                            : 'Payment required to chat'}
-                      </span>
+                    <div className="chat-thread-person">
+                      <div className="chat-thread-avatar">{avatarInitial}</div>
+                      <div className="chat-thread-copy">
+                        <strong>{typingVisible ? 'Expert is typing...' : expert.name || 'Expert'}</strong>
+                        <span>{conversationStatus}</span>
+                      </div>
                     </div>
-                    <button type="button" className="chat-jump-btn" onClick={scrollToBottom}>
-                      Latest
+                    <div className="chat-thread-actions">
+                      <span className={`chat-thread-badge ${chatAccess.allowed ? 'open' : 'locked'}`}>
+                        {chatAccess.allowed ? 'Open room' : 'Locked'}
+                      </span>
+                      <button type="button" className="chat-jump-btn" onClick={scrollToBottom}>
+                        Latest
+                      </button>
+                    </div>
+                  </div>
+                  <div className="chat-mobile-expert-card">
+                    <div className="chat-mobile-expert-main">
+                      <button
+                        type="button"
+                        className="chat-mobile-expert-avatar"
+                        onClick={() => {
+                          if (!expertAvatarSrc) return;
+                          setImageViewer({
+                            open: true,
+                            src: expertAvatarSrc,
+                            alt: expert.name || 'Expert',
+                          });
+                        }}
+                        aria-label={expertAvatarSrc ? 'View expert photo' : 'Expert avatar'}
+                      >
+                        {expertAvatarSrc ? (
+                          <img
+                            src={expertAvatarSrc}
+                            alt={expert.name || 'Expert'}
+                            className="chat-mobile-expert-avatar-image"
+                            onError={e => {
+                              e.target.style.display = 'none';
+                              const sibling = e.target.nextElementSibling;
+                              if (sibling) sibling.style.display = 'grid';
+                            }}
+                          />
+                        ) : null}
+                        <span
+                          className="chat-mobile-expert-avatar-fallback"
+                          style={{ display: expertAvatarSrc ? 'none' : 'grid' }}
+                        >
+                          {avatarInitial}
+                        </span>
+                      </button>
+                      <div className="chat-mobile-expert-copy">
+                        <div className="chat-mobile-expert-headline">
+                          <strong>{expert.name || 'Expert'}</strong>
+                          <span>{expert.field || 'Verified expert'}</span>
+                        </div>
+                        <div className="chat-mobile-expert-tags">
+                          <span>{expert.experience || 0}+ yrs</span>
+                          <span>{expert.avgRating ? `${expert.avgRating.toFixed(1)} rating` : 'New expert'}</span>
+                          <span>{chatAccess.allowed ? 'Chat open' : 'Chat locked'}</span>
+                        </div>
+                        <p>{mobileExpertAccess}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="chat-mobile-expert-link"
+                      onClick={() => setMobilePane('expert')}
+                    >
+                      Open full expert card
                     </button>
                   </div>
                 </div>
@@ -796,13 +1011,18 @@ const ClientChat = () => {
                       <i className="fa-solid fa-paperclip" />
                       <span>Image</span>
                     </button>
-                    <input
-                      type="text"
+                    <textarea
+                      ref={chatComposerRef}
+                      rows={1}
                       placeholder="Type your message..."
                       value={inputValue}
                       onChange={e => setInputValue(e.target.value)}
                       onKeyDown={handleKeyPress}
-                      onInput={handleTyping}
+                      onInput={e => {
+                        handleTyping();
+                        e.target.style.height = 'auto';
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`;
+                      }}
                     />
                     <button
                       className="send-btn"
@@ -870,4 +1090,3 @@ const ClientChat = () => {
 };
 
 export default ClientChat;
-

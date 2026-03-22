@@ -22,10 +22,13 @@ const RTC_CONFIG = {
 const AUDIO_CONSTRAINTS = {
   echoCancellation: true,
   noiseSuppression: true,
-  autoGainControl: false,
+  autoGainControl: false, // Disable to let our compressor handle it
   channelCount: { ideal: 1 },
   sampleRate: { ideal: 48000 },
   sampleSize: { ideal: 16 },
+  latency: { ideal: 0.01 },
+  noiseSuppressionMethod: 'experimental',
+  echoCancellationMethod: 'experimental',
 };
 
 const VIDEO_CONSTRAINTS = {
@@ -157,38 +160,63 @@ async function createProcessedAudioTrack(stream, store) {
   if (store.track) return store.track;
 
   const source = store.context.createMediaStreamSource(new MediaStream([audioTrack]));
+  
+  // === SIMPLE & BALANCED NOISE REDUCTION (Won't mute voices) ===
+  
+  // 1. Input gain
+  const inputGain = store.context.createGain();
+  inputGain.gain.value = 0.9;
+  
+  // 2. Notch filter for 60Hz hum only
+  const notch60 = store.context.createBiquadFilter();
+  notch60.type = 'notch';
+  notch60.frequency.value = 60;
+  notch60.Q.value = 15;
+  
+  // 3. Gentle highpass (keep voices, remove rumble)
   const highpass = store.context.createBiquadFilter();
   highpass.type = 'highpass';
-  highpass.frequency.value = 120;
-
+  highpass.frequency.value = 80;
+  highpass.Q.value = 0.7;
+  
+  // 4. Lowpass to remove hiss (but keep voices clear)
   const lowpass = store.context.createBiquadFilter();
   lowpass.type = 'lowpass';
-  lowpass.frequency.value = 7200;
-
+  lowpass.frequency.value = 12000;
+  lowpass.Q.value = 0.7;
+  
+  // 5. Light compressor (normalize volume, not mute)
   const compressor = store.context.createDynamicsCompressor();
-  compressor.threshold.value = -24;
-  compressor.knee.value = 20;
-  compressor.ratio.value = 4;
+  compressor.threshold.value = -30;
+  compressor.knee.value = 40;
+  compressor.ratio.value = 2.5;
   compressor.attack.value = 0.003;
-  compressor.release.value = 0.2;
-
-  const gain = store.context.createGain();
-  gain.gain.value = 0.88;
+  compressor.release.value = 0.4;
+  
+  // 6. Output gain
+  const outputGain = store.context.createGain();
+  outputGain.gain.value = 1.0;
 
   const destination = store.context.createMediaStreamDestination();
 
-  source.connect(highpass);
+  // === BUILD SIMPLE SIGNAL CHAIN ===
+  source.connect(inputGain);
+  inputGain.connect(notch60);
+  notch60.connect(highpass);
   highpass.connect(lowpass);
   lowpass.connect(compressor);
-  compressor.connect(gain);
-  gain.connect(destination);
+  compressor.connect(outputGain);
+  outputGain.connect(destination);
 
   const processedTrack = destination.stream.getAudioTracks()[0];
   if (!processedTrack) return audioTrack;
 
   processedTrack.contentHint = 'speech';
-  store.nodes = [source, highpass, lowpass, compressor, gain, destination];
+  
+  // Store nodes for cleanup
+  store.nodes = [source, inputGain, notch60, highpass, lowpass, compressor, outputGain, destination];
   store.track = processedTrack;
+  
   return processedTrack;
 }
 
@@ -1099,7 +1127,12 @@ export default function VideoCall({
           <h3>{compact ? peerLabel : `Video and audio with ${peerLabel}`}</h3>
         </div>
         <div className={`vc-status ${isCallActive ? 'live' : ''}`}>
-          {statusLabel}
+          <span>{statusLabel}</span>
+          {isCallActive && !isMuted && (
+            <span className="vc-audio-indicator" title="Audio noise cancellation active">
+              <i className="fa-solid fa-waveform-lines" />
+            </span>
+          )}
         </div>
       </div>
 
