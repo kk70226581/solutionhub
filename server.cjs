@@ -157,6 +157,62 @@ const cacheSetJson = async (key, value, ttlSec) => {
   }
 };
 
+const PRESENCE_USERS_KEY = "presence:users";
+const PRESENCE_USER_SOCKETS_PREFIX = "presence:user-sockets:";
+
+const getPresenceUserSocketsKey = (email) =>
+  `${PRESENCE_USER_SOCKETS_PREFIX}${String(email || "").toLowerCase()}`;
+
+const getOnlineUsersSnapshot = async () => {
+  if (!redisReady || !redisClient) {
+    return { ...onlineUsers };
+  }
+  try {
+    const raw = await redisClient.hGetAll(PRESENCE_USERS_KEY);
+    const out = {};
+    for (const [email, value] of Object.entries(raw || {})) {
+      try {
+        out[email] = JSON.parse(value);
+      } catch {
+        // ignore malformed presence records
+      }
+    }
+    return out;
+  } catch {
+    return { ...onlineUsers };
+  }
+};
+
+const setRedisPresence = async (email, presence) => {
+  if (!redisReady || !redisClient || !email) return;
+  try {
+    const normalizedEmail = String(email || "").toLowerCase();
+    await redisClient.multi()
+      .hSet(PRESENCE_USERS_KEY, normalizedEmail, JSON.stringify(presence))
+      .sAdd(getPresenceUserSocketsKey(normalizedEmail), presence.socketId)
+      .exec();
+  } catch {
+    // ignore redis presence write errors
+  }
+};
+
+const clearRedisPresenceSocket = async (email, socketId) => {
+  if (!redisReady || !redisClient || !email || !socketId) return null;
+  try {
+    const normalizedEmail = String(email || "").toLowerCase();
+    const socketsKey = getPresenceUserSocketsKey(normalizedEmail);
+    await redisClient.sRem(socketsKey, socketId);
+    const remaining = await redisClient.sCard(socketsKey);
+    if (remaining <= 0) {
+      await redisClient.multi().hDel(PRESENCE_USERS_KEY, normalizedEmail).del(socketsKey).exec();
+      return false;
+    }
+    return true;
+  } catch {
+    return null;
+  }
+};
+
 const createInMemoryRateLimiter = ({ windowMs, max, keyPrefix }) => {
   const buckets = new Map();
   return (req, res, next) => {
@@ -1564,15 +1620,64 @@ app.post("/api/admin/expert-status", adminAuth, async (req, res) => {
 });
 
 const onlineUsers = {};
+const localUserSockets = new Map();
 
-app.get("/api/health", adminAuth, (req, res) => {
+const addLocalOnlineUser = (email, presence) => {
+  const normalizedEmail = String(email || "").toLowerCase();
+  if (!normalizedEmail || !presence?.socketId) return;
+  const sockets = localUserSockets.get(normalizedEmail) || new Set();
+  sockets.add(presence.socketId);
+  localUserSockets.set(normalizedEmail, sockets);
+  onlineUsers[normalizedEmail] = {
+    ...(onlineUsers[normalizedEmail] || {}),
+    ...presence,
+    socketId: presence.socketId,
+  };
+};
+
+const removeLocalOnlineUser = (email, socketId) => {
+  const normalizedEmail = String(email || "").toLowerCase();
+  const sockets = localUserSockets.get(normalizedEmail);
+  if (!sockets) return false;
+  sockets.delete(socketId);
+  if (sockets.size === 0) {
+    localUserSockets.delete(normalizedEmail);
+    delete onlineUsers[normalizedEmail];
+    return false;
+  }
+  const fallbackSocketId = sockets.values().next().value;
+  if (onlineUsers[normalizedEmail]) {
+    onlineUsers[normalizedEmail] = {
+      ...onlineUsers[normalizedEmail],
+      socketId: fallbackSocketId,
+    };
+  }
+  return true;
+};
+
+const emitOnlineUsersSnapshot = async () => {
+  const snapshot = await getOnlineUsersSnapshot();
+  io.emit("online_users", snapshot);
+};
+
+const emitUserPresence = async (email, online) => {
+  io.emit("user_online", {
+    email: String(email || "").toLowerCase(),
+    online: Boolean(online),
+  });
+  await emitOnlineUsersSnapshot();
+};
+
+app.get("/api/health", adminAuth, async (req, res) => {
+  const snapshot = await getOnlineUsersSnapshot();
   res.json({
     status: "healthy",
-    onlineExperts: Object.values(onlineUsers).filter(
+    onlineExperts: Object.values(snapshot).filter(
       (u) => u.role === "expert"
     ).length,
     adminAccess: true,
     timestamp: new Date().toISOString(),
+    presenceStore: redisReady ? "redis" : "memory",
   });
 });
 
@@ -2124,7 +2229,7 @@ io.on("connection", (socket) => {
         return;
       }
 
-      onlineUsers[email] = {
+      const presence = {
         socketId: socket.id,
         name,
         role,
@@ -2132,12 +2237,14 @@ io.on("connection", (socket) => {
         status: expert?.status || "client",
         connectedAt: new Date(),
       };
+      addLocalOnlineUser(email, presence);
+      await setRedisPresence(email, presence);
 
       socket.data.user = { email, role, name };
 
       console.log("✅ User authenticated:", email, role);
       socket.emit("auth_success", { email, role });
-      io.emit("online_users", onlineUsers);
+      await emitUserPresence(email, true);
     } catch (err) {
       console.error("❌ Socket auth error:", err.message);
       socket.emit("auth_error", "Invalid token");
@@ -2149,18 +2256,21 @@ io.on("connection", (socket) => {
     const normalizedRole = String(role || "").toLowerCase();
     const normalizedName = String(name || normalizedEmail.split("@")[0] || "").trim();
 
-    onlineUsers[normalizedEmail] = {
+    const presence = {
       socketId: socket.id,
       name: normalizedName,
       role: normalizedRole,
       connectedAt: new Date(),
     };
+    addLocalOnlineUser(normalizedEmail, presence);
     socket.data.user = {
       email: normalizedEmail,
       role: normalizedRole,
       name: normalizedName,
     };
-    io.emit("online_users", onlineUsers);
+    setRedisPresence(normalizedEmail, presence)
+      .then(() => emitUserPresence(normalizedEmail, true))
+      .catch(() => emitUserPresence(normalizedEmail, true));
   });
 
   socket.on("join_private", async (room) => {
@@ -2377,7 +2487,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     if (socket.data.callRooms?.size) {
       for (const room of socket.data.callRooms) {
         socket.to(room).emit("peer-disconnected", {
@@ -2387,13 +2497,15 @@ io.on("connection", (socket) => {
       }
     }
 
-    for (const email in onlineUsers) {
-      if (onlineUsers[email].socketId === socket.id) {
-        delete onlineUsers[email];
-        io.emit("online_users", onlineUsers);
-        break;
-      }
-    }
+    const userEmail = String(socket.data.user?.email || "").toLowerCase();
+    if (!userEmail) return;
+
+    const stillOnlineLocally = removeLocalOnlineUser(userEmail, socket.id);
+    const stillOnlineInRedis = await clearRedisPresenceSocket(userEmail, socket.id);
+    await emitUserPresence(
+      userEmail,
+      redisReady && stillOnlineInRedis !== null ? stillOnlineInRedis : stillOnlineLocally
+    );
   });
 });
 

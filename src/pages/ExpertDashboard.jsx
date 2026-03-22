@@ -557,8 +557,15 @@ const ExpertDashboard = () => {
         return next;
       });
     });
+    s.on('online_users', (users) => {
+      const next = {};
+      Object.entries(users || {}).forEach(([userEmail, info]) => {
+        next[String(userEmail || '').toLowerCase()] = Boolean(info?.socketId);
+      });
+      setClientOnlineStatus(next);
+    });
     s.on('user_online', ({ email: userEmail, online }) => {
-      setClientOnlineStatus((prev) => ({ ...prev, [userEmail]: online }));
+      setClientOnlineStatus((prev) => ({ ...prev, [String(userEmail || '').toLowerCase()]: online }));
     });
     s.on('offer', ({ room, offer, from }) => {
       if (!room || !offer || String(from || '').toLowerCase() === String(email || '').toLowerCase()) return;
