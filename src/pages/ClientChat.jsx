@@ -54,6 +54,7 @@ const ClientChat = () => {
   const [selectedImageName, setSelectedImageName] = useState('');
   const [selectedAttachmentMime, setSelectedAttachmentMime] = useState('');
   const [typingVisible, setTypingVisible] = useState(false);
+  const [expertOnline, setExpertOnline] = useState(false);
   const [toast, setToast] = useState({ visible: false, text: '', error: false });
   const [imageViewer, setImageViewer] = useState({ open: false, src: '', alt: '' });
   const [myRating, setMyRating] = useState(0);
@@ -472,6 +473,18 @@ const ClientChat = () => {
       }
     });
 
+    s.on('online_users', users => {
+      const normalizedExpertEmail = String(expertEmail || '').toLowerCase();
+      if (!normalizedExpertEmail) return;
+      setExpertOnline(Boolean(users?.[normalizedExpertEmail]?.socketId));
+    });
+
+    s.on('user_online', ({ email: userEmail, online }) => {
+      const normalizedExpertEmail = String(expertEmail || '').toLowerCase();
+      if (String(userEmail || '').toLowerCase() !== normalizedExpertEmail) return;
+      setExpertOnline(Boolean(online));
+    });
+
     s.on('connect_error', err => {
       console.error('Socket error', err);
       showToast('Socket connection issue', true);
@@ -479,6 +492,7 @@ const ClientChat = () => {
 
     s.on('disconnect', () => {
       console.log('Socket disconnected');
+      setExpertOnline(false);
     });
 
     setSocketInstance(s);
@@ -646,11 +660,12 @@ const ClientChat = () => {
 
   const avatarInitial = (expert.name || 'E').trim()[0]?.toUpperCase() || 'E';
   const expertAvatarSrc = buildAvatarUrl(expert.avatar);
-  const conversationStatus = chatAccess.allowed
+  const accessStatus = chatAccess.allowed
     ? 'Private room active'
     : chatAccess.reason === 'window_expired'
       ? 'Chat window expired'
       : 'Payment required to chat';
+  const conversationStatus = `${expertOnline ? 'Online now' : 'Offline'} · ${accessStatus}`;
 
   return (
     <div className="client-chat-page">
@@ -795,6 +810,9 @@ const ClientChat = () => {
 
                 <div className="expert-badge-row">
                   <span className="expert-badge primary">Verified expert</span>
+                  <span className={`expert-badge ${expertOnline ? 'online' : 'offline'}`}>
+                    {expertOnline ? 'Online now' : 'Offline'}
+                  </span>
                   <span className="expert-badge neutral">{expert.experience || 0}+ yrs</span>
                 </div>
                 <div className="expert-name">{expert.name}</div>

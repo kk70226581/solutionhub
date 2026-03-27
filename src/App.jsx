@@ -3,7 +3,6 @@ import React from 'react';
 import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 
 import Home from './pages/Home';
-import FancyHome from './pages/FancyHome';
 import Experts from './pages/Experts';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
@@ -25,7 +24,6 @@ function App() {
       <Routes>
         {/* public */}
         <Route path="/" element={<Home />} />
-        <Route path="/fancy" element={<FancyHome />} />
         <Route path="/experts" element={<Experts />} />
 
         {/* auth */}
