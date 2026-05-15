@@ -90,12 +90,10 @@ const Home = () => {
   const [homeData, setHomeData] = useState(null);
   const [expertCount, setExpertCount] = useState(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
-  const [activityIndex, setActivityIndex] = useState(0);
   const [headerScrolled, setHeaderScrolled] = useState(false);
   const [heroVisible, setHeroVisible] = useState(false);
   const innerRef = useRef(null);
 
-  const activityFeed = homeData?.activity?.length ? homeData.activity : DEFAULT_ACTIVITY_FEED;
   const expertsShowcase = homeData?.experts?.length ? homeData.experts : DEFAULT_EXPERTS;
   const stats = homeData?.stats || {};
 
@@ -204,12 +202,6 @@ const Home = () => {
     const t = setInterval(() => setActiveTestimonial(v => (v + 1) % TESTIMONIALS.length), 4500);
     return () => clearInterval(t);
   }, []);
-
-  /* Activity feed */
-  useEffect(() => {
-    const t = setInterval(() => setActivityIndex(v => (v + 1) % activityFeed.length), 3000);
-    return () => clearInterval(t);
-  }, [activityFeed.length]);
 
   const go = useCallback((path) => { navigate(path); setMobileOpen(false); }, [navigate]);
   const scrollTo = useCallback((id) => {
@@ -352,21 +344,6 @@ const Home = () => {
 
               {/* Right panel */}
               <div className="hp-hero-panel">
-                {/* Live activity feed */}
-                <div className="hp-activity-card">
-                  <div className="hp-activity-header">
-                    <span className="hp-live-dot" />
-                    <span className="hp-activity-title">Live platform activity</span>
-                  </div>
-                  {activityFeed.map((item, i) => (
-                    <div key={i} className={`hp-activity-item ${i === activityIndex ? 'hp-activity-item--active' : ''}`}>
-                      <span className="hp-activity-icon">{item.icon}</span>
-                      <span className="hp-activity-text">{item.text}</span>
-                      <span className="hp-activity-time">{item.time}</span>
-                    </div>
-                  ))}
-                </div>
-
                 {/* Value preview card */}
                 <div className="hp-value-card">
                   <div className="hp-value-card-head">

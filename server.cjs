@@ -9,6 +9,7 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const { Server } = require("socket.io");
 const Razorpay = require("razorpay");
+const QRCode = require("qrcode");
 
 const {
   normalizeEmail,
@@ -41,7 +42,7 @@ const {
   removeLocalOnlineUser,
 } = require("./socket/presence-store.cjs");
 const { registerSocketHandlers } = require("./socket/realtime-handlers.cjs");
-const { connectDatabase, User, Expert, Message, Payment, Rating } = require("./models/app-models.cjs");
+const { connectDatabase, User, Expert, Message, Payment, Rating, AdminSecurity } = require("./models/app-models.cjs");
 const { registerAuthRoutes } = require("./routes/auth-routes.cjs");
 const { registerPublicRoutes } = require("./routes/public-routes.cjs");
 const { registerAdminPaymentRoutes } = require("./routes/admin-payment-routes.cjs");
@@ -218,6 +219,7 @@ registerAuthRoutes(app, {
   fileToDataUrl,
   User,
   Expert,
+  AdminSecurity,
   authRateLimiter,
   authMiddleware,
   validatePasswordStrength,
@@ -228,6 +230,7 @@ registerAuthRoutes(app, {
   adminAllowedEmails: ADMIN_ALLOWED_EMAILS,
   getAdmin2FASecret,
   verifyTOTP,
+  QRCode,
   sendPasswordResetEmail,
   emailProvider: EMAIL_PROVIDER,
   frontendBaseUrl: FRONTEND_BASE_URL,

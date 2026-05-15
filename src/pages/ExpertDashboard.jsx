@@ -202,7 +202,7 @@ function EditProfileModal({ profile, onSave, onClose, saving }) {
     <div className="ed-modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="ed-modal">
         <div className="ed-modal-head">
-          <h3>✨ Edit Expert Profile</h3>
+          <h3>Edit Expert Profile</h3>
           <button className="ed-modal-close" onClick={onClose}><X size={16} /></button>
         </div>
         <div className="ed-modal-body">
@@ -228,27 +228,27 @@ function EditProfileModal({ profile, onSave, onClose, saving }) {
             </div>
           </div>
           {[
-            { label: 'Display name', key: 'name', placeholder: 'Your full name', icon: '👤' },
-            { label: 'Headline', key: 'headline', placeholder: 'e.g. Senior Product Manager', icon: '💼' },
-            { label: 'Field / domain', key: 'field', placeholder: 'e.g. Career, Business, Programming', icon: '🎯' },
-            { label: 'Location', key: 'location', placeholder: 'e.g. Mumbai', icon: '📍' },
-            { label: 'Session fee (INR)', key: 'price', placeholder: '500', type: 'number', icon: '💰' },
-            { label: 'Years of experience', key: 'experience', placeholder: '5', type: 'number', icon: '⏱️' },
+            { label: 'Display name', key: 'name', placeholder: 'Your full name', icon: <Users size={13} /> },
+            { label: 'Headline', key: 'headline', placeholder: 'e.g. Senior Product Manager', icon: <Award size={13} /> },
+            { label: 'Field / domain', key: 'field', placeholder: 'e.g. Career, Business, Programming', icon: <Briefcase size={13} /> },
+            { label: 'Location', key: 'location', placeholder: 'e.g. Mumbai', icon: <MapPin size={13} /> },
+            { label: 'Session fee (INR)', key: 'price', placeholder: '500', type: 'number', icon: <DollarSign size={13} /> },
+            { label: 'Years of experience', key: 'experience', placeholder: '5', type: 'number', icon: <Clock size={13} /> },
           ].map(({ label, key, placeholder, type = 'text', icon }) => (
             <div key={key} className="ed-field">
-              <label className="ed-field-label">{icon} {label}</label>
+              <label className="ed-field-label"><span className="ed-field-label-icon">{icon}</span>{label}</label>
               <input className="ed-field-input" type={type} placeholder={placeholder} value={form[key] || ''} onChange={e => set(key, e.target.value)} />
             </div>
           ))}
           <div className="ed-field">
-            <label className="ed-field-label">📝 Bio</label>
+            <label className="ed-field-label"><span className="ed-field-label-icon"><Edit3 size={13} /></span>Bio</label>
             <textarea className="ed-field-input ed-field-textarea" rows={4} placeholder="Write a short bio that helps clients understand your expertise..." value={form.bio || ''} onChange={e => set('bio', e.target.value)} />
           </div>
         </div>
         <div className="ed-modal-foot">
           <button className="ed-btn ed-btn-ghost" onClick={onClose} disabled={saving}>Cancel</button>
           <button className="ed-btn ed-btn-primary" onClick={() => onSave({ ...form, avatarFile })} disabled={saving}>
-            {saving ? <><RefreshCw size={14} className="ed-spin" /> Saving...</> : '✓ Save Changes'}
+            {saving ? <><RefreshCw size={14} className="ed-spin" /> Saving...</> : <><Check size={14} /> Save Changes</>}
           </button>
         </div>
       </div>
@@ -268,7 +268,7 @@ function DateSeparator({ date }) {
 }
 
 // ─── Message Bubble with reactions ───────────────────────
-function MessageBubble({ msg, mine, email, onReact }) {
+function MessageBubble({ msg, mine, onReact }) {
   const [showReact, setShowReact] = useState(false);
   const { attachmentType, attachmentUrl, attachmentName, attachmentMime } = getChatMessageAttachment(msg);
 
@@ -411,7 +411,6 @@ const ExpertDashboard = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobilePane, setMobilePane] = useState('chat');
   const [msgReactions, setMsgReactions] = useState({});
-  const [showEmojiHint, setShowEmojiHint] = useState(false);
   const [msgSearch, setMsgSearch] = useState('');
   const [showMsgSearch, setShowMsgSearch] = useState(false);
 
@@ -667,13 +666,13 @@ const ExpertDashboard = () => {
   const activity = useMemo(() => {
     const rows = [];
     for (const c of conversations.slice(0, 5)) {
-      rows.push({ icon: '💬', text: `New message from ${c.otherEmail || 'client'}`, time: formatRelative(c.lastMessageTime), color: '#22d3ee' });
+      rows.push({ icon: <MessageCircle size={16} />, text: `New message from ${c.otherEmail || 'client'}`, time: formatRelative(c.lastMessageTime), color: '#22d3ee' });
     }
     for (const p of payments.slice(0, 5)) {
       const st = String(p.status || '').toLowerCase();
-      rows.push({ icon: st === 'paid' ? '💰' : '📋', text: `${fmtInr(p.amount)} ${st} (${p.clientName || p.clientEmail || 'client'})`, time: formatRelative(p.createdAt), color: st === 'paid' ? '#34d399' : st === 'failed' ? '#fb7185' : '#a78bfa' });
+      rows.push({ icon: st === 'paid' ? <DollarSign size={16} /> : <Briefcase size={16} />, text: `${fmtInr(p.amount)} ${st} (${p.clientName || p.clientEmail || 'client'})`, time: formatRelative(p.createdAt), color: st === 'paid' ? '#34d399' : st === 'failed' ? '#fb7185' : '#a78bfa' });
     }
-    if (!rows.length) rows.push({ icon: '✅', text: 'Your dashboard is connected', time: 'now', color: '#34d399' });
+    if (!rows.length) rows.push({ icon: <CheckCircle size={16} />, text: 'Your dashboard is connected', time: 'now', color: '#34d399' });
     return rows.slice(0, 8);
   }, [conversations, payments]);
 
@@ -704,18 +703,6 @@ const ExpertDashboard = () => {
   const computedProfile = useMemo(() => ({ ...profile, totalSessions: sessions.length, totalEarnings, repeatRate }), [profile, sessions.length, totalEarnings, repeatRate]);
   const statusRaw = String(computedProfile.status || 'pending').toLowerCase();
   const statusLabel = statusRaw === 'approved' ? 'Verified' : statusRaw === 'rejected' ? 'Rejected' : 'Pending';
-
-  const helpHighlights = useMemo(() => {
-    const items = [];
-    if (computedProfile.headline) items.push(computedProfile.headline);
-    if (computedProfile.bio) {
-      const firstSentence = String(computedProfile.bio).split(/[.!?]/).map((s) => s.trim()).find(Boolean);
-      if (firstSentence) items.push(firstSentence);
-    }
-    if (computedProfile.field) items.push(`Specialized in ${computedProfile.field} support`);
-    if (toNum(computedProfile.experience) > 0) items.push(`${toNum(computedProfile.experience)}+ years practical guidance`);
-    return items.slice(0, 3);
-  }, [computedProfile.headline, computedProfile.bio, computedProfile.field, computedProfile.experience]);
 
   const domainColor = getDomainColor(computedProfile.field);
   const cSessions = useCounter(computedProfile.totalSessions, 1400, statsInView);
@@ -969,9 +956,6 @@ const ExpertDashboard = () => {
     <div className="ed-page">
       {/* Canvas */}
       <div className="ed-canvas" aria-hidden>
-        <div className="ed-orb ed-orb-1" style={{ '--orb-color': domainColor }} />
-        <div className="ed-orb ed-orb-2" />
-        <div className="ed-orb ed-orb-3" />
         <div className="ed-grid" />
       </div>
 
@@ -1040,7 +1024,7 @@ const ExpertDashboard = () => {
               <div className="ed-user-info">
                 <span className="ed-user-name">{computedProfile.name}</span>
                 <span className="ed-user-role" style={{ color: statusRaw === 'approved' ? '#34d399' : '#fbbf24' }}>
-                  {statusRaw === 'approved' ? '✓ Verified' : statusRaw === 'rejected' ? '✗ Rejected' : '⏳ Pending'}
+                  {statusRaw === 'approved' ? 'Verified' : statusRaw === 'rejected' ? 'Rejected' : 'Pending review'}
                 </span>
               </div>
             </div>
@@ -1072,7 +1056,7 @@ const ExpertDashboard = () => {
             <div className="ed-call-alert">
               <div className="ed-call-pulse" />
               <div className="ed-call-alert-copy">
-                <span className="ed-call-kicker">📞 Incoming Call</span>
+                <span className="ed-call-kicker">Incoming call</span>
                 <strong>{incomingCall.from} is calling you</strong>
                 <span>Open private chat to accept the video call</span>
               </div>
@@ -1084,7 +1068,7 @@ const ExpertDashboard = () => {
 
           {loadError && (
             <div className="ed-error-banner">
-              <span>⚠️ {loadError}</span>
+              <span>{loadError}</span>
               <button className="ed-btn ed-btn-sm ed-btn-ghost" onClick={loadDashboardData}><RefreshCw size={13} /> Retry</button>
             </div>
           )}
@@ -1144,10 +1128,10 @@ const ExpertDashboard = () => {
 
                     <div className="ed-profile-stats" ref={statsRef}>
                       {[
-                        { icon: '💬', value: statsInView ? cSessions : 0, label: 'Sessions', color: domainColor },
-                        { icon: '💰', value: statsInView ? fmtShortInr(cEarnings) : '₹0', label: 'Earnings', color: '#34d399' },
-                        { icon: '⭐', value: statsInView ? (cRating / 10).toFixed(1) : '0', label: 'Rating', color: '#fbbf24' },
-                        { icon: '🔄', value: statsInView ? `${cRepeat}%` : '0%', label: 'Repeat', color: '#a78bfa' },
+                        { icon: <MessageCircle size={17} />, value: statsInView ? cSessions : 0, label: 'Sessions', color: domainColor },
+                        { icon: <DollarSign size={17} />, value: statsInView ? fmtShortInr(cEarnings) : '₹0', label: 'Earnings', color: '#34d399' },
+                        { icon: <Star size={17} />, value: statsInView ? (cRating / 10).toFixed(1) : '0', label: 'Rating', color: '#fbbf24' },
+                        { icon: <RefreshCw size={17} />, value: statsInView ? `${cRepeat}%` : '0%', label: 'Repeat', color: '#a78bfa' },
                       ].map(({ icon, value, label, color }) => (
                         <div key={label} className="ed-stat-pill" style={{ '--sp-c': color }}>
                           <span className="ed-stat-pill-icon">{icon}</span>
@@ -1204,10 +1188,10 @@ const ExpertDashboard = () => {
                 </div>
                 <div className="ed-quick-grid">
                   {[
-                    { icon: '👁️', color: domainColor, title: 'View Public Profile', sub: 'See how clients discover you.', onClick: () => go('/experts') },
-                    { icon: '✏️', color: '#fbbf24', title: 'Update Profile', sub: 'Keep headline, domain & price current.', onClick: () => setEditModalOpen(true) },
-                    { icon: '💬', color: '#34d399', title: 'Client Chat', sub: 'Reply to clients in real-time.', onClick: () => setActiveTab('chat'), badge: totalUnread },
-                    { icon: '📊', color: '#a78bfa', title: 'Earnings', sub: 'Track monthly income trends.', onClick: () => setActiveTab('earnings') },
+                    { icon: <Eye size={19} />, color: domainColor, title: 'View Public Profile', sub: 'See how clients discover you.', onClick: () => go('/experts') },
+                    { icon: <Edit3 size={19} />, color: '#fbbf24', title: 'Update Profile', sub: 'Keep headline, domain and price current.', onClick: () => setEditModalOpen(true) },
+                    { icon: <MessageCircle size={19} />, color: '#34d399', title: 'Client Chat', sub: 'Reply to clients in real-time.', onClick: () => setActiveTab('chat'), badge: totalUnread },
+                    { icon: <BarChart3 size={19} />, color: '#a78bfa', title: 'Earnings', sub: 'Track monthly income trends.', onClick: () => setActiveTab('earnings') },
                   ].map(({ icon, color, title, sub, onClick, badge }) => (
                     <button key={title} className="ed-quick-card" onClick={onClick} style={{ '--qc': color }}>
                       <div className="ed-quick-icon-wrap" style={{ background: `${color}18`, color }}>{icon}</div>
@@ -1254,7 +1238,7 @@ const ExpertDashboard = () => {
                     <div className="ed-activity-list">
                       {activity.map((item, i) => (
                         <div key={i} className={`ed-activity-item ${i === activityIndex ? 'active' : ''}`}>
-                          <span className="ed-activity-em">{item.icon}</span>
+                          <span className="ed-activity-em" style={{ color: item.color }}>{item.icon}</span>
                           <div className="ed-activity-body">
                             <div className="ed-activity-text">{item.text}</div>
                             <div className="ed-activity-time">{item.time}</div>
@@ -1313,7 +1297,7 @@ const ExpertDashboard = () => {
                 </div>
                 <div className="ed-session-list">
                   {filteredSessions.length === 0 ? (
-                    <div className="ed-empty-state"><span className="ed-empty-icon">📭</span><p>No sessions found</p></div>
+                    <div className="ed-empty-state"><span className="ed-empty-icon"><Calendar size={28} /></span><p>No sessions found</p></div>
                   ) : filteredSessions.map((s) => <SessionRow key={s.id} session={s} />)}
                 </div>
               </div>
@@ -1352,7 +1336,7 @@ const ExpertDashboard = () => {
                   <div className="ed-conv-list">
                     {filteredConversations.length === 0 ? (
                       <div className="ed-conv-empty">
-                        <span>💬</span>
+                        <span><MessageCircle size={32} /></span>
                         <p>{conversationSearch ? 'No results' : 'No conversations yet'}</p>
                       </div>
                     ) : filteredConversations.map((c) => {
@@ -1401,7 +1385,7 @@ const ExpertDashboard = () => {
                 <div className="ed-chat-main">
                   {!activeRoom ? (
                     <div className="ed-chat-empty">
-                      <div className="ed-chat-empty-icon">💌</div>
+                      <div className="ed-chat-empty-icon"><MessageSquare size={34} /></div>
                       <h2>Select a conversation</h2>
                       <p>Choose a client to start messaging</p>
                       <button className="ed-btn ed-btn-primary ed-btn-sm" onClick={() => setMobileSidebarOpen(true)}>
@@ -1421,7 +1405,8 @@ const ExpertDashboard = () => {
                         <div className="ed-chat-peer-info">
                           <div className="ed-chat-peer-name">{activeConversation?.otherEmail || 'Client'}</div>
                           <div className={`ed-chat-peer-status ${activeClientOnline ? 'online' : ''}`}>
-                            {activeClientOnline ? '🟢 Online now' : '⚫ Offline'}
+                            <span className={`ed-presence-dot ${activeClientOnline ? 'online' : ''}`} />
+                            {activeClientOnline ? 'Online now' : 'Offline'}
                             {typingUsers.size > 0 && <span className="ed-typing-label"> · typing…</span>}
                           </div>
                         </div>
@@ -1504,7 +1489,7 @@ const ExpertDashboard = () => {
                           </div>
                         ) : groupedByDate.length === 0 ? (
                           <div className="ed-msgs-empty">
-                            <span>👋</span>
+                            <span><MessageCircle size={30} /></span>
                             <p>Say hello to start the conversation!</p>
                           </div>
                         ) : groupedByDate.map((dateGroup, di) => (
@@ -1519,7 +1504,6 @@ const ExpertDashboard = () => {
                                       key={m._id || mi}
                                       msg={{ ...m, reaction: msgReactions[m._id] }}
                                       mine={mine}
-                                      email={email}
                                       onReact={(id, em) => handleReaction(id, em)}
                                     />
                                   ))}
@@ -1659,7 +1643,7 @@ const ExpertDashboard = () => {
                   <h3 className="ed-card-title">Recent Payouts</h3>
                 </div>
                 {paidPayments.length === 0 ? (
-                  <div className="ed-empty-state"><span className="ed-empty-icon">💸</span><p>No paid transactions yet.</p></div>
+                  <div className="ed-empty-state"><span className="ed-empty-icon"><DollarSign size={28} /></span><p>No paid transactions yet.</p></div>
                 ) : paidPayments.slice(0, 10).map((p) => (
                   <div key={p._id || `${p.clientEmail}-${p.createdAt}`} className="ed-payout-row">
                     <div className="ed-payout-av">{(p.clientName || p.clientEmail || 'C')[0].toUpperCase()}</div>
@@ -1668,7 +1652,7 @@ const ExpertDashboard = () => {
                       <div className="ed-payout-date">{formatRelative(p.createdAt)}</div>
                     </div>
                     <div className="ed-payout-amount">+{fmtInr(p.amount)}</div>
-                    <span className="ed-payout-badge">✓ Credited</span>
+                    <span className="ed-payout-badge"><Check size={12} /> Credited</span>
                   </div>
                 ))}
               </div>
@@ -1786,7 +1770,7 @@ const ExpertDashboard = () => {
               <X size={18} />
             </button>
             <img src={chatImageViewer.src} alt={chatImageViewer.alt} />
-            <a href={chatImageViewer.src} download className="ed-img-download-btn">⬇ Download</a>
+            <a href={chatImageViewer.src} download className="ed-img-download-btn">Download</a>
           </div>
         </div>
       )}

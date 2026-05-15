@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ShieldCheck } from 'lucide-react';
 import '../styles/AdminLogin.css';
 
-const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
+const API = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 const AdminLogin = () => {
@@ -10,36 +11,18 @@ const AdminLogin = () => {
   const googleBtnRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
-  const [authConfig, setAuthConfig] = useState(null);
   const [effectiveGoogleClientId, setEffectiveGoogleClientId] = useState(GOOGLE_CLIENT_ID);
-  const [step, setStep] = useState('google');
-  const [pre2faToken, setPre2faToken] = useState('');
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const isOtpStep = step === 'otp';
 
-  const configItems = [
-    {
-      ok: !!effectiveGoogleClientId,
-      label: 'Frontend client id',
-      keyName: 'VITE_GOOGLE_CLIENT_ID',
-    },
-    {
-      ok: !!authConfig?.hasGoogleClientId,
-      label: 'Backend Google id',
-      keyName: 'GOOGLE_CLIENT_ID',
-    },
-    {
-      ok: !!authConfig?.hasAllowedAdminEmails,
-      label: 'Allowed admins',
-      keyName: 'ADMIN_ALLOWED_EMAILS',
-    },
-    {
-      ok: !!authConfig?.has2FASecret,
-      label: '2FA secret',
-      keyName: 'ADMIN_2FA_SECRET / ADMIN_2FA_SECRETS',
-    },
-  ];
+  const finishAdminLogin = useCallback((data) => {
+    if (data?.adminSessionToken) {
+      localStorage.setItem('adminSessionToken', data.adminSessionToken);
+      navigate('/admin-dashboard');
+    } else if (data?.pre2faToken) {
+      alert('Admin API is still returning the old 2FA login response. Restart the backend server so the latest no-2FA route is active.');
+    } else {
+      alert('Login failed: No session token received');
+    }
+  }, [navigate]);
 
   useEffect(() => {
     let active = true;
@@ -49,14 +32,11 @@ const AdminLogin = () => {
         const res = await fetch(`${API}/api/admin/auth-config`);
         const data = await res.json().catch(() => ({}));
         if (!active) return;
-        if (res.ok && !data?.error) {
-          setAuthConfig(data);
-          if (!GOOGLE_CLIENT_ID && data?.googleClientId) {
-            setEffectiveGoogleClientId(String(data.googleClientId));
-          }
-        } else setAuthConfig(null);
+        if (res.ok && !data?.error && data?.googleClientId) {
+          setEffectiveGoogleClientId(String(data.googleClientId));
+        }
       } catch {
-        if (active) setAuthConfig(null);
+        // Keep the login surface quiet if the config probe is unavailable.
       } finally {
         if (active) setConfigLoading(false);
       }
@@ -83,9 +63,7 @@ const AdminLogin = () => {
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok || data?.error) throw new Error(data?.error || 'Google login failed');
-            setPre2faToken(data.pre2faToken || '');
-            setEmail(data.email || '');
-            setStep('otp');
+            finishAdminLogin(data);
           } catch (err) {
             alert(err.message || 'Google login failed');
           } finally {
@@ -114,95 +92,29 @@ const AdminLogin = () => {
     document.body.appendChild(script);
 
     return () => { active = false; };
-  }, [effectiveGoogleClientId]);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    if (!code.trim() || loading || !pre2faToken) return;
-
-    setLoading(true);
-    try {
-      const res = await fetch(`${API}/api/admin/2fa/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pre2faToken, code: code.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data?.error) {
-        alert(data?.error || 'Invalid admin credentials');
-        setLoading(false);
-        return;
-      }
-
-      localStorage.setItem('adminSessionToken', data.adminSessionToken || '');
-      navigate('/admin-dashboard');
-    } catch {
-      alert('Failed to reach admin API');
-      setLoading(false);
-    }
-  };
+  }, [effectiveGoogleClientId, finishAdminLogin]);
 
   return (
     <div className="admin-login-page">
       <div className="admin-login-bg" aria-hidden />
-      <form onSubmit={handleLogin} className="admin-login-card">
+      <div className="admin-login-card">
         <div className="admin-login-head">
-          <div className="admin-login-badge">SolutionHub Security</div>
-          <h2>Secure Admin Login</h2>
-          <p>
-          Step 1: Google sign-in. Step 2: 2FA code from your authenticator app.
-          </p>
-        </div>
-
-        <div className="admin-login-status-wrap">
-          <div className="admin-login-status-title">Auth setup status</div>
-          {configLoading ? (
-            <div className="admin-login-status-loading">Checking backend config...</div>
-          ) : (
-            <div className="admin-login-status-list">
-              {configItems.map((item) => (
-                <div key={item.keyName} className={`admin-login-status-item ${item.ok ? 'ok' : 'bad'}`}>
-                  <span className="dot">{item.ok ? '✓' : '!'}</span>
-                  <span>{item.label}</span>
-                  <code>{item.keyName}</code>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {!isOtpStep ? (
-          <div>
-            {!effectiveGoogleClientId ? (
-              <div className="admin-login-error">
-                Missing Google client id. Set `VITE_GOOGLE_CLIENT_ID` in frontend env or configure backend `GOOGLE_CLIENT_ID`.
-              </div>
-            ) : null}
-            <div ref={googleBtnRef} className="admin-google-wrap" />
+          <div className="admin-login-mark">
+            <ShieldCheck size={20} />
           </div>
-        ) : (
-          <>
-            <div className="admin-login-signed-in">
-              Signed in as: {email}
-            </div>
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="Enter 6-digit 2FA code"
-              className="admin-login-input"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-            />
-            <button
-              type="submit"
-              disabled={loading || code.length !== 6}
-              className="admin-login-btn primary"
-            >
-              {loading ? 'Verifying...' : 'Verify 2FA & Open Dashboard'}
-            </button>
-          </>
-        )}
+          <div className="admin-login-badge">Admin access</div>
+          <h2>Secure Admin Login</h2>
+          <p>Continue with your approved Google account to open the admin dashboard.</p>
+        </div>
+
+        {!configLoading && !effectiveGoogleClientId ? (
+          <div className="admin-login-error">
+            Admin sign-in is not configured right now.
+          </div>
+        ) : null}
+        {configLoading ? <div className="admin-login-loading">Preparing secure sign-in...</div> : null}
+        {loading ? <div className="admin-login-loading">Opening dashboard...</div> : null}
+        <div ref={googleBtnRef} className="admin-google-wrap" />
 
         <button
           type="button"
@@ -211,7 +123,7 @@ const AdminLogin = () => {
         >
           Back to Home
         </button>
-      </form>
+      </div>
     </div>
   );
 };

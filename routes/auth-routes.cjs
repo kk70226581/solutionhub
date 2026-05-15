@@ -9,6 +9,7 @@ const registerAuthRoutes = (app, deps) => {
     fileToDataUrl,
     User,
     Expert,
+    AdminSecurity,
     authRateLimiter,
     authMiddleware,
     validatePasswordStrength,
@@ -19,6 +20,7 @@ const registerAuthRoutes = (app, deps) => {
     adminAllowedEmails,
     getAdmin2FASecret,
     verifyTOTP,
+    QRCode,
     sendPasswordResetEmail,
     emailProvider,
     frontendBaseUrl,
@@ -31,6 +33,18 @@ const registerAuthRoutes = (app, deps) => {
     return frontendRouterMode === "hash"
       ? `${cleanBase}/#/${resetPath}`
       : `${cleanBase}/${resetPath}`;
+  };
+
+  const toBase32 = (buffer) => {
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let bits = "";
+    let output = "";
+    for (const byte of buffer) bits += byte.toString(2).padStart(8, "0");
+    for (let i = 0; i < bits.length; i += 5) {
+      const chunk = bits.slice(i, i + 5).padEnd(5, "0");
+      output += alphabet[parseInt(chunk, 2)];
+    }
+    return output;
   };
 
   app.post("/api/register", authRateLimiter, async (req, res) => {
@@ -589,15 +603,19 @@ const registerAuthRoutes = (app, deps) => {
       if (adminAllowedEmails.length > 0 && !adminAllowedEmails.includes(email)) {
         return res.status(403).json({ error: "Admin email not authorized" });
       }
-      if (!getAdmin2FASecret(email)) {
-        return res.status(500).json({ error: "Admin 2FA secret not configured for this email" });
-      }
+      
+      // Issue session token directly (2FA removed)
+      const adminSessionToken = jwt.sign(
+        { email, type: "admin", role: "admin" },
+        jwtSecret,
+        { expiresIn: "8h" }
+      );
 
-      const pre2faToken = jwt.sign({ email, type: "admin_pre2fa" }, jwtSecret, {
-        expiresIn: "5m",
+      return res.json({
+        success: true,
+        email,
+        adminSessionToken,
       });
-
-      return res.json({ success: true, email, pre2faToken });
     } catch (err) {
       console.error("Admin google-auth error:", err);
       return res.status(500).json({ error: "Admin Google auth failed" });
@@ -624,9 +642,10 @@ const registerAuthRoutes = (app, deps) => {
       }
 
       const email = String(decoded.email || "").toLowerCase();
-      const secret = getAdmin2FASecret(email);
+      const enrolledAdmin = await AdminSecurity.findOne({ email }).select("totpSecret");
+      const secret = enrolledAdmin?.totpSecret || getAdmin2FASecret(email);
       if (!secret) {
-        return res.status(500).json({ error: "Admin 2FA secret missing" });
+        return res.status(409).json({ error: "2FA is not enrolled yet" });
       }
 
       if (!verifyTOTP(code, secret, 1)) {
@@ -643,6 +662,104 @@ const registerAuthRoutes = (app, deps) => {
     } catch (err) {
       console.error("Admin 2FA verify error:", err);
       return res.status(500).json({ error: "Admin 2FA verification failed" });
+    }
+  });
+
+  app.post("/api/admin/2fa/setup", async (req, res) => {
+    try {
+      const pre2faToken = String(req.body?.pre2faToken || "");
+      if (!pre2faToken) {
+        return res.status(400).json({ error: "pre2faToken is required" });
+      }
+
+      let decoded;
+      try {
+        decoded = jwt.verify(pre2faToken, jwtSecret);
+      } catch {
+        return res.status(401).json({ error: "Invalid or expired pre-2FA token" });
+      }
+      if (decoded?.type !== "admin_pre2fa") {
+        return res.status(401).json({ error: "Invalid pre-2FA token type" });
+      }
+
+      const email = String(decoded.email || "").toLowerCase();
+      const secret = toBase32(crypto.randomBytes(20));
+      const issuer = "SolutionHub";
+      const label = `${issuer}:${email}`;
+      const otpauthUrl =
+        `otpauth://totp/${encodeURIComponent(label)}` +
+        `?secret=${encodeURIComponent(secret)}` +
+        `&issuer=${encodeURIComponent(issuer)}` +
+        "&algorithm=SHA1&digits=6&period=30";
+      const qrDataUrl = await QRCode.toDataURL(otpauthUrl, {
+        width: 220,
+        margin: 1,
+      });
+      const setupToken = jwt.sign(
+        { email, type: "admin_2fa_setup", secret },
+        jwtSecret,
+        { expiresIn: "10m" }
+      );
+
+      return res.json({
+        success: true,
+        setupToken,
+        secret,
+        otpauthUrl,
+        qrDataUrl,
+      });
+    } catch (err) {
+      console.error("Admin 2FA setup error:", err);
+      return res.status(500).json({ error: "Admin 2FA setup failed" });
+    }
+  });
+
+  app.post("/api/admin/2fa/confirm-setup", async (req, res) => {
+    try {
+      const setupToken = String(req.body?.setupToken || "");
+      const code = String(req.body?.code || "");
+      if (!setupToken || !code) {
+        return res.status(400).json({ error: "setupToken and code are required" });
+      }
+
+      let decoded;
+      try {
+        decoded = jwt.verify(setupToken, jwtSecret);
+      } catch {
+        return res.status(401).json({ error: "Invalid or expired setup token" });
+      }
+      if (decoded?.type !== "admin_2fa_setup") {
+        return res.status(401).json({ error: "Invalid setup token type" });
+      }
+
+      const email = String(decoded.email || "").toLowerCase();
+      const secret = String(decoded.secret || "");
+      if (!verifyTOTP(code, secret, 1)) {
+        return res.status(401).json({ error: "Invalid 2FA code" });
+      }
+
+      await AdminSecurity.findOneAndUpdate(
+        { email },
+        {
+          $set: {
+            email,
+            totpSecret: secret,
+            totpEnabledAt: new Date(),
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+
+      const adminSessionToken = jwt.sign(
+        { email, type: "admin", role: "admin" },
+        jwtSecret,
+        { expiresIn: "8h" }
+      );
+
+      return res.json({ success: true, adminSessionToken, email });
+    } catch (err) {
+      console.error("Admin 2FA setup confirmation error:", err);
+      return res.status(500).json({ error: "Admin 2FA setup confirmation failed" });
     }
   });
 };

@@ -23,8 +23,8 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 430px;
-  background: rgba(9, 16, 36, 0.88);
+  max-width: 440px;
+  background: rgba(9, 16, 36, 0.92);
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 16px;
   padding: 20px;
@@ -32,7 +32,19 @@
 }
 
 .admin-login-head {
+  margin-bottom: 18px;
+}
+
+.admin-login-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
   margin-bottom: 12px;
+  border-radius: 12px;
+  background: rgba(34, 211, 238, 0.12);
+  color: #67e8f9;
+  border: 1px solid rgba(34, 211, 238, 0.22);
 }
 
 .admin-login-badge {
@@ -61,87 +73,16 @@
   line-height: 1.5;
 }
 
-.admin-login-status-wrap {
-  margin-bottom: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 12px;
-  padding: 10px;
-  background: rgba(2, 6, 23, 0.62);
-}
-
-.admin-login-status-title {
-  color: #cbd5e1;
-  margin-bottom: 8px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.admin-login-status-loading {
-  color: #94a3b8;
-  font-size: 12px;
-}
-
-.admin-login-status-list {
-  display: grid;
-  gap: 6px;
-}
-
-.admin-login-status-item {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-}
-
-.admin-login-status-item .dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.admin-login-status-item code {
-  font-size: 10px;
-  color: #cbd5e1;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 6px;
-  padding: 2px 6px;
-}
-
-.admin-login-status-item.ok {
-  color: #86efac;
-  background: rgba(16, 185, 129, 0.08);
-  border-color: rgba(16, 185, 129, 0.2);
-}
-
-.admin-login-status-item.ok .dot {
-  background: rgba(16, 185, 129, 0.2);
-  color: #86efac;
-}
-
-.admin-login-status-item.bad {
-  color: #fca5a5;
-  background: rgba(248, 113, 113, 0.08);
-  border-color: rgba(248, 113, 113, 0.2);
-}
-
-.admin-login-status-item.bad .dot {
-  background: rgba(248, 113, 113, 0.2);
-  color: #fca5a5;
-}
-
 .admin-google-wrap {
   display: flex;
   justify-content: center;
   margin-bottom: 12px;
+}
+
+.admin-login-loading {
+  margin-bottom: 10px;
+  color: #94a3b8;
+  font-size: 13px;
 }
 
 .admin-login-error {
@@ -149,30 +90,6 @@
   color: #fca5a5;
   font-size: 13px;
   line-height: 1.5;
-}
-
-.admin-login-signed-in {
-  margin-bottom: 8px;
-  color: #93c5fd;
-  font-size: 13px;
-  word-break: break-all;
-}
-
-.admin-login-input {
-  width: 100%;
-  padding: 11px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background: rgba(2, 6, 23, 0.85);
-  color: #f0f6ff;
-  margin-bottom: 12px;
-  outline: none;
-  font-size: 14px;
-}
-
-.admin-login-input:focus {
-  border-color: rgba(34, 211, 238, 0.48);
-  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.12);
 }
 
 .admin-login-btn {
@@ -217,14 +134,5 @@
 
   .admin-login-head h2 {
     font-size: 22px;
-  }
-
-  .admin-login-status-item {
-    grid-template-columns: auto 1fr;
-  }
-
-  .admin-login-status-item code {
-    grid-column: 2;
-    justify-self: start;
   }
 }

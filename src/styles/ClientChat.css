@@ -592,6 +592,7 @@ main {
 .chat-layout-call-connected .video-stage .vc-grid-live {
   grid-template-columns: 1fr;
   gap: 8px;
+  position: relative;
 }
 
 .chat-layout-call-connected .video-stage .vc-video-card-remote,
@@ -2948,8 +2949,12 @@ video {
 }
 
 .client-chat-page .vc-panel-compact.vc-panel-live .vc-video-card-local {
-  width: min(24%, 170px);
-  min-width: 120px;
+  right: 14px;
+  bottom: 14px;
+  width: clamp(96px, 16%, 132px);
+  min-width: 96px;
+  height: clamp(128px, 24%, 168px);
+  min-height: 128px;
   border-radius: 12px;
 }
 
@@ -2970,6 +2975,20 @@ video {
 
 .client-chat-page .vc-video-card-remote {
   flex: 1;
+}
+
+.client-chat-page .chat-layout-call-connected .video-stage .vc-video-card-remote,
+.client-chat-page .chat-layout-call-connected .video-stage .vc-video-card-remote .vc-video {
+  width: 100%;
+  height: 100% !important;
+}
+
+.client-chat-page .chat-layout-call-connected .video-stage .vc-video-card-remote .vc-video-portrait {
+  object-fit: cover;
+}
+
+.client-chat-page .chat-layout-call-connected .video-stage .vc-video-card-local .vc-video-portrait {
+  object-fit: cover;
 }
 
 .client-chat-page .chat-layout-call-connected {

@@ -82,11 +82,21 @@ const ratingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const adminSecuritySchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true, lowercase: true },
+    totpSecret: { type: String, required: true },
+    totpEnabledAt: { type: Date, default: Date.now },
+  },
+  { timestamps: true }
+);
+
 const User = createModel("User", userSchema);
 const Expert = createModel("Expert", expertSchema);
 const Message = createModel("Message", messageSchema);
 const Payment = createModel("Payment", paymentSchema);
 const Rating = createModel("Rating", ratingSchema);
+const AdminSecurity = createModel("AdminSecurity", adminSecuritySchema);
 
 const connectDatabase = async (mongoUri) => {
   if (String(process.env.NODE_ENV || "").toLowerCase() === "test") {
@@ -104,4 +114,5 @@ module.exports = {
   Message,
   Payment,
   Rating,
+  AdminSecurity,
 };
