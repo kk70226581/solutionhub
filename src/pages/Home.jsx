@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { HelpCircle } from 'lucide-react';
 import '../styles/Home.css';
+import '../styles/HelpBot.css';
+import HelpBot from '../components/HelpBot';
 
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
 
@@ -83,6 +86,7 @@ const DEFAULT_ACTIVITY_FEED = [
 const Home = () => {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [helpbotOpen, setHelpbotOpen] = useState(false);
   const [homeData, setHomeData] = useState(null);
   const [expertCount, setExpertCount] = useState(null);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -747,6 +751,19 @@ const Home = () => {
           </div>
         </div>
       </footer>
+
+      {/* Floating Help Button */}
+      <button
+        className="hp-floating-help-btn"
+        onClick={() => setHelpbotOpen(true)}
+        title="Get help with Solvenut"
+        aria-label="Open help chat"
+      >
+        <HelpCircle size={24} />
+      </button>
+
+      {/* Help Bot */}
+      <HelpBot open={helpbotOpen} onClose={() => setHelpbotOpen(false)} />
     </div>
   );
 };

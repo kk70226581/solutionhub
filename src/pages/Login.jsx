@@ -2,9 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import '../styles/Login.css';
+import {
+  getGoogleClientId,
+  loadGoogleIdentityScript,
+  saveAuthSession,
+} from '../utils/googleAuth';
 
 // ✅ Base API root from Vite env (e.g. VITE_API_BASE=https://solutionhub66.onrender.com)
-const API = import.meta.env.VITE_API_BASE;
+const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,6 +23,7 @@ const Login = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetMsg, setResetMsg] = useState('');
+  const [googleError, setGoogleError] = useState('');
 
   const hasWindow = typeof window !== 'undefined';
 
@@ -97,6 +103,66 @@ const Login = () => {
       setIsSubmitting(false);
       const btn = document.getElementById('loginBtn');
       if (btn) btn.innerText = originalText;
+    }
+  };
+
+  const handleGoogleCredential = async (response) => {
+    const idToken = response?.credential;
+    if (!idToken) {
+      setGoogleError('Google did not return a sign-in token.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setGoogleError('');
+
+    try {
+      const res = await fetch(`${API}/api/google-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, role: 'client' }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.success) {
+        setGoogleError(data.error || 'Google sign-in failed.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      saveAuthSession(data);
+      const incomingRole = String(data.role || 'client').toLowerCase();
+      navigate(incomingRole === 'expert' ? '/expert-dashboard' : '/client-dashboard');
+    } catch {
+      setGoogleError('Connection error. Please try again later.');
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (isSubmitting) return;
+    setGoogleError('');
+
+    try {
+      const [google, googleClientId] = await Promise.all([
+        loadGoogleIdentityScript(),
+        getGoogleClientId(API),
+      ]);
+      google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleCredential,
+        ux_mode: 'popup',
+      });
+      google.accounts.id.prompt((notification) => {
+        if (
+          notification.isNotDisplayed?.() ||
+          notification.isSkippedMoment?.()
+        ) {
+          setGoogleError('Google account chooser was closed or blocked.');
+        }
+      });
+    } catch (err) {
+      setGoogleError(err.message || 'Google sign-in is not available right now.');
     }
   };
 
@@ -382,6 +448,17 @@ const Login = () => {
               >
                 {isSubmitting ? 'Signing you in…' : 'Sign in'}
               </button>
+              <div className="auth-divider"><span>or</span></div>
+              <button
+                type="button"
+                className="google-auth-btn"
+                onClick={handleGoogleLogin}
+                disabled={isSubmitting}
+              >
+                <span className="google-mark" aria-hidden="true">G</span>
+                Continue with Google
+              </button>
+              {googleError ? <div className="auth-hint auth-error">{googleError}</div> : null}
             </form>
             )}
 

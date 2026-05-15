@@ -2,6 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/SignupClient.css';
+import {
+  getGoogleClientId,
+  loadGoogleIdentityScript,
+  saveAuthSession,
+} from '../utils/googleAuth';
 
 // ✅ Base API root from Vite env (e.g. VITE_API_BASE=https://solutionhub66.onrender.com)
 const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
@@ -10,6 +15,7 @@ const SignupClient = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [googleError, setGoogleError] = useState('');
 
   const hasWindow = typeof window !== 'undefined';
 
@@ -101,6 +107,66 @@ const SignupClient = () => {
     } catch {
       alert('Connection error. Please try again.');
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleCredential = async (response) => {
+    const idToken = response?.credential;
+    if (!idToken) {
+      setGoogleError('Google did not return a sign-up token.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setGoogleError('');
+
+    try {
+      const res = await fetch(`${API}/api/google-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, role: 'client' }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.success) {
+        setGoogleError(data.error || 'Google sign-up failed.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      saveAuthSession(data);
+      const incomingRole = String(data.role || 'client').toLowerCase();
+      navigate(incomingRole === 'expert' ? '/expert-dashboard' : '/client-dashboard');
+    } catch {
+      setGoogleError('Connection error. Please try again later.');
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    if (isSubmitting) return;
+    setGoogleError('');
+
+    try {
+      const [google, googleClientId] = await Promise.all([
+        loadGoogleIdentityScript(),
+        getGoogleClientId(API),
+      ]);
+      google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleCredential,
+        ux_mode: 'popup',
+      });
+      google.accounts.id.prompt((notification) => {
+        if (
+          notification.isNotDisplayed?.() ||
+          notification.isSkippedMoment?.()
+        ) {
+          setGoogleError('Google account chooser was closed or blocked.');
+        }
+      });
+    } catch (err) {
+      setGoogleError(err.message || 'Google sign-up is not available right now.');
     }
   };
 
@@ -313,6 +379,17 @@ const SignupClient = () => {
                     ? 'Creating your account…'
                     : 'Create my Solvenut account'}
                 </button>
+                <div className="auth-divider"><span>or</span></div>
+                <button
+                  type="button"
+                  className="google-auth-btn"
+                  onClick={handleGoogleSignup}
+                  disabled={isSubmitting}
+                >
+                  <span className="google-mark" aria-hidden="true">G</span>
+                  Sign up with Google
+                </button>
+                {googleError ? <div className="auth-hint auth-error">{googleError}</div> : null}
               </form>
 
               <div className="terms-note">

@@ -1,3 +1,5 @@
+const { getRelevantGuide, formatGuide } = require("../utils/app-guide.cjs");
+
 const registerPublicRoutes = (app, deps) => {
   const {
     fetch,
@@ -470,6 +472,36 @@ const registerPublicRoutes = (app, deps) => {
       return res.json({
         answer:
           "Something went wrong inside the AI route, but your request reached the server. You can still talk to a human expert.",
+      });
+    }
+  });
+
+  /**
+   * Help/Guide endpoint - helps users understand how to use the app
+   * POST /api/help - Returns guide based on user's question
+   */
+  app.post("/api/help", async (req, res) => {
+    try {
+      const userQuestion =
+        (req.body && (req.body.question || req.body.prompt || req.body.text)) || "";
+
+      // If no question, return main features overview
+      if (!String(userQuestion).trim()) {
+        const helpText = formatGuide(null);
+        return res.json({ answer: helpText });
+      }
+
+      // Find relevant guide section based on user's question
+      const { getRelevantGuide } = require("../utils/app-guide.cjs");
+      const relevantGuide = getRelevantGuide(userQuestion);
+      const formattedHelp = formatGuide(relevantGuide);
+
+      return res.json({ answer: formattedHelp });
+    } catch (err) {
+      console.error("Help route error:", err);
+      return res.json({
+        answer:
+          "Help service encountered an issue. Please try again or contact support@solvenut.com",
       });
     }
   });

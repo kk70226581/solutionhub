@@ -82,6 +82,12 @@ const STATUS_META = {
 
 const STATUSES = ['Planning', 'In review', 'Ready', 'On hold', 'Completed'];
 
+const PRIORITY_META = {
+  High: { color: '#fb7185', bg: 'rgba(251,113,133,.1)', border: 'rgba(251,113,133,.3)' },
+  Medium: { color: '#fbbf24', bg: 'rgba(251,191,36,.1)', border: 'rgba(251,191,36,.3)' },
+  Low: { color: '#34d399', bg: 'rgba(52,211,153,.1)', border: 'rgba(52,211,153,.3)' },
+};
+
 const ACTIVITY_ITEMS = [
   { icon: '🎯', text: 'Decision framed: Job switch analysis', time: '2h ago', color: '#22d3ee' },
   { icon: '💬', text: 'AI assistant session completed', time: '5h ago', color: '#34d399' },
@@ -101,9 +107,10 @@ const TIPS = [
 /* ═══════════════════════════════════════
    DECISION BOARD CARD
 ═══════════════════════════════════════ */
-function BoardCard({ card, onEdit, onDelete, onStatusChange }) {
+function BoardCard({ card, onEdit, onDelete, onStatusChange, onRefine }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const meta = STATUS_META[card.status] || STATUS_META['Planning'];
+  const priorityMeta = PRIORITY_META[card.priority || 'Medium'] || PRIORITY_META.Medium;
 
   return (
     <article className="cd-board-card" style={{ '--card-accent': meta.color }}>
@@ -131,6 +138,16 @@ function BoardCard({ card, onEdit, onDelete, onStatusChange }) {
             </div>
           </div>
 
+          <div className="cd-board-card-tags">
+            <span className="cd-board-category">{card.category || 'General'}</span>
+            <span
+              className="cd-board-priority"
+              style={{ color: priorityMeta.color, background: priorityMeta.bg, borderColor: priorityMeta.border }}
+            >
+              {card.priority || 'Medium'} priority
+            </span>
+          </div>
+
           <div className="cd-board-card-status-row">
             <span className="cd-board-status" style={{ color: meta.color, background: meta.bg, borderColor: meta.border }}>
               {card.status}
@@ -139,6 +156,15 @@ function BoardCard({ card, onEdit, onDelete, onStatusChange }) {
               <Clock3 size={12} />
               <span>{card.eta}</span>
             </div>
+          </div>
+
+          <p className="cd-board-card-summary">
+            {card.summary || 'Add context so the AI chatbot can understand the decision faster.'}
+          </p>
+
+          <div className="cd-board-next-step">
+            <Target size={14} />
+            <span>{card.nextStep || 'Ask the AI chatbot to clarify options and next actions.'}</span>
           </div>
 
           <div className="cd-board-status-change">
@@ -158,9 +184,9 @@ function BoardCard({ card, onEdit, onDelete, onStatusChange }) {
         </div>
       </div>
       <div className="cd-board-card-footer">
-        <button className="cd-board-card-cta">
+        <button className="cd-board-card-cta" onClick={() => onRefine(card)}>
           <Rocket size={13} />
-          Refine with expert
+          Refine with AI chatbot
         </button>
       </div>
     </article>
@@ -174,11 +200,24 @@ function DecisionModal({ card, onSave, onClose }) {
   const [title, setTitle] = useState(card?.title || '');
   const [status, setStatus] = useState(card?.status || 'Planning');
   const [eta, setEta] = useState(card?.eta || '');
+  const [category, setCategory] = useState(card?.category || 'Career');
+  const [priority, setPriority] = useState(card?.priority || 'Medium');
+  const [summary, setSummary] = useState(card?.summary || '');
+  const [nextStep, setNextStep] = useState(card?.nextStep || '');
   const isEdit = Boolean(card?.id);
 
   const handleSave = () => {
     if (!title.trim()) return;
-    onSave({ id: card?.id || Date.now(), title: title.trim(), status, eta: eta.trim() || 'No deadline set' });
+    onSave({
+      id: card?.id || Date.now(),
+      title: title.trim(),
+      status,
+      eta: eta.trim() || 'No deadline set',
+      category: category.trim() || 'General',
+      priority,
+      summary: summary.trim() || 'Context will be added before using the AI chatbot.',
+      nextStep: nextStep.trim() || 'Ask the AI chatbot to clarify options and choose the next action.',
+    });
   };
 
   return (
@@ -218,6 +257,45 @@ function DecisionModal({ card, onSave, onClose }) {
                 onChange={e => setEta(e.target.value)}
               />
             </div>
+          </div>
+          <div className="cd-field-row">
+            <div className="cd-field">
+              <label className="cd-field-label">Category</label>
+              <input
+                className="cd-field-input"
+                placeholder="e.g. Career"
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+              />
+            </div>
+            <div className="cd-field">
+              <label className="cd-field-label">Priority</label>
+              <div className="cd-field-select-wrap">
+                <select className="cd-field-select" value={priority} onChange={e => setPriority(e.target.value)}>
+                  {Object.keys(PRIORITY_META).map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <ChevronDown size={13} className="cd-field-select-arrow" />
+              </div>
+            </div>
+          </div>
+          <div className="cd-field">
+            <label className="cd-field-label">Context</label>
+            <textarea
+              className="cd-field-input cd-field-textarea"
+              placeholder="What context should the AI chatbot know?"
+              value={summary}
+              onChange={e => setSummary(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <div className="cd-field">
+            <label className="cd-field-label">Next step</label>
+            <input
+              className="cd-field-input"
+              placeholder="e.g. Compare offer with current growth path"
+              value={nextStep}
+              onChange={e => setNextStep(e.target.value)}
+            />
           </div>
         </div>
         <div className="cd-modal-foot">
@@ -271,9 +349,36 @@ const ClientDashboard = () => {
 
   /* ── Decision board state ── */
   const [decisions, setDecisions] = useState([
-    { id: 1, title: 'Should I switch jobs this quarter?', status: 'In review', eta: 'This week' },
-    { id: 2, title: 'Side project monetization plan', status: 'Planning', eta: 'Next 14 days' },
-    { id: 3, title: 'Compensation negotiation strategy', status: 'Ready', eta: 'Actionable now' },
+    {
+      id: 1,
+      title: 'Should I switch jobs this quarter?',
+      status: 'In review',
+      eta: 'This week',
+      category: 'Career',
+      priority: 'High',
+      summary: 'Comparing current role stability against a higher-growth offer and long-term learning.',
+      nextStep: 'Ask the AI chatbot to compare salary, role scope, risk, and learning upside.',
+    },
+    {
+      id: 2,
+      title: 'Side project monetization plan',
+      status: 'Planning',
+      eta: 'Next 14 days',
+      category: 'Business',
+      priority: 'Medium',
+      summary: 'Need to choose between subscription, one-time pricing, or marketplace-style revenue.',
+      nextStep: 'Ask the AI chatbot to pressure-test one pricing model before building more features.',
+    },
+    {
+      id: 3,
+      title: 'Compensation negotiation strategy',
+      status: 'Ready',
+      eta: 'Actionable now',
+      category: 'Finance',
+      priority: 'High',
+      summary: 'Preparing a negotiation script backed by market data and project impact.',
+      nextStep: 'Run final script review and decide the opening number.',
+    },
   ]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
@@ -318,6 +423,14 @@ const ClientDashboard = () => {
     if (boardFilter === 'all') return decisions;
     return decisions.filter(d => d.status === boardFilter);
   }, [decisions, boardFilter]);
+
+  const boardSummary = useMemo(() => {
+    const active = decisions.filter(d => d.status !== 'Completed').length;
+    const ready = decisions.filter(d => d.status === 'Ready').length;
+    const urgent = decisions.filter(d => d.priority === 'High' && d.status !== 'Completed').length;
+    const categories = new Set(decisions.map(d => d.category).filter(Boolean)).size;
+    return { active, ready, urgent, categories };
+  }, [decisions]);
 
   const handleSaveDecision = useCallback((card) => {
     setDecisions(prev => {
@@ -587,6 +700,23 @@ const ClientDashboard = () => {
               <p className="cd-section-sub">Experts see your board before sessions — keep it current for better guidance.</p>
             </div>
 
+            <div className="cd-board-summary">
+              {[
+                { label: 'Active decisions', value: boardSummary.active, icon: <ListChecks size={16} />, color: '#22d3ee' },
+                { label: 'Ready for action', value: boardSummary.ready, icon: <CheckCircle2 size={16} />, color: '#34d399' },
+                { label: 'High priority', value: boardSummary.urgent, icon: <Zap size={16} />, color: '#fb7185' },
+                { label: 'Focus areas', value: boardSummary.categories, icon: <Target size={16} />, color: '#fbbf24' },
+              ].map(item => (
+                <div className="cd-board-summary-card" key={item.label} style={{ '--summary-color': item.color }}>
+                  <div className="cd-board-summary-icon">{item.icon}</div>
+                  <div>
+                    <strong>{item.value}</strong>
+                    <span>{item.label}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Board controls */}
             <div className="cd-board-controls">
               <div className="cd-board-filters">
@@ -629,6 +759,7 @@ const ClientDashboard = () => {
                     onEdit={c => { setEditingCard(c); setModalOpen(true); }}
                     onDelete={handleDeleteDecision}
                     onStatusChange={handleStatusChange}
+                    onRefine={() => go('/experts')}
                   />
                 ))}
                 {/* Add new card placeholder */}

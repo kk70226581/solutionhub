@@ -688,3 +688,34 @@
     line-height: 1.35;
   }
 }
+
+.client-chat-page .vc-panel {
+  background: #101827;
+  border-color: rgba(148, 163, 184, 0.16);
+  box-shadow: none;
+}
+
+.client-chat-page .vc-header h3,
+.client-chat-page .vc-kicker {
+  letter-spacing: 0;
+}
+
+.client-chat-page .vc-panel-compact {
+  padding: 12px;
+  border-radius: 14px;
+  gap: 10px;
+}
+
+.client-chat-page .vc-btn,
+.client-chat-page .vc-icon-btn {
+  border-radius: 10px;
+}
+
+.client-chat-page .vc-video-card {
+  border-radius: 12px;
+  background: #050814;
+}
+
+.client-chat-page .vc-footer {
+  display: none;
+}

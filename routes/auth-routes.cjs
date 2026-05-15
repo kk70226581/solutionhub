@@ -80,7 +80,7 @@ const registerAuthRoutes = (app, deps) => {
       const password = String(req.body?.password || "");
 
       const user = await User.findOne({ email });
-      if (user && (await bcrypt.compare(password, user.password))) {
+      if (user?.password && (await bcrypt.compare(password, user.password))) {
         const token = jwt.sign(
           { email: user.email, role: "client", name: user.name },
           jwtSecret,
@@ -98,7 +98,7 @@ const registerAuthRoutes = (app, deps) => {
       }
 
       const expert = await Expert.findOne({ email });
-      if (expert && (await bcrypt.compare(password, expert.password))) {
+      if (expert?.password && (await bcrypt.compare(password, expert.password))) {
         const token = jwt.sign(
           { email: expert.email, role: "expert", name: expert.name },
           jwtSecret,
@@ -120,6 +120,119 @@ const registerAuthRoutes = (app, deps) => {
     } catch (err) {
       console.error("Login error:", err);
       return res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  const verifyGoogleIdToken = async (idToken) => {
+    if (!googleClientId) {
+      const err = new Error("GOOGLE_CLIENT_ID is not configured on server");
+      err.status = 500;
+      throw err;
+    }
+
+    const verifyRes = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`
+    );
+    const verifyData = await verifyRes.json().catch(() => ({}));
+
+    if (!verifyRes.ok || verifyData?.error) {
+      const err = new Error("Invalid Google token");
+      err.status = 401;
+      throw err;
+    }
+
+    const aud = String(verifyData.aud || "");
+    const email = String(verifyData.email || "").trim().toLowerCase();
+    const emailVerified = String(verifyData.email_verified || "false") === "true";
+
+    if (aud !== googleClientId) {
+      const err = new Error("Google token audience mismatch");
+      err.status = 401;
+      throw err;
+    }
+    if (!email || !emailVerified) {
+      const err = new Error("Google email is not verified");
+      err.status = 401;
+      throw err;
+    }
+
+    return {
+      email,
+      name: String(verifyData.name || email.split("@")[0]).trim(),
+      picture: String(verifyData.picture || "").trim(),
+    };
+  };
+
+  app.get("/api/google-auth-config", (req, res) => {
+    return res.json({
+      success: true,
+      hasGoogleClientId: Boolean(googleClientId),
+      googleClientId: googleClientId || "",
+    });
+  });
+
+  app.post("/api/google-auth", authRateLimiter, async (req, res) => {
+    try {
+      const idToken = String(req.body?.idToken || "");
+      const requestedRole = String(req.body?.role || "client").toLowerCase();
+
+      if (!idToken) {
+        return res.status(400).json({ error: "Google ID token required" });
+      }
+      if (requestedRole !== "client") {
+        return res.status(400).json({ error: "Google signup is currently available for clients only" });
+      }
+
+      const googleProfile = await verifyGoogleIdToken(idToken);
+      const existingExpert = await Expert.findOne({ email: googleProfile.email });
+
+      if (existingExpert) {
+        const token = jwt.sign(
+          { email: existingExpert.email, role: "expert", name: existingExpert.name },
+          jwtSecret,
+          { expiresIn: "24h" }
+        );
+
+        return res.json({
+          success: true,
+          token,
+          email: existingExpert.email,
+          name: existingExpert.name,
+          role: "expert",
+          status: existingExpert.status,
+          isNewUser: false,
+        });
+      }
+
+      let user = await User.findOne({ email: googleProfile.email });
+      let isNewUser = false;
+
+      if (!user) {
+        user = await User.create({
+          name: googleProfile.name,
+          email: googleProfile.email,
+          role: "client",
+        });
+        isNewUser = true;
+      }
+
+      const token = jwt.sign(
+        { email: user.email, role: "client", name: user.name || googleProfile.name },
+        jwtSecret,
+        { expiresIn: "24h" }
+      );
+
+      return res.json({
+        success: true,
+        token,
+        email: user.email,
+        name: user.name || googleProfile.name,
+        role: "client",
+        isNewUser,
+      });
+    } catch (err) {
+      console.error("Google auth error:", err);
+      return res.status(err.status || 500).json({ error: err.message || "Google auth failed" });
     }
   });
 
