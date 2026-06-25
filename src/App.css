@@ -3,3 +3,83 @@
   width: 100%;
   isolation: isolate;
 }
+
+.app-coming-soon {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 28%),
+    radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.1), transparent 24%),
+    linear-gradient(180deg, #03111f 0%, #020617 100%);
+  color: #f8fafc;
+}
+
+.app-coming-soon-card {
+  width: min(620px, 100%);
+  padding: 32px;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(8, 15, 31, 0.9);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+
+.app-coming-soon-kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  color: #67e8f9;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.app-coming-soon-card h1 {
+  margin: 16px 0 12px;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.app-coming-soon-card p {
+  margin: 0;
+  max-width: 52ch;
+  color: #cbd5e1;
+  line-height: 1.7;
+}
+
+.app-coming-soon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.app-coming-soon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22d3ee, #34d399);
+  color: #02131d;
+  font-weight: 800;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.app-coming-soon-link--ghost {
+  background: rgba(148, 163, 184, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.app-coming-soon-link:hover {
+  transform: translateY(-1px);
+}

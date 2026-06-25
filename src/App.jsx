@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from 'react';
-import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Link, Routes, Route } from 'react-router-dom';
 
 import Home from './pages/Home';
 import Experts from './pages/Experts';
@@ -15,6 +15,29 @@ import SignupClient from './pages/SignupClient';
 import SignupExpert from './pages/SignupExpert';
 import ProtectedRoute from './components/ProtectedRoute';
 import GlobalCallNotifier from './components/GlobalCallNotifier';
+
+function PricingComingSoon() {
+  return (
+    <div className="app-coming-soon">
+      <div className="app-coming-soon-card">
+        <div className="app-coming-soon-kicker">Pricing</div>
+        <h1>Transparent plans are on the way</h1>
+        <p>
+          We’re finishing a simple pricing view with clear client and expert options.
+          Until then, you can browse experts and start from the homepage.
+        </p>
+        <div className="app-coming-soon-actions">
+          <Link className="app-coming-soon-link" to="/experts">
+            Browse experts
+          </Link>
+          <Link className="app-coming-soon-link app-coming-soon-link--ghost" to="/">
+            Back home
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   // HashRouter in production prevents refresh 404 on hosts without SPA rewrites.
@@ -58,7 +81,7 @@ function App() {
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
         </Route>
 
-        <Route path="/pricing" element={<div>Pricing coming soon...</div>} />
+        <Route path="/pricing" element={<PricingComingSoon />} />
         <Route path="*" element={<Home />} />
       </Routes>
       <GlobalCallNotifier />
