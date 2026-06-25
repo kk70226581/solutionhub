@@ -127,6 +127,9 @@ export default function GlobalCallNotifier() {
       <div className="gcn-kicker">Incoming Call</div>
       <div className="gcn-title">{incomingCall.from} is calling</div>
       <div className="gcn-subtitle">Open the private room to answer the call.</div>
+      <div className="gcn-detail">
+        {incomingCall.otherEmail ? `For ${incomingCall.otherEmail}` : 'Private session ready'}
+      </div>
       <div className="gcn-actions">
         <button type="button" className="gcn-btn gcn-btn-primary" onClick={openCall}>
           <Phone size={15} />
