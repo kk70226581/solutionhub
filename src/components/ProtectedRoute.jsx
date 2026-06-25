@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 
 const parseJwtPayload = (token) => {
   try {
@@ -40,13 +40,15 @@ function ProtectedRoute({
   allowedRoles = null,
 }) {
   const [authState] = useState(() => getTokenAuthState(tokenKey));
+  const location = useLocation();
+  const redirectState = { from: `${location.pathname}${location.search}` };
 
-  if (!authState.valid) return <Navigate to={redirectTo} replace />;
+  if (!authState.valid) return <Navigate to={redirectTo} replace state={redirectState} />;
 
   if (allowedRoles && roleKey) {
     const role = String(localStorage.getItem(roleKey) || '').toLowerCase();
     const ok = allowedRoles.map((r) => String(r).toLowerCase()).includes(role);
-    if (!ok) return <Navigate to={redirectTo} replace />;
+    if (!ok) return <Navigate to={redirectTo} replace state={redirectState} />;
   }
 
   return <Outlet />;
