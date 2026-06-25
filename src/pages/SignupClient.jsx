@@ -293,10 +293,9 @@ const SignupClient = () => {
 
             <section className="auth-form-side">
               <div className="form-header">
-                <h2>Sign up as client</h2>
+                <h2>Create your client account</h2>
                 <p>
-                  It takes less than a minute. You can delete your account
-                  anytime.
+                  It takes less than a minute. You can delete your account anytime.
                 </p>
               </div>
 
@@ -387,7 +386,7 @@ const SignupClient = () => {
                   disabled={isSubmitting}
                 >
                   <span className="google-mark" aria-hidden="true">G</span>
-                  Sign up with Google
+                  Continue with Google
                 </button>
                 {googleError ? <div className="auth-hint auth-error">{googleError}</div> : null}
               </form>
