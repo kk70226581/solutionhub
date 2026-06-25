@@ -91,12 +91,99 @@ const adminSecuritySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const aiConversationSchema = new mongoose.Schema(
+  {
+    userId: String,
+    userEmail: { type: String, required: true, lowercase: true, index: true },
+    domain: { type: String, required: true, index: true },
+    title: { type: String, default: "AI Expert consultation" },
+    status: {
+      type: String,
+      enum: ["active", "escalated", "closed"],
+      default: "active",
+    },
+    escalationStatus: {
+      type: String,
+      enum: ["none", "suggested", "requested", "completed"],
+      default: "none",
+    },
+    confidenceScore: { type: Number, min: 0, max: 100, default: 0 },
+    lastFeedback: {
+      type: String,
+      enum: ["helped", "partial", "not_helped", ""],
+      default: "",
+    },
+    tokenUsage: {
+      inputTokens: { type: Number, default: 0 },
+      outputTokens: { type: Number, default: 0 },
+      totalTokens: { type: Number, default: 0 },
+    },
+    metadata: Object,
+  },
+  { timestamps: true }
+);
+
+const aiMessageSchema = new mongoose.Schema(
+  {
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AIConversation",
+      required: true,
+      index: true,
+    },
+    userEmail: { type: String, required: true, lowercase: true, index: true },
+    role: {
+      type: String,
+      enum: ["user", "assistant", "system"],
+      required: true,
+    },
+    content: { type: String, required: true },
+    domain: String,
+    confidenceScore: { type: Number, min: 0, max: 100 },
+    recommendEscalation: { type: Boolean, default: false },
+    tokenUsage: {
+      inputTokens: { type: Number, default: 0 },
+      outputTokens: { type: Number, default: 0 },
+      totalTokens: { type: Number, default: 0 },
+    },
+    rawProviderResponse: Object,
+  },
+  { timestamps: true }
+);
+
+const aiUserFeedbackSchema = new mongoose.Schema(
+  {
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AIConversation",
+      required: true,
+      index: true,
+    },
+    messageId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AIMessage",
+    },
+    userEmail: { type: String, required: true, lowercase: true, index: true },
+    feedback: {
+      type: String,
+      enum: ["helped", "partial", "not_helped"],
+      required: true,
+    },
+    note: { type: String, default: "" },
+    domain: String,
+  },
+  { timestamps: true }
+);
+
 const User = createModel("User", userSchema);
 const Expert = createModel("Expert", expertSchema);
 const Message = createModel("Message", messageSchema);
 const Payment = createModel("Payment", paymentSchema);
 const Rating = createModel("Rating", ratingSchema);
 const AdminSecurity = createModel("AdminSecurity", adminSecuritySchema);
+const AIConversation = createModel("AIConversation", aiConversationSchema);
+const AIMessage = createModel("AIMessage", aiMessageSchema);
+const AIUserFeedback = createModel("AIUserFeedback", aiUserFeedbackSchema);
 
 const connectDatabase = async (mongoUri) => {
   if (String(process.env.NODE_ENV || "").toLowerCase() === "test") {
@@ -115,4 +202,7 @@ module.exports = {
   Payment,
   Rating,
   AdminSecurity,
+  AIConversation,
+  AIMessage,
+  AIUserFeedback,
 };

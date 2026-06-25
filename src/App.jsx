@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Experts from './pages/Experts';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
+import AIExpert from './pages/AIExpert';
 import ClientChat from './pages/ClientChat';
 import ClientDashboard from './pages/ClientDashboard';
 import ExpertDashboard from './pages/ExpertDashboard';
@@ -25,6 +26,7 @@ function App() {
         {/* public */}
         <Route path="/" element={<Home />} />
         <Route path="/experts" element={<Experts />} />
+        <Route path="/ai-expert" element={<AIExpert />} />
 
         {/* auth */}
         <Route path="/login" element={<Login />} />

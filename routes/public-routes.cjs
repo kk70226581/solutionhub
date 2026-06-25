@@ -84,54 +84,6 @@ const registerPublicRoutes = (app, deps) => {
     }
   };
 
-  const callGemini = async (prompt) => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) {
-      return {
-        ok: false,
-        reason: "NO_KEY",
-        message: "GEMINI_API_KEY not set",
-      };
-    }
-
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    const url = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(model)}:generateContent?key=${key}`;
-
-    try {
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      });
-
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        return {
-          ok: false,
-          reason: "HTTP_ERROR",
-          status: resp.status,
-          body: data,
-        };
-      }
-
-      const answer =
-        data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-        data?.candidates?.[0]?.content?.[0]?.text ||
-        data?.candidates?.[0]?.content ||
-        "";
-
-      return { ok: true, answer: answer || "" };
-    } catch (err) {
-      return {
-        ok: false,
-        reason: "EXCEPTION",
-        message: String(err?.message || err),
-      };
-    }
-  };
-
   app.get("/api/health-public", (req, res) => {
     res.json({
       success: true,
@@ -442,38 +394,18 @@ const registerPublicRoutes = (app, deps) => {
 
   app.get("/api/ai/debug", (req, res) => {
     res.json({
-      hasKey: Boolean(process.env.GEMINI_API_KEY),
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      base: "v1",
+      provider: "aws-bedrock",
+      hasAccessKey: Boolean(process.env.AWS_ACCESS_KEY_ID),
+      hasSecretKey: Boolean(process.env.AWS_SECRET_ACCESS_KEY),
+      region: process.env.AWS_REGION || "us-east-1",
+      model: process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20240620-v1:0",
     });
   });
 
   app.post("/api/ai/ask", async (req, res) => {
-    try {
-      const prompt =
-        (req.body && (req.body.prompt || req.body.input || req.body.text)) || "";
-      if (!String(prompt).trim()) {
-        return res.status(400).json({ error: "Prompt required" });
-      }
-
-      const result = await callGemini(prompt);
-      if (result.ok && result.answer) {
-        return res.json({ answer: result.answer });
-      }
-
-      console.warn("Gemini failure:", result);
-      return res.json({
-        answer:
-          "Our AI service is temporarily overloaded or unavailable, but your question reached the server. Please try again later or talk to a human expert.",
-        meta: result,
-      });
-    } catch (err) {
-      console.error("AI route error:", err);
-      return res.json({
-        answer:
-          "Something went wrong inside the AI route, but your request reached the server. You can still talk to a human expert.",
-      });
-    }
+    return res.status(410).json({
+      error: "Legacy AI endpoint retired. Use /api/ai/start and /api/ai/message for Solvenut AI Expert.",
+    });
   });
 
   /**

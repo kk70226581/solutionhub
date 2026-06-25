@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Link, createSearchParams, useNavigate } from 'react-router-dom';
+import { Link, createSearchParams, useNavigate, useSearchParams } from 'react-router-dom';
 import '../styles/Experts.css';
 
 const API = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
@@ -23,6 +23,13 @@ const DOMAIN_COLORS = {
   medical:     '#38bdf8',
   default:     '#22d3ee',
 };
+
+function normalizeInitialFilter(value = '') {
+  const domain = String(value).toLowerCase();
+  if (domain.includes('medical')) return 'medical';
+  if (domain.includes('personal')) return 'career';
+  return FILTERS.some((filter) => filter.id === domain) ? domain : 'all';
+}
 
 function getDomainColor(field = '') {
   const f = field.toLowerCase();
@@ -155,9 +162,11 @@ function ExpertCard({ expert, onPay, onChat, checkingFor, processingPayment, get
 ══════════════════════════════════════ */
 const Experts = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialFilter = normalizeInitialFilter(searchParams.get('domain') || searchParams.get('field') || '');
 
   const [experts, setExperts] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('rating');
   const [isLoading, setIsLoading] = useState(true);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 
 const parseJwtPayload = (token) => {
@@ -18,20 +18,30 @@ const parseJwtPayload = (token) => {
   }
 };
 
+const getTokenAuthState = (tokenKey) => {
+  const token = localStorage.getItem(tokenKey);
+  if (!token) {
+    return { valid: false };
+  }
+
+  const payload = parseJwtPayload(token);
+  if (!payload?.exp || payload.exp * 1000 <= Date.now()) {
+    localStorage.removeItem(tokenKey);
+    return { valid: false };
+  }
+
+  return { valid: true };
+};
+
 function ProtectedRoute({
   redirectTo = '/login',
   tokenKey = 'token',
   roleKey = 'role',
   allowedRoles = null,
 }) {
-  const token = localStorage.getItem(tokenKey);
-  if (!token) return <Navigate to={redirectTo} replace />;
+  const [authState] = useState(() => getTokenAuthState(tokenKey));
 
-  const payload = parseJwtPayload(token);
-  if (!payload?.exp || payload.exp * 1000 <= Date.now()) {
-    localStorage.removeItem(tokenKey);
-    return <Navigate to={redirectTo} replace />;
-  }
+  if (!authState.valid) return <Navigate to={redirectTo} replace />;
 
   if (allowedRoles && roleKey) {
     const role = String(localStorage.getItem(roleKey) || '').toLowerCase();

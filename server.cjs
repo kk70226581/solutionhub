@@ -46,6 +46,8 @@ const { connectDatabase, User, Expert, Message, Payment, Rating, AdminSecurity }
 const { registerAuthRoutes } = require("./routes/auth-routes.cjs");
 const { registerPublicRoutes } = require("./routes/public-routes.cjs");
 const { registerAdminPaymentRoutes } = require("./routes/admin-payment-routes.cjs");
+const { registerAIExpertRoutes } = require("./routes/ai-expert-routes.cjs");
+const { AIConversation, AIMessage, AIUserFeedback } = require("./models/app-models.cjs");
 
 const fetch = (...args) =>
   import("node-fetch").then(({ default: nodeFetch }) => nodeFetch(...args));
@@ -269,6 +271,16 @@ registerAdminPaymentRoutes(app, {
   getClientExpertChatAccess,
   verifyRazorpaySignature,
   handleRazorpayWebhookEvent,
+});
+
+registerAIExpertRoutes(app, {
+  authMiddleware,
+  createRateLimiter: createLocalRateLimiter,
+  AIConversation,
+  AIMessage,
+  AIUserFeedback,
+  Expert,
+  normalizeEmail,
 });
 
 const boot = async () => {

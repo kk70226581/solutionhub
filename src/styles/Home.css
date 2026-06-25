@@ -199,6 +199,19 @@
   line-height: 1;
 }
 
+.hp-btn:focus-visible,
+.hp-nav-link:focus-visible,
+.hp-drawer-link:focus-visible,
+.hp-footer-col button:focus-visible,
+.hp-footer-social a:focus-visible,
+.hp-floating-help-btn:focus-visible,
+.hp-hamburger:focus-visible,
+.hp-logo:focus-visible,
+.hp-dot:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.5);
+  outline-offset: 3px;
+}
+
 .hp-btn-lg { font-size: 15px; padding: 13px 26px; border-radius: 14px; }
 
 .hp-btn-primary {
@@ -621,7 +634,10 @@
 /* ══════════════════════════════════════
    SECTIONS — SHARED
 ══════════════════════════════════════ */
-.hp-section { margin: 0 0 72px; }
+.hp-section {
+  margin: 0 0 72px;
+  scroll-margin-top: 96px;
+}
 
 .hp-section-head { margin-bottom: 32px; max-width: 680px; }
 
@@ -1375,4 +1391,15 @@
   .hp-footer-bottom { flex-direction: column; align-items: flex-start; }
   .hp-hero-ctas { flex-direction: column; }
   .hp-hero-ctas .hp-btn { width: 100%; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hp *,
+  .hp *::before,
+  .hp *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
