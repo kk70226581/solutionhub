@@ -85,6 +85,7 @@ const DEFAULT_ACTIVITY_FEED = [
 
 const Home = () => {
   const navigate = useNavigate();
+  const currentYear = new Date().getFullYear();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [helpbotOpen, setHelpbotOpen] = useState(false);
   const [homeData, setHomeData] = useState(null);
