@@ -317,7 +317,7 @@ const AIExpert = () => {
   return (
     <div className="ai-page">
       <header className="ai-topbar">
-        <button className="ai-back-btn" onClick={() => navigate('/')}>
+        <button className="ai-back-btn" onClick={() => navigate('/')} aria-label="Go back home">
           <ArrowLeft size={18} />
           Home
         </button>
@@ -325,7 +325,7 @@ const AIExpert = () => {
           <span className="ai-brand-icon"><Bot size={18} /></span>
           <span>Solvenut AI Expert</span>
         </div>
-        <button className="ai-human-btn" onClick={bookExpert}>
+        <button className="ai-human-btn" onClick={bookExpert} aria-label="Book a verified human expert">
           <UserRoundCheck size={17} />
           Book Expert
         </button>
@@ -373,6 +373,7 @@ const AIExpert = () => {
                 onChange={(event) => setProblem(event.target.value)}
                 placeholder="Example: I have two job offers and I am unsure which one fits my long-term goals..."
                 rows={8}
+                aria-label="Describe your decision or problem"
               />
               {error && <div className="ai-error">{error}</div>}
               <button className="ai-primary-btn" type="submit" disabled={isStarting || !problem.trim()}>
