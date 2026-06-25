@@ -389,8 +389,7 @@ const Login = () => {
             </div>
             <h2>Welcome back</h2>
             <p>
-              Enter your registered email and password to access your Solvenut
-              dashboard.
+              Use your client or expert account to access your Solvenut dashboard.
             </p>
 
             {authMode === 'login' && (
@@ -449,15 +448,15 @@ const Login = () => {
                 {isSubmitting ? 'Signing you in…' : 'Sign in'}
               </button>
               <div className="auth-divider"><span>or</span></div>
-              <button
-                type="button"
-                className="google-auth-btn"
-                onClick={handleGoogleLogin}
-                disabled={isSubmitting}
-              >
-                <span className="google-mark" aria-hidden="true">G</span>
-                Continue with Google
-              </button>
+                <button
+                  type="button"
+                  className="google-auth-btn"
+                  onClick={handleGoogleLogin}
+                  disabled={isSubmitting}
+                >
+                  <span className="google-mark" aria-hidden="true">G</span>
+                  Continue with Google
+                </button>
               {googleError ? <div className="auth-hint auth-error">{googleError}</div> : null}
             </form>
             )}
