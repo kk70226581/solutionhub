@@ -541,7 +541,7 @@ const Experts = () => {
                 {activeFilter !== 'all' && <span className="ex-results-filter"> in <em>{FILTERS.find(f => f.id === activeFilter)?.label}</em></span>}
               </span>
               {(activeFilter !== 'all' || searchTerm) && (
-                <button className="ex-clear-btn" onClick={() => { setActiveFilter('all'); setSearchTerm(''); setSortBy('rating'); }}>
+                <button type="button" className="ex-clear-btn" onClick={() => { setActiveFilter('all'); setSearchTerm(''); setSortBy('rating'); }}>
                   Clear filters ✕
                 </button>
               )}
@@ -556,8 +556,8 @@ const Experts = () => {
               <div className="ex-empty">
                 <div className="ex-empty-icon">🔍</div>
                 <h3>No experts found</h3>
-                <p>Try adjusting your filters or search term to find the right expert.</p>
-                <button className="ex-btn ex-btn-outline" onClick={() => { setActiveFilter('all'); setSearchTerm(''); setSortBy('rating'); }}>
+                <p>Try broadening your search or clearing one filter at a time to surface more matches.</p>
+                <button type="button" className="ex-btn ex-btn-outline" onClick={() => { setActiveFilter('all'); setSearchTerm(''); setSortBy('rating'); }}>
                   Clear all filters
                 </button>
               </div>
