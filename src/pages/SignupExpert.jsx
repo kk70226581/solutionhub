@@ -233,10 +233,9 @@ const SignupExpert = () => {
         <div className="container">
           <div className="expert-card">
             <div className="header-top">
-              <h2>Join Solvenut as an expert</h2>
+              <h2>Apply to become a verified expert</h2>
               <p>
-                Share your knowledge, earn per session, and help people make better decisions every
-                day.
+                Share your knowledge, earn per session, and help people make better decisions every day.
               </p>
             </div>
 
@@ -472,7 +471,7 @@ const SignupExpert = () => {
                   </>
                 ) : (
                   <>
-                    <i className="fas fa-user-plus"></i> Apply as Solvenut expert
+                    <i className="fas fa-user-plus"></i> Submit expert application
                   </>
                 )}
               </button>
