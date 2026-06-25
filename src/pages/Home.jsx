@@ -719,7 +719,7 @@ const Home = () => {
           </div>
 
           <div className="hp-footer-bottom">
-            <span className="hp-footer-copy">© 2026 Solvenut. All rights reserved.</span>
+            <span className="hp-footer-copy">© {currentYear} Solvenut. All rights reserved.</span>
             <div className="hp-footer-social">
               {[{ label: 'X', href: 'https://x.com' }, { label: 'LinkedIn', href: 'https://linkedin.com' }, { label: 'Email', href: 'mailto:hello@solvenut.com' }].map(({ label, href }) => (
                 <a key={label} href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noreferrer">{label}</a>
