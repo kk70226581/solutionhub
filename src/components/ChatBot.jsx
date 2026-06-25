@@ -335,6 +335,7 @@ const ChatBot = ({ open, onClose, onEscalate }) => {
             <button
               className="chatbot-escalate-btn"
               type="button"
+              aria-label="Escalate to a human expert"
               onClick={() => {
                 if (isLoading) return;
                 onEscalate();
@@ -386,11 +387,12 @@ const ChatBot = ({ open, onClose, onEscalate }) => {
         <div className="chatbot-input-container">
           <textarea
             className="chatbot-input"
-            placeholder="Describe your decision, project, or question…"
+            placeholder="Ask a follow-up or add more context…"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={2}
+            aria-label="Chat message"
             disabled={isLoading}
           />
           <button
