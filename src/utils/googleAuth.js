@@ -3,7 +3,7 @@ const GOOGLE_SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
 let googleScriptPromise = null;
 let googleConfigPromise = null;
 
-export const loadGoogleIdentityScript = (timeout = 5000) => {
+export const loadGoogleIdentityScript = (timeout = 12000) => {
   if (typeof window === 'undefined') {
     return Promise.reject(new Error('Google sign-in is available in the browser only.'));
   }
@@ -16,22 +16,43 @@ export const loadGoogleIdentityScript = (timeout = 5000) => {
     googleScriptPromise = new Promise((resolve, reject) => {
       const existing = document.querySelector(`script[src="${GOOGLE_SCRIPT_SRC}"]`);
       
-      // Setup timeout
+      let settled = false;
       const timeoutId = setTimeout(() => {
-        reject(new Error('Google sign-in took too long to load. Please check your internet connection.'));
+        if (settled) return;
+        settled = true;
+        googleScriptPromise = null;
+        reject(new Error('Google Sign-In did not load. Check your connection or browser privacy extensions, then try again.'));
       }, timeout);
 
       const cleanup = () => clearTimeout(timeoutId);
+      const resolveGoogle = () => {
+        if (settled) return;
+        if (!window.google?.accounts?.id) {
+          settled = true;
+          cleanup();
+          googleScriptPromise = null;
+          reject(new Error('Google Sign-In loaded incorrectly. Please refresh and try again.'));
+          return;
+        }
+        settled = true;
+        cleanup();
+        resolve(window.google);
+      };
+      const rejectGoogle = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        googleScriptPromise = null;
+        reject(new Error('Google Sign-In could not be loaded. Please refresh and try again.'));
+      };
 
       if (existing) {
-        existing.addEventListener('load', () => {
-          cleanup();
-          resolve(window.google);
-        }, { once: true });
-        existing.addEventListener('error', () => {
-          cleanup();
-          reject(new Error('Failed to load Google sign-in. Please refresh and try again.'));
-        }, { once: true });
+        existing.addEventListener('load', resolveGoogle, { once: true });
+        existing.addEventListener('error', rejectGoogle, { once: true });
+        // A script inserted by another page may have loaded before this listener was attached.
+        window.setTimeout(() => {
+          if (window.google?.accounts?.id) resolveGoogle();
+        }, 0);
         return;
       }
 
@@ -39,15 +60,8 @@ export const loadGoogleIdentityScript = (timeout = 5000) => {
       script.src = GOOGLE_SCRIPT_SRC;
       script.async = true;
       script.defer = true;
-      script.onload = () => {
-        cleanup();
-        resolve(window.google);
-      };
-      script.onerror = () => {
-        cleanup();
-        googleScriptPromise = null; // Reset for retry
-        reject(new Error('Failed to load Google sign-in. Please refresh and try again.'));
-      };
+      script.onload = resolveGoogle;
+      script.onerror = rejectGoogle;
       document.head.appendChild(script);
     });
   }

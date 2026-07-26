@@ -1,5 +1,5 @@
 // src/pages/Login.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import '../styles/Login.css';
 import {
@@ -24,6 +24,8 @@ const Login = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetMsg, setResetMsg] = useState('');
   const [googleError, setGoogleError] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(true);
+  const googleButtonRef = useRef(null);
 
   const hasWindow = typeof window !== 'undefined';
 
@@ -106,7 +108,7 @@ const Login = () => {
     }
   };
 
-  const handleGoogleCredential = async (response) => {
+  const handleGoogleCredential = useCallback(async (response) => {
     const idToken = response?.credential;
     if (!idToken) {
       setGoogleError('Unable to retrieve Google credentials. Please try again.');
@@ -151,45 +153,48 @@ const Login = () => {
       setGoogleError(errorMsg);
       setIsSubmitting(false);
     }
-  };
+  }, [navigate]);
 
-  const handleGoogleLogin = async () => {
-    if (isSubmitting) return;
-    setGoogleError('');
-    setIsSubmitting(true);
+  useEffect(() => {
+    let isActive = true;
 
-    try {
-      const [google, googleClientId] = await Promise.all([
-        loadGoogleIdentityScript(),
-        getGoogleClientId(API),
-      ]);
-      google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: handleGoogleCredential,
-        ux_mode: 'popup',
-      });
-      google.accounts.id.renderButton(
-        document.getElementById('googleButtonContainer'),
-        { 
+    const setupGoogleButton = async () => {
+      setGoogleLoading(true);
+      try {
+        const [google, googleClientId] = await Promise.all([
+          loadGoogleIdentityScript(),
+          getGoogleClientId(API),
+        ]);
+        if (!isActive || !googleButtonRef.current) return;
+
+        google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleCredential,
+          ux_mode: 'popup',
+          auto_select: false,
+        });
+        googleButtonRef.current.replaceChildren();
+        google.accounts.id.renderButton(googleButtonRef.current, {
           type: 'standard',
+          theme: 'outline',
           size: 'large',
-          locale: 'en',
           text: 'continue_with',
-          theme: 'outline'
+          shape: 'rectangular',
+          width: 430,
+        });
+        setGoogleError('');
+      } catch (err) {
+        if (isActive) {
+          setGoogleError(err.message || 'Google sign-in is not available right now.');
         }
-      );
-      // Trigger the One Tap UI or render the button for click
-      const btn = document.querySelector('[data-google-signin]');
-      if (btn) {
-        btn.click();
-      } else {
-        google.accounts.id.prompt();
+      } finally {
+        if (isActive) setGoogleLoading(false);
       }
-    } catch (err) {
-      setGoogleError(err.message || 'Google sign-in is not available right now.');
-      setIsSubmitting(false);
-    }
-  };
+    };
+
+    setupGoogleButton();
+    return () => { isActive = false; };
+  }, [handleGoogleCredential]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -473,13 +478,9 @@ const Login = () => {
                 {isSubmitting ? 'Signing you in…' : 'Sign in'}
               </button>
               <div className="auth-divider"><span>or continue with</span></div>
-              <button
-                type="button"
-                className="google-auth-btn"
-                onClick={handleGoogleLogin}
-                disabled={isSubmitting}
-                data-google-signin
-              >
+              <div className="google-auth-slot" aria-live="polite">
+                {googleLoading && <div className="google-auth-loading">Preparing secure Google sign-in…</div>}
+                <div ref={googleButtonRef} className="google-official-button" />
                 <div className="google-btn-content">
                   <svg className="google-icon" viewBox="0 0 24 24" width="20" height="20">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -489,8 +490,13 @@ const Login = () => {
                   </svg>
                   <span>{isSubmitting ? 'Signing in…' : 'Continue with Google'}</span>
                 </div>
-              </button>
-              {googleError && <div className="auth-hint auth-error">{googleError}</div>}
+              </div>
+              {googleError && (
+                <div className="auth-hint auth-error">
+                  <span>{googleError}</span>
+                  <button type="button" onClick={() => window.location.reload()}>Retry</button>
+                </div>
+              )}
             </form>
             )}
 

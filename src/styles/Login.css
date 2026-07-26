@@ -469,6 +469,40 @@ nav.desktop a:hover {
   background: rgba(148, 163, 184, 0.28);
 }
 
+.google-auth-slot {
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.google-auth-slot .google-btn-content { display: none; }
+.google-official-button { width: 100%; display: flex; justify-content: center; }
+.google-official-button > div { max-width: 100%; }
+.google-auth-loading { color: var(--muted); font-size: 12.5px; padding: 12px; }
+
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(127, 29, 29, 0.36);
+}
+.auth-error button {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: #fde047;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+}
+.auth-error button:hover { color: #fff; }
+
 .google-auth-btn {
   width: 100%;
   min-height: 50px;
