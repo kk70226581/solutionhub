@@ -8,6 +8,14 @@
   outline-offset: 3px;
 }
 
+.ai-page .ai-domain-card {
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.ai-page .ai-domain-card:hover {
+  transform: translateY(-1px);
+}
+
 .client-chat-page .message-body {
   line-height: 1.58;
   overflow-wrap: anywhere;
