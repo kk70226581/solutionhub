@@ -8,6 +8,14 @@
   outline-offset: 3px;
 }
 
+.client-chat-page .empty-state {
+  padding: 36px 20px;
+}
+
+.client-chat-page .empty-state p {
+  max-width: 32ch;
+}
+
 .hp-nav-link,
 .sol-nav__links button {
   text-underline-offset: 5px;
