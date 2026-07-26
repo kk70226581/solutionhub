@@ -1,0 +1,9 @@
+/* Small, shared UI refinements layered over individual page styles. */
+:root {
+  --ui-focus: rgba(34, 211, 238, 0.56);
+}
+
+:where(button, a, input, textarea, select):focus-visible {
+  outline: 3px solid var(--ui-focus);
+  outline-offset: 3px;
+}
