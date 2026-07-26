@@ -128,6 +128,14 @@ function ExpertCard({ expert, onPay, onChat, checkingFor, processingPayment, get
         }
       </div>
 
+      <div className="ex-card-availability">
+        <span className="ex-availability-dot" style={{ background: color }} />
+        <span>{expert.availability || 'Available this week'}</span>
+        {Number(expert.sessionCount || expert.sessions || 0) > 0 && (
+          <span className="ex-session-count">{expert.sessionCount || expert.sessions} sessions</span>
+        )}
+      </div>
+
       <div className="ex-card-footer">
         <div className="ex-card-price">
           <span className="ex-price-amount" style={{ color }}>₹{expert.price || 500}</span>
@@ -247,7 +255,12 @@ const Experts = () => {
     return Math.round(experts.reduce((acc, e) => acc + Number(e.price || 500), 0) / experts.length);
   }, [experts]);
 
-  const topRatedCount = useMemo(() => experts.filter(e => ((e.avgRating ?? e.rating) || 0) >= 4.8).length, [experts]);
+  const seasonedCount = useMemo(() => experts.filter((expert) => Number(expert.experience || 0) >= 8).length, [experts]);
+  const domainCount = useMemo(() => new Set(experts.map((expert) => expert.field).filter(Boolean)).size, [experts]);
+  const availableTodayCount = useMemo(
+    () => experts.filter((expert) => /today|within 2 hours/i.test(expert.availability || '')).length,
+    [experts]
+  );
 
   /* ── Utils ── */
   const getPhotoUrl = useCallback((expert) => {
@@ -443,8 +456,8 @@ const Experts = () => {
                   </div>
                   <div className="ex-hero-stat-card">
                     <div className="ex-hero-stat-icon">⭐</div>
-                    <div className="ex-hero-stat-value">{isLoading ? '—' : `${topRatedCount}+`}</div>
-                    <div className="ex-hero-stat-label">Top-rated (4.8+)</div>
+                    <div className="ex-hero-stat-value">{isLoading ? '—' : `${seasonedCount}+`}</div>
+                    <div className="ex-hero-stat-label">8+ yrs experience</div>
                   </div>
                   <div className="ex-hero-stat-card">
                     <div className="ex-hero-stat-icon">💸</div>
@@ -453,8 +466,8 @@ const Experts = () => {
                   </div>
                   <div className="ex-hero-stat-card">
                     <div className="ex-hero-stat-icon">💬</div>
-                    <div className="ex-hero-stat-value">1-on-1</div>
-                    <div className="ex-hero-stat-label">Private sessions</div>
+                    <div className="ex-hero-stat-value">{isLoading ? '—' : `${availableTodayCount}+`}</div>
+                    <div className="ex-hero-stat-label">Available soon</div>
                   </div>
                 </div>
                 <div className="ex-hero-cta-row">
@@ -472,6 +485,14 @@ const Experts = () => {
 
           {/* ── CONTROLS ── */}
           <div className="ex-controls-wrap" id="ex-listings">
+            <div className="ex-ai-match-card">
+              <div>
+                <span className="ex-ai-match-eyebrow">NOT SURE WHO TO PICK?</span>
+                <strong>Start with AI Expert, then hand off to the right human when you need one.</strong>
+                <p>Share your situation once. Your context follows you into the expert match.</p>
+              </div>
+              <Link to="/ai-expert" className="ex-ai-match-link">Try AI Expert <span aria-hidden>→</span></Link>
+            </div>
             <div className="ex-controls-top">
               <div className="ex-filters-group">
                 <span className="ex-controls-label">Domain</span>
@@ -540,6 +561,7 @@ const Experts = () => {
                 Showing <strong>{filteredExperts.length}</strong> of <strong>{experts.length}</strong> experts
                 {activeFilter !== 'all' && <span className="ex-results-filter"> in <em>{FILTERS.find(f => f.id === activeFilter)?.label}</em></span>}
               </span>
+              {!isLoading && experts.length > 0 && <span className="ex-results-coverage">Across {domainCount} specialties</span>}
               {(activeFilter !== 'all' || searchTerm) && (
                 <button type="button" className="ex-clear-btn" onClick={() => { setActiveFilter('all'); setSearchTerm(''); setSortBy('rating'); }}>
                   Clear filters ✕
@@ -555,11 +577,13 @@ const Experts = () => {
             ) : filteredExperts.length === 0 ? (
               <div className="ex-empty">
                 <div className="ex-empty-icon">🔍</div>
-                <h3>No experts found</h3>
-                <p>Try broadening your search or clearing one filter at a time to surface more matches.</p>
-                <button type="button" className="ex-btn ex-btn-outline" onClick={() => { setActiveFilter('all'); setSearchTerm(''); setSortBy('rating'); }}>
-                  Clear all filters
-                </button>
+                <h3>{experts.length ? 'No experts found for that search' : 'Expert profiles are being added'}</h3>
+                <p>{experts.length ? 'Try broadening your search or clearing one filter at a time to surface more matches.' : 'Start with AI Expert now and it will guide you toward the right human specialist.'}</p>
+                {experts.length ? (
+                  <button type="button" className="ex-btn ex-btn-outline" onClick={() => { setActiveFilter('all'); setSearchTerm(''); setSortBy('rating'); }}>
+                    Clear all filters
+                  </button>
+                ) : <Link to="/ai-expert" className="ex-btn ex-btn-primary">Try AI Expert</Link>}
               </div>
             ) : (
               filteredExperts.map((expert, idx) => (
