@@ -107,6 +107,11 @@ const aiConversationSchema = new mongoose.Schema(
       enum: ["none", "suggested", "requested", "completed"],
       default: "none",
     },
+    escalationReason: {
+      type: String,
+      enum: ["", "low_confidence", "ai_recommendation", "human_requested", "high_stakes", "service_unavailable"],
+      default: "",
+    },
     confidenceScore: { type: Number, min: 0, max: 100, default: 0 },
     lastFeedback: {
       type: String,
@@ -141,6 +146,7 @@ const aiMessageSchema = new mongoose.Schema(
     domain: String,
     confidenceScore: { type: Number, min: 0, max: 100 },
     recommendEscalation: { type: Boolean, default: false },
+    escalationReason: { type: String, default: "" },
     tokenUsage: {
       inputTokens: { type: Number, default: 0 },
       outputTokens: { type: Number, default: 0 },
