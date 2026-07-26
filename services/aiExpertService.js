@@ -328,7 +328,34 @@ async function askAIExpert({ domain, messages, userMessage }) {
 }
 
 async function streamAIExpert({ domain, messages, userMessage, onToken }) {
-  const { bedrock, InvokeModelWithResponseStreamCommand } = await getBedrockRuntime();
+  const { bedrock, ConverseStreamCommand, InvokeModelWithResponseStreamCommand } = await getBedrockRuntime();
+
+  if (isNovaModel()) {
+    const response = await sendWithRetry(() =>
+      bedrock.send(new ConverseStreamCommand(buildConverseRequest({ domain, messages })))
+    );
+    let text = "";
+    let usage = {};
+
+    for await (const event of response.stream) {
+      const token = event?.contentBlockDelta?.delta?.text || "";
+      if (token) {
+        text += token;
+        onToken?.(token);
+      }
+      if (event?.metadata?.usage) usage = { ...usage, ...event.metadata.usage };
+    }
+
+    const confidenceScore = estimateConfidence({ text, domain, userMessage });
+    return {
+      text: text.trim(),
+      confidenceScore,
+      recommendEscalation: shouldEscalate({ confidenceScore, text, domain }),
+      tokenUsage: normalizeUsage(usage),
+      modelId: BEDROCK_MODEL_ID,
+    };
+  }
+
   const requestBody = buildRequestBody({ domain, messages });
 
   console.log("streamAIExpert called for domain:", domain);
