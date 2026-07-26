@@ -30,7 +30,7 @@ const DOMAIN_CONTEXT = {
   "personal growth": "Habits, confidence, leadership, communication, life decisions, and personal development.",
 };
 
-const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20240620-v1:0";
+const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || "amazon.nova-lite-v1:0";
 const AI_EXPERT_PROVIDER = process.env.AI_EXPERT_PROVIDER || "bedrock";
 const AWS_REGION = process.env.AWS_REGION || "us-east-1";
 const MAX_HISTORY_MESSAGES = 18;
