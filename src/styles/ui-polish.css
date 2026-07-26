@@ -8,6 +8,12 @@
   outline-offset: 3px;
 }
 
++::selection {
+  background: rgba(34, 211, 238, 0.26);
+  color: #ffffff;
+}
+
+
 +.sol-home button,
 .ex-page button,
 .cd-page button,
