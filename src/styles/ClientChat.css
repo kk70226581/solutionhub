@@ -3225,3 +3225,39 @@ video {
     grid-column: span 2;
   }
 }
+
+/* Chat-only consultation workspace. The conversation gets the primary visual focus. */
+.client-chat-page .chat-layout {
+  grid-template-columns: minmax(270px, 320px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "expert chat";
+  gap: 16px;
+  height: min(calc(100dvh - 104px), 860px);
+  max-height: min(calc(100dvh - 104px), 860px);
+  padding: 8px 0 16px;
+}
+
+.client-chat-page .video-stage,
+.client-chat-page .chat-call-divider,
+.client-chat-page .chat-layout-call-connected,
+.client-chat-page .shell-call-connected {
+  display: none !important;
+}
+
+.client-chat-page .chat-section { grid-area: chat; min-height:0; height:100%; max-height:none; }
+.client-chat-page .chat-box { height:100%; border-radius:18px; overflow:hidden; }
+.client-chat-page .chat-thread-head { padding:18px 20px; background:linear-gradient(100deg, rgba(34,211,238,.08), rgba(52,211,153,.045)); }
+.client-chat-page .chat-messages { padding:22px; }
+.client-chat-page .chat-input-area { padding:14px 18px 17px; background:rgba(3,7,18,.72); }
+.client-chat-page .expert-card { height:100%; max-height:none; border-radius:18px; background:linear-gradient(180deg, rgba(14,24,50,.94), rgba(6,12,28,.94)); }
+
+@media (max-width: 860px) {
+  .client-chat-page .mobile-pane-switcher { grid-template-columns:repeat(2, minmax(0,1fr)); }
+  .client-chat-page .chat-layout { grid-template-columns:1fr; grid-template-rows:minmax(0,1fr); grid-template-areas:"chat"; height:min(calc(100dvh - 134px), 800px); padding:0 0 10px; }
+  .client-chat-page .chat-layout.mobile-pane-expert { grid-template-areas:"expert"; grid-template-rows:auto; height:auto; }
+  .client-chat-page .chat-layout.mobile-pane-chat .expert-card,
+  .client-chat-page .chat-layout.mobile-pane-expert .chat-section { display:none; }
+  .client-chat-page .chat-layout.mobile-pane-chat .chat-section,
+  .client-chat-page .chat-layout.mobile-pane-expert .expert-card { display:flex; height:auto; min-height:0; max-height:none; }
+  .client-chat-page .chat-layout.mobile-pane-chat .chat-section { height:min(calc(100dvh - 134px), 800px); }
+}

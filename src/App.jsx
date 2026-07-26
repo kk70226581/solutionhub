@@ -14,7 +14,7 @@ import Login from './pages/Login';
 import SignupClient from './pages/SignupClient';
 import SignupExpert from './pages/SignupExpert';
 import ProtectedRoute from './components/ProtectedRoute';
-import GlobalCallNotifier from './components/GlobalCallNotifier';
+import FloatingAssistant from './components/FloatingAssistant';
 
 function PricingComingSoon() {
   return (
@@ -84,7 +84,7 @@ function App() {
         <Route path="/pricing" element={<PricingComingSoon />} />
         <Route path="*" element={<Home />} />
       </Routes>
-      <GlobalCallNotifier />
+      <FloatingAssistant />
     </Router>
   );
 }

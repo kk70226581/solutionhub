@@ -437,6 +437,109 @@ const registerPublicRoutes = (app, deps) => {
       });
     }
   });
+
+  /**
+   * Psychology Assistant endpoint - AI counselor to help users
+   * POST /api/psychology-assist - Returns empathetic response with psychological guidance
+   */
+  app.post("/api/psychology-assist", async (req, res) => {
+    try {
+      const userMessage = String(req.body?.message || "").trim();
+      const systemPrompt = req.body?.systemPrompt || "";
+      const conversationHistory = Array.isArray(req.body?.conversationHistory) ? req.body.conversationHistory : [];
+
+      if (!userMessage) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      // Check for emergency keywords
+      const emergencyKeywords = ['suicide', 'self-harm', 'kill myself', 'want to die', 'harm myself', 'dangerous'];
+      const hasEmergency = emergencyKeywords.some(keyword => userMessage.toLowerCase().includes(keyword));
+
+      // Build conversation for AI
+      const messages = [
+        ...conversationHistory.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        })),
+        { role: "user", content: userMessage }
+      ];
+
+      // Simple response if Bedrock is not available - fallback response
+      let response = await generatePsychologyResponse(userMessage, systemPrompt, messages);
+
+      if (!response) {
+        // Fallback empathetic responses
+        const fallbackResponses = [
+          "I hear you. That sounds really challenging. Can you tell me more about what's been going on?",
+          "Thank you for sharing that. It takes courage to open up. What part of this situation feels most overwhelming right now?",
+          "I'm really listening. It sounds like you're dealing with something significant. What would help you feel better?",
+          "That's a lot to carry. I'm here to listen without judgment. What's your biggest concern right now?",
+          "I appreciate your honesty. Let's work through this together. What would you like to focus on first?"
+        ];
+        response = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+      }
+
+      return res.json({
+        response,
+        needsEmergencyResponse: hasEmergency,
+        success: true
+      });
+    } catch (err) {
+      console.error("Psychology assistant error:", err);
+      return res.status(500).json({
+        response: "I'm having a moment of difficulty connecting. Please try again in a moment. You matter, and I'm here to listen.",
+        error: "Failed to generate response"
+      });
+    }
+  });
+
+  /**
+   * Helper function to generate psychology responses
+   * Uses AWS Bedrock if available, otherwise returns empathetic default
+   */
+  async function generatePsychologyResponse(userMessage, systemPrompt, conversationHistory) {
+    try {
+      // Check if AWS Bedrock is available
+      const hasBedrockConfig = Boolean(
+        process.env.AWS_ACCESS_KEY_ID &&
+        process.env.AWS_SECRET_ACCESS_KEY &&
+        process.env.AWS_REGION
+      );
+
+      if (!hasBedrockConfig) {
+        // Return null to trigger fallback
+        return null;
+      }
+
+      // Try to use Bedrock if available
+      const { BedrockRuntimeClient, InvokeModelCommand } = await import("@aws-sdk/client-bedrock-runtime");
+      
+      const client = new BedrockRuntimeClient({ region: process.env.AWS_REGION || "us-east-1" });
+      const modelId = process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20240620-v1:0";
+
+      const payload = {
+        anthropic_version: "bedrock-2023-06-01",
+        max_tokens: 1024,
+        system: systemPrompt || "You are a compassionate AI psychology assistant.",
+        messages: conversationHistory.slice(-10) // Last 10 messages for context
+      };
+
+      const command = new InvokeModelCommand({
+        modelId,
+        body: JSON.stringify(payload),
+      });
+
+      const response = await client.send(command);
+      const responseText = new TextDecoder().decode(response.body);
+      const parsed = JSON.parse(responseText);
+
+      return parsed.content?.[0]?.text || null;
+    } catch (err) {
+      console.error("Bedrock error:", err.message);
+      return null; // Trigger fallback
+    }
+  }
 };
 
 module.exports = {

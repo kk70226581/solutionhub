@@ -1,16 +1,14 @@
 ﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
 import {
   TrendingUp, Star, Clock, MessageCircle, Users, Briefcase,
   DollarSign, BarChart3, Settings, Bell, Edit3, Eye, CheckCircle,
-  XCircle, Calendar, Award, ArrowRight, Zap, Mail, MapPin, ArrowUp, ArrowDown, House, Send, Paperclip, X, Phone,
-  Search, ChevronLeft, Smile, Mic, MoreVertical, Image, Video, Check, CheckCheck, Menu, ChevronDown,
+  XCircle, Calendar, Award, ArrowRight, Zap, Mail, MapPin, ArrowUp, ArrowDown, House, Send, Paperclip, X,
+  Search, ChevronLeft, Smile, Mic, MoreVertical, Image, Check, CheckCheck, Menu, ChevronDown,
   Activity, TrendingDown, Filter, RefreshCw, LogOut, Home, MessageSquare,
 } from 'lucide-react';
 import '../styles/ExpertDashboard.css';
-import VideoCall from '../components/VideoCall';
-import { clearStoredIncomingCall, getStoredIncomingCall } from '../utils/incomingCallStorage';
 import {
   CHAT_ATTACHMENT_ACCEPT,
   getChatAttachmentPayload,
@@ -353,7 +351,6 @@ function MessageBubble({ msg, mine, onReact }) {
 
 const ExpertDashboard = () => {
   const navigate = useNavigate();
-  const location = useLocation();
 
   const token = localStorage.getItem('token');
   const email = localStorage.getItem('email');
@@ -401,13 +398,10 @@ const ExpertDashboard = () => {
   const [loadingChat, setLoadingChat] = useState(false);
   const [liveSocket, setLiveSocket] = useState(null);
   const [chatImageViewer, setChatImageViewer] = useState({ open: false, src: '', alt: '' });
-  const [incomingCall, setIncomingCall] = useState(() => getStoredIncomingCall());
   const [typingUsers, setTypingUsers] = useState(new Set());
   const [unreadCounts, setUnreadCounts] = useState({});
   const [clientOnlineStatus, setClientOnlineStatus] = useState({});
   const [conversationSearch, setConversationSearch] = useState('');
-  const [isCallConnected, setIsCallConnected] = useState(false);
-  const [callSplit, setCallSplit] = useState(50);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobilePane, setMobilePane] = useState('chat');
   const [msgReactions, setMsgReactions] = useState({});
@@ -421,8 +415,6 @@ const ExpertDashboard = () => {
   const chatImageInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const chatInputRef = useRef(null);
-  const connectedLayoutRef = useRef(null);
-  const callSplitDragRef = useRef({ active: false });
 
   const [statsRef, statsInView] = useInView(0.25);
 
@@ -431,33 +423,6 @@ const ExpertDashboard = () => {
       navigate('/login', { replace: true });
     }
   }, [token, email, normalizedRole, navigate]);
-
-  useEffect(() => {
-    const onMove = (event) => {
-      if (!callSplitDragRef.current.active || !connectedLayoutRef.current) return;
-      const rect = connectedLayoutRef.current.getBoundingClientRect();
-      const next = ((event.clientX - rect.left) / rect.width) * 100;
-      setCallSplit(Math.min(70, Math.max(30, next)));
-    };
-
-    const onUp = () => {
-      callSplitDragRef.current.active = false;
-    };
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-  }, []);
-
-  const startCallSplitDrag = (event) => {
-    if (!isCallConnected) return;
-    if (window.innerWidth <= 900) return;
-    event.preventDefault();
-    callSplitDragRef.current.active = true;
-  };
 
   const loadDashboardData = useCallback(async () => {
     if (!token || !email) return;
@@ -566,15 +531,6 @@ const ExpertDashboard = () => {
     s.on('user_online', ({ email: userEmail, online }) => {
       setClientOnlineStatus((prev) => ({ ...prev, [String(userEmail || '').toLowerCase()]: online }));
     });
-    s.on('offer', ({ room, offer, from }) => {
-      if (!room || !offer || String(from || '').toLowerCase() === String(email || '').toLowerCase()) return;
-      setIncomingCall((prev) => {
-        if (prev?.room === room) return prev;
-        return { room, offer, from: from || 'Client', time: Date.now() };
-      });
-      setNotifOpen(true);
-    });
-
     return () => {
       setLiveSocket(null);
       try { s.disconnect(); } catch (err) { console.error(err); }
@@ -738,27 +694,6 @@ const ExpertDashboard = () => {
       setLoadingChat(false);
     }
   }, [token]);
-
-  const openIncomingCall = useCallback(async () => {
-    if (!incomingCall?.room) return;
-    const conversation = conversations.find((item) => item.room === incomingCall.room);
-    setActiveTab('chat');
-    if (conversation) {
-      await openConversation(conversation);
-      setMobilePane('call');
-    } else {
-      setActiveRoom(incomingCall.room);
-      activeRoomRef.current = incomingCall.room;
-      setMobilePane('call');
-    }
-    setNotifOpen(false);
-  }, [incomingCall, conversations, openConversation]);
-
-  useEffect(() => {
-    if (!location.state?.openIncomingCall || !incomingCall?.room || conversations.length === 0) return;
-    openIncomingCall();
-    navigate(location.pathname, { replace: true, state: {} });
-  }, [location.state, location.pathname, incomingCall, conversations.length, openIncomingCall, navigate]);
 
   const sendChatMessage = useCallback(() => {
     const room = activeRoomRef.current || activeRoom;
@@ -984,24 +919,14 @@ const ExpertDashboard = () => {
             <div className="ed-notif-wrap">
               <button className="ed-icon-btn" onClick={() => setNotifOpen((v) => !v)} aria-label="Notifications">
                 <Bell size={16} />
-                {(totalUnread > 0 || incomingCall) && <span className="ed-notif-dot" />}
+                {totalUnread > 0 && <span className="ed-notif-dot" />}
               </button>
               {notifOpen && (
                 <div className="ed-notif-panel">
                   <div className="ed-notif-head">
                     <span>Notifications</span>
-                    <span className="ed-notif-count">{totalUnread + (incomingCall ? 1 : 0)}</span>
+                    <span className="ed-notif-count">{totalUnread}</span>
                   </div>
-                  {incomingCall && (
-                    <button className="ed-notif-item ed-notif-item-call" onClick={openIncomingCall}>
-                      <div className="ed-notif-call-icon"><Phone size={14} /></div>
-                      <div>
-                        <div className="ed-notif-title">{incomingCall.from} is calling</div>
-                        <div className="ed-notif-sub">Tap to open chat</div>
-                      </div>
-                      <span className="ed-notif-arrow">→</span>
-                    </button>
-                  )}
                   {activity.slice(0, 4).map((item, i) => (
                     <div key={i} className="ed-notif-item">
                       <span className="ed-notif-icon-em">{item.icon}</span>
@@ -1050,21 +975,6 @@ const ExpertDashboard = () => {
 
       <main className="ed-main">
         <div className="ed-shell">
-
-          {/* Incoming call banner */}
-          {incomingCall && (
-            <div className="ed-call-alert">
-              <div className="ed-call-pulse" />
-              <div className="ed-call-alert-copy">
-                <span className="ed-call-kicker">Incoming call</span>
-                <strong>{incomingCall.from} is calling you</strong>
-                <span>Open private chat to accept the video call</span>
-              </div>
-              <button className="ed-btn ed-btn-primary ed-btn-sm" onClick={openIncomingCall}>
-                <Phone size={13} /> Answer
-              </button>
-            </div>
-          )}
 
           {loadError && (
             <div className="ed-error-banner">
@@ -1307,11 +1217,7 @@ const ExpertDashboard = () => {
           {/* ─── CHAT TAB ─────────────────────────────────────── */}
           {activeTab === 'chat' && (
             <section className="ed-section ed-section--chat">
-              <div
-                ref={connectedLayoutRef}
-                className={`ed-chat-shell ${isCallConnected ? 'call-active' : ''} mobile-pane-${mobilePane}`}
-                style={isCallConnected ? { '--call-left': `${callSplit}%`, '--call-right': `${100 - callSplit}%` } : undefined}
-              >
+              <div className={`ed-chat-shell mobile-pane-${mobilePane}`}>
 
                 {/* Sidebar */}
                 <div className={`ed-chat-sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
@@ -1369,18 +1275,6 @@ const ExpertDashboard = () => {
                 {/* Sidebar overlay for mobile */}
                 {mobileSidebarOpen && <div className="ed-sidebar-overlay" onClick={() => setMobileSidebarOpen(false)} />}
 
-                {isCallConnected ? (
-                  <div
-                    className="ed-chat-call-divider"
-                    role="separator"
-                    aria-orientation="vertical"
-                    aria-label="Resize video and chat panels"
-                    onPointerDown={startCallSplitDrag}
-                  >
-                    <span />
-                  </div>
-                ) : null}
-
                 {/* Main chat */}
                 <div className="ed-chat-main">
                   {!activeRoom ? (
@@ -1429,17 +1323,6 @@ const ExpertDashboard = () => {
                           <MessageSquare size={15} />
                           <span>Chat</span>
                         </button>
-                        <button
-                          type="button"
-                          className={`ed-mobile-pane-btn ${mobilePane === 'call' ? 'active' : ''}`}
-                          onClick={() => {
-                            setShowMsgSearch(false);
-                            setMobilePane('call');
-                          }}
-                        >
-                          <Phone size={15} />
-                          <span>Call</span>
-                        </button>
                       </div>
 
                       {/* Message search bar */}
@@ -1456,29 +1339,6 @@ const ExpertDashboard = () => {
                           <button onClick={() => { setShowMsgSearch(false); setMsgSearch(''); }}><X size={13} /></button>
                         </div>
                       )}
-
-                      {/* Video Call */}
-                      <div className="ed-chat-callrail">
-                        <VideoCall
-                          socket={liveSocket}
-                          roomId={activeRoom}
-                          currentUserEmail={email || ''}
-                          currentUserName={computedProfile.name || email || 'Expert'}
-                          peerLabel={activeConversation?.otherEmail || 'Client'}
-                          enabled={Boolean(activeRoom)}
-                          compact
-                          externalIncomingCall={incomingCall?.room === activeRoom ? incomingCall : null}
-                          onIncomingCallCleared={() => {
-                            setIncomingCall((prev) => (prev?.room === activeRoom ? null : prev));
-                            clearStoredIncomingCall();
-                          }}
-                          onCallStateChange={({ connected }) => {
-                            const nextConnected = Boolean(connected);
-                            setIsCallConnected(nextConnected);
-                            if (nextConnected) setMobilePane('call');
-                          }}
-                        />
-                      </div>
 
                       {/* Messages */}
                       <div className="ed-messages-area">

@@ -7,6 +7,7 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
+const { rateLimit } = require("express-rate-limit");
 const { Server } = require("socket.io");
 const Razorpay = require("razorpay");
 const QRCode = require("qrcode");
@@ -29,7 +30,6 @@ const {
 const { authMiddleware, adminAuth } = require("./middleware/auth-middleware.cjs");
 const { verifyTOTP, getAdmin2FASecret } = require("./middleware/admin-totp.cjs");
 const {
-  createInMemoryRateLimiter,
   cacheGetJson,
   cacheSetJson,
 } = require("./middleware/cache-middleware.cjs");
@@ -164,8 +164,17 @@ const addLocalOnlineUserLocal = (email, presence) =>
   addLocalOnlineUser(email, presence, localUserSockets, onlineUsers);
 const removeLocalOnlineUserLocal = (email, socketId) =>
   removeLocalOnlineUser(email, socketId, localUserSockets, onlineUsers);
-const createLocalRateLimiter = ({ windowMs, max, keyPrefix }) =>
-  createInMemoryRateLimiter({ windowMs, max, keyPrefix });
+// Each limiter receives its own store. `identifier` makes the standard RateLimit
+// response header distinguish global, auth, and AI limits for API consumers.
+const createRateLimiter = ({ windowMs, max, keyPrefix }) =>
+  rateLimit({
+    windowMs,
+    limit: max,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    identifier: keyPrefix,
+    message: { error: "Too many requests. Please try again later." },
+  });
 const getClientExpertChatAccess = (clientEmail, expertEmail) =>
   getClientExpertChatAccessHelper(Payment, Message, clientEmail, expertEmail);
 
@@ -182,7 +191,7 @@ const emitUserPresence = async (email, online) => {
   await emitOnlineUsersSnapshot();
 };
 
-const authRateLimiter = createLocalRateLimiter({
+const authRateLimiter = createRateLimiter({
   windowMs: RATE_LIMIT_WINDOW_MS,
   max: RATE_LIMIT_MAX_AUTH,
   keyPrefix: "auth",
@@ -198,7 +207,7 @@ app.use(cookieParser());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(
   "/api",
-  createLocalRateLimiter({
+  createRateLimiter({
     windowMs: RATE_LIMIT_WINDOW_MS,
     max: RATE_LIMIT_MAX_GLOBAL,
     keyPrefix: "global",
@@ -275,7 +284,7 @@ registerAdminPaymentRoutes(app, {
 
 registerAIExpertRoutes(app, {
   authMiddleware,
-  createRateLimiter: createLocalRateLimiter,
+  createRateLimiter,
   AIConversation,
   AIMessage,
   AIUserFeedback,

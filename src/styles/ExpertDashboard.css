@@ -2693,3 +2693,18 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Messaging-only expert workspace: no call rail, no split panels. */
+.ed-chat-main {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "header"
+    "search"
+    "messages"
+    "compose";
+}
+.ed-chat-callrail,
+.ed-chat-call-divider,
+.ed-chat-shell.call-active .ed-chat-callrail,
+.ed-chat-shell.call-active .ed-chat-call-divider { display:none !important; }
+.ed-mobile-pane-switcher { grid-template-columns:1fr !important; }

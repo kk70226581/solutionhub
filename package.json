@@ -13,13 +13,14 @@
     "start": "concurrently \"npm run server\" \"npm run dev\""
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@aws-sdk/client-bedrock-runtime": "^3.714.0",
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.563.0",
     "mongoose": "^9.1.6",

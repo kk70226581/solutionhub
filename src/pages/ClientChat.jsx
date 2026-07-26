@@ -2,8 +2,6 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import '../styles/ClientChat.css';
-import VideoCall from '../components/VideoCall';
-import { clearStoredIncomingCall, getStoredIncomingCall } from '../utils/incomingCallStorage';
 import {
   CHAT_ATTACHMENT_ACCEPT,
   getChatAttachmentPayload,
@@ -60,9 +58,6 @@ const ClientChat = () => {
   const [myRating, setMyRating] = useState(0);
   const [myReview, setMyReview] = useState('');
   const [savingRating, setSavingRating] = useState(false);
-  const [incomingCall, setIncomingCall] = useState(() => getStoredIncomingCall());
-  const [isCallConnected, setIsCallConnected] = useState(false);
-  const [callSplit, setCallSplit] = useState(50);
   const [mobilePane, setMobilePane] = useState('chat');
   const [isExpertPanelCollapsed, setIsExpertPanelCollapsed] = useState(false);
   const [chatAccess, setChatAccess] = useState({
@@ -79,8 +74,6 @@ const ClientChat = () => {
   const chatMessagesRef = useRef(null);
   const chatFileInputRef = useRef(null);
   const chatComposerRef = useRef(null);
-  const connectedLayoutRef = useRef(null);
-  const callSplitDragRef = useRef({ active: false });
   const swipeStartRef = useRef({ x: 0, y: 0, pane: 'chat' });
 
   useEffect(() => {
@@ -89,12 +82,6 @@ const ClientChat = () => {
       navigate('/login', { replace: true });
     }
   }, [token, clientEmail, navigate]);
-
-  useEffect(() => {
-    if (incomingCall?.room === roomId || isCallConnected) {
-      setMobilePane('call');
-    }
-  }, [incomingCall, roomId, isCallConnected]);
 
   useEffect(() => {
     const syncMobileExpertPanel = () => {
@@ -111,17 +98,6 @@ const ClientChat = () => {
   }, []);
 
   useEffect(() => {
-    const onMove = event => {
-      if (!callSplitDragRef.current.active || !connectedLayoutRef.current) return;
-      const rect = connectedLayoutRef.current.getBoundingClientRect();
-      const next = ((event.clientX - rect.left) / rect.width) * 100;
-      setCallSplit(Math.min(70, Math.max(30, next)));
-    };
-
-    const onUp = () => {
-      callSplitDragRef.current.active = false;
-    };
-
     // Swipe gesture handlers for mobile pane switching
     const onTouchStart = event => {
       if (window.innerWidth > 860) return; // No swipe on desktop
@@ -145,7 +121,7 @@ const ClientChat = () => {
       const minSwipeDist = 50;
       if (Math.abs(deltaX) < minSwipeDist) return;
 
-      const panes = ['chat', 'call', 'expert'];
+      const panes = ['chat', 'expert'];
       const currentIdx = panes.indexOf(swipeStartRef.current.pane);
       
       if (deltaX > 0 && currentIdx > 0) {
@@ -157,25 +133,14 @@ const ClientChat = () => {
       }
     };
 
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('touchend', onTouchEnd, { passive: true });
     
     return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
       window.removeEventListener('touchstart', onTouchStart);
       window.removeEventListener('touchend', onTouchEnd);
     };
   }, [mobilePane]);
-
-  const startCallSplitDrag = event => {
-    if (!isCallConnected) return;
-    if (window.innerWidth <= 860) return;
-    event.preventDefault();
-    callSplitDragRef.current.active = true;
-  };
 
   const escapeHtml = text => {
     const div = document.createElement('div');
@@ -718,7 +683,7 @@ const ClientChat = () => {
       </header>
 
       <main>
-        <div className={`shell ${isCallConnected ? 'shell-call-connected' : ''}`}>
+        <div className="shell">
           <div className="mobile-pane-switcher" aria-label="Mobile sections">
             <button
               type="button"
@@ -730,14 +695,6 @@ const ClientChat = () => {
             </button>
             <button
               type="button"
-              className={`mobile-pane-btn ${mobilePane === 'call' ? 'active' : ''}`}
-              onClick={() => setMobilePane('call')}
-            >
-              <i className="fa-solid fa-phone" />
-              <span>Call</span>
-            </button>
-            <button
-              type="button"
               className={`mobile-pane-btn ${mobilePane === 'expert' ? 'active' : ''}`}
               onClick={() => setMobilePane('expert')}
             >
@@ -745,11 +702,7 @@ const ClientChat = () => {
               <span>Expert</span>
             </button>
           </div>
-          <div
-            ref={connectedLayoutRef}
-            className={`chat-layout ${isCallConnected ? 'chat-layout-call-connected' : ''} mobile-pane-${mobilePane}`}
-            style={isCallConnected ? { '--call-left': `${callSplit}%`, '--call-right': `${100 - callSplit}%` } : undefined}
-          >
+          <div className={`chat-layout mobile-pane-${mobilePane}`}>
             <aside className={`expert-card ${isExpertPanelCollapsed ? 'expert-card-collapsed' : ''}`}>
               <div className="expert-card-head">
                 <div className="expert-card-kicker">About Expert</div>
@@ -869,38 +822,6 @@ const ClientChat = () => {
                 </div>
               </div>
             </aside>
-
-            <section className="video-stage">
-              <VideoCall
-                socket={socketInstance}
-                roomId={roomId}
-                currentUserEmail={clientEmail || ''}
-                currentUserName={clientName}
-                peerLabel={expert.name || 'Expert'}
-                enabled={Boolean(chatAccess.allowed)}
-                compact
-                externalIncomingCall={incomingCall?.room === roomId ? incomingCall : null}
-                onIncomingCallCleared={() => {
-                  setIncomingCall(null);
-                  clearStoredIncomingCall();
-                }}
-                onCallStateChange={({ connected }) => {
-                  setIsCallConnected(Boolean(connected));
-                }}
-              />
-            </section>
-
-            {isCallConnected ? (
-              <div
-                className="chat-call-divider"
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Resize video and chat panels"
-                onPointerDown={startCallSplitDrag}
-              >
-                <span />
-              </div>
-            ) : null}
 
             <section className="chat-section">
               <div className="chat-box">
