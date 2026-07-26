@@ -8,6 +8,12 @@
   outline-offset: 3px;
 }
 
+.cd-card,
+.cd-board-card,
+.cd-quick-card {
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
 +.ex-card {
   transform: translateZ(0);
 }
