@@ -8,6 +8,15 @@
   outline-offset: 3px;
 }
 
++.ex-card {
+  transform: translateZ(0);
+}
+
+.ex-card:hover {
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22);
+}
+
+
 +.hp-btn,
 .sol-button {
   transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
