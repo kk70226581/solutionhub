@@ -8,6 +8,18 @@
   outline-offset: 3px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ui-motion-safe,
+  .hp-btn,
+  .sol-button,
+  .ex-card,
+  .cd-card,
+  .ed-card,
+  .ai-domain-card {
+    transition-duration: 0.01ms !important;
+  }
+}
+
 .ex-page .ex-search-input,
 .ed-page .ed-filter-search {
   transition: border-color 160ms ease, box-shadow 160ms ease;
