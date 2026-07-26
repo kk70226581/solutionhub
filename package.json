@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "test": "node --test tests/*.test.cjs",
+    "seed:experts": "node scripts/seed-experts.cjs",
     "preview": "vite preview",
     "server": "node server.cjs",
     "start": "concurrently \"npm run server\" \"npm run dev\""
