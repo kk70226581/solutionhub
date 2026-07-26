@@ -264,7 +264,25 @@ function normalizeUsage(usage = {}) {
 }
 
 async function askAIExpert({ domain, messages, userMessage }) {
-  const { bedrock, InvokeModelCommand } = await getBedrockRuntime();
+  const { bedrock, ConverseCommand, InvokeModelCommand } = await getBedrockRuntime();
+
+  if (isNovaModel()) {
+    const response = await sendWithRetry(() =>
+      bedrock.send(new ConverseCommand(buildConverseRequest({ domain, messages })))
+    );
+    const text = parseResponse(response);
+    const confidenceScore = estimateConfidence({ text, domain, userMessage });
+
+    return {
+      text,
+      confidenceScore,
+      recommendEscalation: shouldEscalate({ confidenceScore, text, domain }),
+      tokenUsage: normalizeUsage(response?.usage),
+      modelId: BEDROCK_MODEL_ID,
+      raw: { stopReason: response?.stopReason, provider: getAIProvider() },
+    };
+  }
+
   const requestBody = buildRequestBody({ domain, messages });
 
   // Verify no system parameter for Mistral
