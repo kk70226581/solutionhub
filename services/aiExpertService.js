@@ -177,12 +177,19 @@ async function getBedrockRuntime() {
   const sdk = await import("@aws-sdk/client-bedrock-runtime");
   const {
     BedrockRuntimeClient,
+    ConverseCommand,
+    ConverseStreamCommand,
     InvokeModelCommand,
     InvokeModelWithResponseStreamCommand,
   } = sdk;
 
   cachedBedrock = new BedrockRuntimeClient({ region: AWS_REGION });
-  cachedCommands = { InvokeModelCommand, InvokeModelWithResponseStreamCommand };
+  cachedCommands = {
+    ConverseCommand,
+    ConverseStreamCommand,
+    InvokeModelCommand,
+    InvokeModelWithResponseStreamCommand,
+  };
   return { bedrock: cachedBedrock, ...cachedCommands };
 }
 
