@@ -107,6 +107,7 @@ const registerAIExpertRoutes = (app, deps) => {
               text: "I could not reach the AI Expert service right now. You can continue trying, or connect with a verified human expert for this topic.",
               confidenceScore: 35,
               recommendEscalation: true,
+              escalationReason: "service_unavailable",
               tokenUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
               raw: { error: err?.message || String(err) },
             };
@@ -120,12 +121,14 @@ const registerAIExpertRoutes = (app, deps) => {
           content: aiResult.text,
           confidenceScore: aiResult.confidenceScore,
           recommendEscalation: aiResult.recommendEscalation,
+          escalationReason: aiResult.escalationReason,
           tokenUsage: aiResult.tokenUsage,
           rawProviderResponse: aiResult.raw,
         });
 
         conversation.confidenceScore = aiResult.confidenceScore;
         conversation.escalationStatus = aiResult.recommendEscalation ? "suggested" : "none";
+        conversation.escalationReason = aiResult.escalationReason || "";
         conversation.tokenUsage = aiResult.tokenUsage;
         await conversation.save();
 
@@ -198,11 +201,13 @@ const registerAIExpertRoutes = (app, deps) => {
             content: aiResult.text || "I need a little more context before I can answer confidently.",
             confidenceScore: aiResult.confidenceScore,
             recommendEscalation: aiResult.recommendEscalation,
+            escalationReason: aiResult.escalationReason,
             tokenUsage: aiResult.tokenUsage,
           });
 
           conversation.confidenceScore = aiResult.confidenceScore;
           conversation.escalationStatus = aiResult.recommendEscalation ? "suggested" : conversation.escalationStatus;
+          conversation.escalationReason = aiResult.escalationReason || conversation.escalationReason;
           conversation.tokenUsage = {
             inputTokens: Number(conversation.tokenUsage?.inputTokens || 0) + Number(aiResult.tokenUsage?.inputTokens || 0),
             outputTokens: Number(conversation.tokenUsage?.outputTokens || 0) + Number(aiResult.tokenUsage?.outputTokens || 0),
@@ -215,6 +220,7 @@ const registerAIExpertRoutes = (app, deps) => {
             text: aiResult.text,
             confidenceScore: aiResult.confidenceScore,
             recommendEscalation: aiResult.recommendEscalation,
+            escalationReason: aiResult.escalationReason,
             tokenUsage: aiResult.tokenUsage,
           });
           return res.end();
@@ -229,10 +235,12 @@ const registerAIExpertRoutes = (app, deps) => {
             content: fallback,
             confidenceScore: 35,
             recommendEscalation: true,
+            escalationReason: "service_unavailable",
             rawProviderResponse: { error: err?.message || String(err) },
           });
           conversation.confidenceScore = 35;
           conversation.escalationStatus = "suggested";
+          conversation.escalationReason = "service_unavailable";
           await conversation.save();
           sendSse(res, "token", { token: fallback });
           sendSse(res, "done", {
@@ -240,6 +248,7 @@ const registerAIExpertRoutes = (app, deps) => {
             text: fallback,
             confidenceScore: 35,
             recommendEscalation: true,
+            escalationReason: "service_unavailable",
           });
           return res.end();
         }
@@ -260,12 +269,14 @@ const registerAIExpertRoutes = (app, deps) => {
         content: aiResult.text,
         confidenceScore: aiResult.confidenceScore,
         recommendEscalation: aiResult.recommendEscalation,
+        escalationReason: aiResult.escalationReason,
         tokenUsage: aiResult.tokenUsage,
         rawProviderResponse: aiResult.raw,
       });
 
       conversation.confidenceScore = aiResult.confidenceScore;
       conversation.escalationStatus = aiResult.recommendEscalation ? "suggested" : conversation.escalationStatus;
+      conversation.escalationReason = aiResult.escalationReason || conversation.escalationReason;
       await conversation.save();
 
       return res.json({
@@ -273,6 +284,7 @@ const registerAIExpertRoutes = (app, deps) => {
         message: assistantMessage,
         confidenceScore: aiResult.confidenceScore,
         recommendEscalation: aiResult.recommendEscalation,
+        escalationReason: aiResult.escalationReason,
         tokenUsage: aiResult.tokenUsage,
       });
     } catch (err) {
@@ -309,6 +321,7 @@ const registerAIExpertRoutes = (app, deps) => {
       conversation.lastFeedback = feedback;
       if (feedback === "not_helped") {
         conversation.escalationStatus = "suggested";
+        conversation.escalationReason = "ai_recommendation";
       }
       await conversation.save();
 
@@ -316,6 +329,7 @@ const registerAIExpertRoutes = (app, deps) => {
         success: true,
         feedback: saved,
         recommendEscalation: feedback === "not_helped" || Number(conversation.confidenceScore || 0) < 70,
+        escalationReason: conversation.escalationReason,
       });
     } catch (err) {
       console.error("AI feedback route error:", err);
