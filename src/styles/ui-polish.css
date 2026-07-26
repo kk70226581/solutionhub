@@ -8,6 +8,10 @@
   outline-offset: 3px;
 }
 
+.client-chat-page .composer-row:focus-within {
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.11);
+}
+
 .ed-card,
 .ed-quick-card {
   transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
