@@ -30,6 +30,7 @@ const getAiService = () => {
 };
 
 const sanitizeText = (value, max = 6000) => String(value || "").trim().slice(0, max);
+const escapeRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const sendSse = (res, event, data) => {
   res.write(`event: ${event}\n`);
@@ -348,17 +349,28 @@ const registerAIExpertRoutes = (app, deps) => {
       }
 
       const field = DOMAIN_TO_EXPERT_FIELD[conversation.domain] || conversation.domain;
-      const experts = await Expert.find({
+      let experts = await Expert.find({
         status: "approved",
-        field: new RegExp(field, "i"),
+        field: new RegExp(escapeRegExp(field), "i"),
       })
         .select("-password")
         .sort({ experience: -1, createdAt: -1 })
         .limit(12)
         .lean();
 
+      let matchStrategy = "domain";
+      if (!experts.length) {
+        experts = await Expert.find({ status: "approved" })
+          .select("-password")
+          .sort({ experience: -1, createdAt: -1 })
+          .limit(12)
+          .lean();
+        matchStrategy = "general";
+      }
+
       conversation.status = "escalated";
       conversation.escalationStatus = "requested";
+      conversation.escalationReason = conversation.escalationReason || "human_requested";
       await conversation.save();
 
       return res.json({
@@ -366,6 +378,8 @@ const registerAIExpertRoutes = (app, deps) => {
         domain: conversation.domain,
         expertField: field,
         experts,
+        matchStrategy,
+        escalationReason: conversation.escalationReason,
         redirectUrl: `/experts?domain=${encodeURIComponent(field)}&source=ai&conversationId=${encodeURIComponent(conversation._id)}`,
       });
     } catch (err) {
