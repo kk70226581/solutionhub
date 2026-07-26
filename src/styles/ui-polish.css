@@ -8,6 +8,13 @@
   outline-offset: 3px;
 }
 
+@media (max-width: 760px) {
+  .client-chat-page .chat-input-area,
+  .ai-page .ai-composer {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
 .admin-dashboard button {
   border-radius: 10px;
 }
