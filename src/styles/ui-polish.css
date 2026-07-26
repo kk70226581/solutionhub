@@ -7,3 +7,12 @@
   outline: 3px solid var(--ui-focus);
   outline-offset: 3px;
 }
+
++.sol-home button,
+.ex-page button,
+.cd-page button,
+.ed-page button,
+.ai-page button,
+.client-chat-page button {
+  -webkit-tap-highlight-color: transparent;
+}
