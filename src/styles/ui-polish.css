@@ -8,6 +8,11 @@
   outline-offset: 3px;
 }
 
+:where(.login-page, .signup-page, .signup-expert-page, .ai-page, .ex-page, .cd-page, .ed-page, .client-chat-page) button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
 .login-page input::placeholder,
 .signup-page input::placeholder,
 .signup-expert-page input::placeholder,
