@@ -8,6 +8,13 @@
   outline-offset: 3px;
 }
 
+.login-page input::placeholder,
+.signup-page input::placeholder,
+.signup-expert-page input::placeholder,
+.signup-expert-page textarea::placeholder {
+  opacity: 0.72;
+}
+
 .ai-page .ai-domain-card {
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
 }
