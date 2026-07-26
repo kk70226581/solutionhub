@@ -90,11 +90,11 @@ function shouldEscalate({ confidenceScore, text, domain }) {
   );
 }
 
-function buildRequestBody({ domain, messages }) {
+function buildSystemPrompt(domain) {
   const normalizedDomain = normalizeDomain(domain);
   const domainContext = getDomainContext(normalizedDomain);
 
-  const systemPrompt = `${SYSTEM_PROMPT}
+  return `${SYSTEM_PROMPT}
 
 Consultation domain: ${normalizedDomain}
 Domain context: ${domainContext}
@@ -104,6 +104,29 @@ Response format:
 - If information is missing, ask up to 3 sharp follow-up questions and explain why they matter.
 - When enough information exists, provide options, tradeoffs, risks, and a practical action plan.
 - End with a short confidence note such as "Confidence: high/medium/low" and whether a human expert would help.`;
+}
+
+function buildConverseRequest({ domain, messages }) {
+  const systemPrompt = buildSystemPrompt(domain);
+  const conversationMessages = messages
+    .filter((message) => ["user", "assistant"].includes(message.role) && String(message.content || "").trim())
+    .slice(-MAX_HISTORY_MESSAGES)
+    .map((message) => ({
+      role: message.role === "assistant" ? "assistant" : "user",
+      content: [{ text: String(message.content).slice(0, 8000) }],
+    }));
+
+  return {
+    modelId: BEDROCK_MODEL_ID,
+    system: [{ text: systemPrompt }],
+    messages: conversationMessages,
+    // Amazon Nova accepts temperature or topP; use one predictable setting.
+    inferenceConfig: { maxTokens: MAX_TOKENS, temperature: TEMPERATURE },
+  };
+}
+
+function buildRequestBody({ domain, messages }) {
+  const systemPrompt = buildSystemPrompt(domain);
 
   // Mistral format - does NOT support system parameter
   if (BEDROCK_MODEL_ID.includes("mistral")) {
