@@ -6,6 +6,7 @@ import {
   Clock3, Sparkles, ArrowRight, TrendingUp, Target,
   BookOpen, Star, Bell, Settings, ChevronDown,
   Plus, Edit3, Trash2, BarChart3, Zap, Shield,
+  BadgeIndianRupee, BrainCircuit, UsersRound, WalletCards,
 } from 'lucide-react';
 import '../styles/ClientDashboard.css';
 import ChatBot from '../components/ChatBot';
@@ -346,6 +347,16 @@ const ClientDashboard = () => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const [activityIndex, setActivityIndex] = useState(0);
+  const [expertNetwork, setExpertNetwork] = useState([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch(`${API}/api/experts?status=approved`)
+      .then((response) => response.ok ? response.json() : [])
+      .then((data) => { if (isMounted) setExpertNetwork(Array.isArray(data) ? data : []); })
+      .catch(() => { if (isMounted) setExpertNetwork([]); });
+    return () => { isMounted = false; };
+  }, []);
 
   /* ── Decision board state ── */
   const [decisions, setDecisions] = useState([
@@ -391,6 +402,15 @@ const ClientDashboard = () => {
   const sessionsCount   = useCounter(totalSessions || 3, 1200, statsInView);
   const profilePct      = useCounter(profileStrength, 1600, statsInView);
   const decisionsCount  = useCounter(decisions.length, 1000, statsInView);
+  const availableExpertCount = expertNetwork.length;
+  const startingSessionPrice = useMemo(() => {
+    const prices = expertNetwork.map((expert) => Number(expert.price)).filter((price) => Number.isFinite(price) && price > 0);
+    return prices.length ? Math.min(...prices) : 500;
+  }, [expertNetwork]);
+  const availableSoonCount = useMemo(
+    () => expertNetwork.filter((expert) => /today|within \d+ hours/i.test(expert.availability || '')).length,
+    [expertNetwork]
+  );
 
   const memberSince = useMemo(() => '2025', []);
   const usernameInitial = (userData.username?.trim()?.charAt(0) || 'C').toUpperCase();
@@ -530,18 +550,18 @@ const ClientDashboard = () => {
               <div className="cd-hero-copy">
                 <div className="cd-hero-badge">
                   <span className="cd-hero-badge-dot" />
-                  Client workspace
+                  Real-world expertise, on your schedule
                 </div>
                 <h1 className="cd-hero-title">
                   Welcome back,
                   <span className="cd-hero-gradient"> {userData.username}</span>
                 </h1>
                 <p className="cd-hero-sub">
-                  Your decision hub — track what you're working through, get expert guidance, and turn clarity into confident action.
+                  Solvenut helps you access experienced professionals across different domains when they have time to share what they know. Start with AI for clarity, then book the right human expert for practical guidance at a transparent per-session price.
                 </p>
 
                 <div className="cd-hero-tags">
-                  {['Career decisions', 'Money strategy', 'Side project growth', 'Leadership clarity'].map(t => (
+                  {['AI first', 'Flexible expert availability', 'Clear session pricing', 'Private guidance'].map(t => (
                     <span key={t} className="cd-tag">{t}</span>
                   ))}
                 </div>
@@ -551,8 +571,8 @@ const ClientDashboard = () => {
                     <Rocket size={16} />
                     Find an expert
                   </button>
-                  <button className="cd-btn cd-btn-outline cd-btn-lg" onClick={() => setChatOpen(true)}>
-                    <MessageCircle size={16} />
+                  <button className="cd-btn cd-btn-outline cd-btn-lg" onClick={() => go('/ai-expert')}>
+                    <BrainCircuit size={16} />
                     Ask AI first
                   </button>
                 </div>
@@ -618,6 +638,15 @@ const ClientDashboard = () => {
                   </p>
                 </div>
 
+                <div className="cd-network-signal">
+                  <div className="cd-network-signal-icon"><UsersRound size={16} /></div>
+                  <div>
+                    <span className="cd-network-signal-label">Expert network</span>
+                    <strong>{availableExpertCount || 'New'} specialists ready to help</strong>
+                  </div>
+                  <span className="cd-network-signal-live">Live</span>
+                </div>
+
                 {/* Focus area */}
                 <div className="cd-focus-row">
                   <div className="cd-focus-label">Primary focus</div>
@@ -633,10 +662,10 @@ const ClientDashboard = () => {
           {/* ── STATS BAR ── */}
           <div className="cd-stats-bar">
             {[
-              { icon: <BookOpen size={18} />, value: '3+', label: 'Active decisions', color: '#22d3ee' },
-              { icon: <Star size={18} />, value: '4.9', label: 'Avg expert rating', color: '#fbbf24' },
-              { icon: <Shield size={18} />, value: '100%', label: 'Session privacy', color: '#34d399' },
-              { icon: <Zap size={18} />, value: '<24h', label: 'Expert response', color: '#a78bfa' },
+              { icon: <UsersRound size={18} />, value: availableExpertCount || 'New', label: 'Available experts', color: '#22d3ee' },
+              { icon: <BadgeIndianRupee size={18} />, value: `₹${startingSessionPrice}`, label: 'Sessions from', color: '#fbbf24' },
+              { icon: <Zap size={18} />, value: availableSoonCount || '—', label: 'Available soon', color: '#34d399' },
+              { icon: <Shield size={18} />, value: 'Private', label: '1-on-1 guidance', color: '#a78bfa' },
             ].map(({ icon, value, label, color }) => (
               <div key={label} className="cd-stat-bar-item">
                 <div className="cd-stat-bar-icon" style={{ color }}>{icon}</div>
@@ -647,6 +676,28 @@ const ClientDashboard = () => {
           </div>
 
           {/* ── QUICK ACTIONS ── */}
+          <section className="cd-access-panel" aria-label="How Solvenut works">
+            <div className="cd-access-panel-copy">
+              <div className="cd-kicker">The Solvenut difference</div>
+              <h2>Expert knowledge should be easier to access.</h2>
+              <p>Many skilled people have deep real-world experience but do not run a traditional consulting business. Solvenut gives them a flexible way to share that knowledge when they are available, helping clients find practical guidance without the usual consulting overhead.</p>
+            </div>
+            <div className="cd-access-points">
+              <div className="cd-access-point">
+                <WalletCards size={18} />
+                <div><strong>Pay only for the help you need</strong><span>Transparent per-session pricing before you book.</span></div>
+              </div>
+              <div className="cd-access-point">
+                <Clock3 size={18} />
+                <div><strong>Built around real availability</strong><span>Choose experts who are free to focus on your question.</span></div>
+              </div>
+              <div className="cd-access-point">
+                <BrainCircuit size={18} />
+                <div><strong>AI first, human when it matters</strong><span>Get a fast starting point, then escalate with context.</span></div>
+              </div>
+            </div>
+          </section>
+
           <section className="cd-section">
             <div className="cd-section-head">
               <div className="cd-kicker">Quick actions</div>
@@ -665,7 +716,7 @@ const ClientDashboard = () => {
                   icon: <Sparkles size={20} />, color: '#fbbf24',
                   title: 'Ask the AI assistant',
                   sub: 'Pressure-test your thinking before you spend time or money on a session.',
-                  cta: 'Open AI chat', onClick: () => setChatOpen(true),
+                  cta: 'Open AI Expert', onClick: () => go('/ai-expert'),
                 },
                 {
                   icon: <Plus size={20} />, color: '#34d399',
