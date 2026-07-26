@@ -302,20 +302,20 @@ const Home = () => {
               <div className="hp-hero-copy">
                 <div className="hp-hero-badge">
                   <span className="hp-hero-badge-dot" />
-                  Professional Decision Platform
+                  A flexible expert knowledge marketplace
                 </div>
 
                 <h1 className="hp-hero-title">
-                  Turn your hardest decisions into
-                  <span className="hp-hero-gradient"> confident action</span>
+                  Real-world expertise,
+                  <span className="hp-hero-gradient"> when you need it most</span>
                 </h1>
 
                 <p className="hp-hero-sub">
-                  Solvenut pairs you with vetted domain experts and a structured decision process — so you move from uncertainty to a clear, executable plan.
+                  Solvenut connects you with experienced people across career, business, technology, academics, and more. They share practical knowledge in their available time, so you can get focused guidance at a clear per-session price — without traditional consulting overhead.
                 </p>
 
                 <div className="hp-hero-tags">
-                  {['Career strategy', 'Money planning', 'Business decisions', 'Leadership growth', 'Life transitions'].map(tag => (
+                  {['AI first', 'Book a human expert', 'Flexible availability', 'Clear session pricing'].map(tag => (
                     <span key={tag} className="hp-tag">{tag}</span>
                   ))}
                 </div>
@@ -323,11 +323,11 @@ const Home = () => {
                 <div className="hp-hero-ctas">
                   <button className="hp-btn hp-btn-primary hp-btn-lg"
                     onClick={() => isLoggedIn ? go(dashboardPath) : go('/signup-client')}>
-                    {isLoggedIn ? 'Go to dashboard' : 'Start for free'}
+                    {isLoggedIn ? 'Go to dashboard' : 'Find your next step'}
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                   </button>
-                  <button className="hp-btn hp-btn-outline hp-btn-lg" onClick={() => go('/experts')}>
-                    Browse experts
+                  <button className="hp-btn hp-btn-outline hp-btn-lg" onClick={() => go('/ai-expert')}>
+                    Try AI Expert
                   </button>
                 </div>
 
@@ -410,7 +410,7 @@ const Home = () => {
                 { icon: '🔒', title: 'Private by design', body: 'Your sessions, goals, and decisions live in dedicated private spaces. Nothing is public or shared without your explicit consent.', accent: '#fbbf24' },
                 { icon: '📋', title: 'Actionable output', body: "You don't leave with motivation — you leave with a document: options ranked, trade-offs mapped, next steps prioritized.", accent: '#a78bfa' },
                 { icon: '🔄', title: 'Continuity & follow-through', body: 'Continue with the same expert across sessions. Track milestones, revisit plans, and adjust as your situation evolves.', accent: '#fb7185' },
-                { icon: '⚡', title: 'Speed to clarity', body: 'Most clients achieve clarity in a single 45-minute session — faster than weeks of back-and-forth with friends or generic coaches.', accent: '#38bdf8' },
+                { icon: '⏱️', title: 'Flexible expert marketplace', body: 'Experienced professionals can share knowledge around their real schedules, giving you more choice and a practical alternative to traditional consulting costs.', accent: '#38bdf8' },
               ].map(({ icon, title, body, accent }) => (
                 <article key={title} className="hp-why-card" style={{ '--card-accent': accent }}>
                   <div className="hp-why-icon">{icon}</div>
