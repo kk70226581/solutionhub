@@ -8,6 +8,16 @@
   outline-offset: 3px;
 }
 
+.ex-page .ex-search-input,
+.ed-page .ed-filter-search {
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.ex-page .ex-search-input:focus,
+.ed-page .ed-filter-search:focus {
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.10);
+}
+
 .client-chat-page .empty-state {
   padding: 36px 20px;
 }
