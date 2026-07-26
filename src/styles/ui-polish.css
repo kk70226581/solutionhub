@@ -8,6 +8,17 @@
   outline-offset: 3px;
 }
 
++.hp-btn,
+.sol-button {
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.hp-btn:hover,
+.sol-button:hover {
+  filter: brightness(1.04);
+}
+
+
 +:where(.ex-page, .cd-page, .ed-page, .ai-page, .client-chat-page) * {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.32) transparent;
