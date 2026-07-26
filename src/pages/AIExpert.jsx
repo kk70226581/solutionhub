@@ -22,6 +22,19 @@ const FEEDBACK = [
   { id: 'not_helped', label: 'No, I need more help' },
 ];
 
+const ESCALATION_COPY = {
+  low_confidence: 'This needs deeper judgment than the AI can provide confidently.',
+  ai_recommendation: 'The AI recommends a verified expert for a more complete answer.',
+  human_requested: 'You asked to speak with a person. We can match you with a verified expert.',
+  high_stakes: 'This topic benefits from careful review by a qualified human expert.',
+  service_unavailable: 'The AI is temporarily unavailable, so a verified expert can take over.',
+  feedback: 'A verified expert can review the context and guide your next steps in detail.',
+};
+
+function getEscalationCopy(reason) {
+  return ESCALATION_COPY[reason] || ESCALATION_COPY.low_confidence;
+}
+
 function getAuthHeaders() {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -215,11 +228,12 @@ const AIExpert = () => {
               isStreaming: false,
               confidenceScore: payload.confidenceScore,
               recommendEscalation: Boolean(payload.recommendEscalation),
+              escalationReason: payload.escalationReason || '',
               feedbackGiven: false,
             }));
             if (payload.recommendEscalation || Number(payload.confidenceScore || 0) < 70) {
               setEscalation({
-                reason: 'confidence',
+                reason: payload.escalationReason || 'low_confidence',
                 confidenceScore: payload.confidenceScore,
               });
             }
@@ -234,7 +248,7 @@ const AIExpert = () => {
         confidenceScore: 35,
         recommendEscalation: true,
       }));
-      setEscalation({ reason: 'error', confidenceScore: 35 });
+      setEscalation({ reason: 'service_unavailable', confidenceScore: 35 });
     } finally {
       setIsStreaming(false);
     }
@@ -283,7 +297,7 @@ const AIExpert = () => {
       });
       const data = await res.json().catch(() => ({}));
       if (feedback === 'not_helped' || data.recommendEscalation) {
-        setEscalation({ reason: 'feedback' });
+        setEscalation({ reason: data.escalationReason || 'feedback' });
       }
     } catch {
       if (feedback === 'not_helped') {
@@ -432,7 +446,7 @@ const AIExpert = () => {
                 <div className="ai-escalation">
                   <div>
                     <h3>Would you like to connect with a verified human expert?</h3>
-                    <p>A human expert can review the context, challenge assumptions, and guide your next steps in detail.</p>
+                    <p>{getEscalationCopy(escalation.reason)}</p>
                   </div>
                   <div className="ai-escalation-actions">
                     <button className="ai-primary-btn" onClick={bookExpert}>
