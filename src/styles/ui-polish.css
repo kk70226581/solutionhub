@@ -8,6 +8,14 @@
   outline-offset: 3px;
 }
 
+.login-page input,
+.signup-page input,
+.signup-expert-page input,
+.signup-expert-page textarea,
+.ai-page textarea {
+  caret-color: #22d3ee;
+}
+
 :where(.login-page, .signup-page, .signup-expert-page, .ai-page, .ex-page, .cd-page, .ed-page, .client-chat-page) button:disabled {
   cursor: not-allowed;
   opacity: 0.62;
