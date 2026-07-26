@@ -8,6 +8,11 @@
   outline-offset: 3px;
 }
 
+.client-chat-page .message-body {
+  line-height: 1.58;
+  overflow-wrap: anywhere;
+}
+
 .client-chat-page .composer-row:focus-within {
   box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.11);
 }
