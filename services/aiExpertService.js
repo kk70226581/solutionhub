@@ -80,14 +80,22 @@ function estimateConfidence({ text, domain, userMessage, hadError = false }) {
   return Math.max(30, Math.min(95, Math.round(score)));
 }
 
-function shouldEscalate({ confidenceScore, text, domain }) {
+function getEscalationReason({ confidenceScore, text, domain, userMessage, hadError = false }) {
   const answer = String(text || "").toLowerCase();
-  return (
-    Number(confidenceScore || 0) < 70 ||
-    answer.includes("recommend a human expert") ||
-    answer.includes("verified human expert") ||
-    normalizeDomain(domain).includes("medical")
-  );
+  const prompt = String(userMessage || "").toLowerCase();
+
+  if (hadError) return "service_unavailable";
+  if (/\b(human|real person|consultant|specialist|expert)\b/.test(prompt)) return "human_requested";
+  if (normalizeDomain(domain).includes("medical") || /\b(legal|tax|diagnosis|emergency)\b/.test(prompt)) return "high_stakes";
+  if (Number(confidenceScore || 0) < 70) return "low_confidence";
+  if (answer.includes("recommend a human expert") || answer.includes("verified human expert")) {
+    return "ai_recommendation";
+  }
+  return "";
+}
+
+function shouldEscalate(input) {
+  return Boolean(getEscalationReason(input));
 }
 
 function buildSystemPrompt(domain) {
@@ -272,11 +280,13 @@ async function askAIExpert({ domain, messages, userMessage }) {
     );
     const text = parseResponse(response);
     const confidenceScore = estimateConfidence({ text, domain, userMessage });
+    const escalationReason = getEscalationReason({ confidenceScore, text, domain, userMessage });
 
     return {
       text,
       confidenceScore,
-      recommendEscalation: shouldEscalate({ confidenceScore, text, domain }),
+      recommendEscalation: Boolean(escalationReason),
+      escalationReason,
       tokenUsage: normalizeUsage(response?.usage),
       modelId: BEDROCK_MODEL_ID,
       raw: { stopReason: response?.stopReason, provider: getAIProvider() },
@@ -311,12 +321,14 @@ async function askAIExpert({ domain, messages, userMessage }) {
   console.log("AI Expert parsed text:", text.slice(0, 100));
 
   const confidenceScore = estimateConfidence({ text, domain, userMessage });
-  const recommendEscalation = shouldEscalate({ confidenceScore, text, domain });
+  const escalationReason = getEscalationReason({ confidenceScore, text, domain, userMessage });
+  const recommendEscalation = Boolean(escalationReason);
 
   return {
     text,
     confidenceScore,
     recommendEscalation,
+    escalationReason,
     tokenUsage: normalizeUsage(payload?.usage),
     modelId: BEDROCK_MODEL_ID,
     raw: {
@@ -347,10 +359,12 @@ async function streamAIExpert({ domain, messages, userMessage, onToken }) {
     }
 
     const confidenceScore = estimateConfidence({ text, domain, userMessage });
+    const escalationReason = getEscalationReason({ confidenceScore, text, domain, userMessage });
     return {
       text: text.trim(),
       confidenceScore,
-      recommendEscalation: shouldEscalate({ confidenceScore, text, domain }),
+      recommendEscalation: Boolean(escalationReason),
+      escalationReason,
       tokenUsage: normalizeUsage(usage),
       modelId: BEDROCK_MODEL_ID,
     };
@@ -453,12 +467,14 @@ async function streamAIExpert({ domain, messages, userMessage, onToken }) {
   console.log(`streamAIExpert finished. Events: ${eventCount}, Text length: ${text.length}, Final lastLength: ${lastLength}`);
 
   const confidenceScore = estimateConfidence({ text, domain, userMessage });
-  const recommendEscalation = shouldEscalate({ confidenceScore, text, domain });
+  const escalationReason = getEscalationReason({ confidenceScore, text, domain, userMessage });
+  const recommendEscalation = Boolean(escalationReason);
 
   return {
     text: text.trim(),
     confidenceScore,
     recommendEscalation,
+    escalationReason,
     tokenUsage: normalizeUsage(usage),
     modelId: BEDROCK_MODEL_ID,
   };
