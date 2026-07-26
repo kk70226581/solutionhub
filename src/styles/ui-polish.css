@@ -8,6 +8,14 @@
   outline-offset: 3px;
 }
 
+.admin-dashboard button {
+  border-radius: 10px;
+}
+
+.admin-dashboard button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
 .login-page input,
 .signup-page input,
 .signup-expert-page input,
