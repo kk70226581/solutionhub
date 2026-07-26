@@ -31,6 +31,7 @@ const DOMAIN_CONTEXT = {
 };
 
 const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20240620-v1:0";
+const AI_EXPERT_PROVIDER = process.env.AI_EXPERT_PROVIDER || "bedrock";
 const AWS_REGION = process.env.AWS_REGION || "us-east-1";
 const MAX_HISTORY_MESSAGES = 18;
 const MAX_TOKENS = Number(process.env.AI_EXPERT_MAX_TOKENS || 1400);
@@ -52,6 +53,14 @@ function normalizeDomain(domainRaw) {
 function getDomainContext(domainRaw) {
   const domain = normalizeDomain(domainRaw);
   return DOMAIN_CONTEXT[domain] || DOMAIN_CONTEXT.career;
+}
+
+function isNovaModel(modelId = BEDROCK_MODEL_ID) {
+  return String(modelId || "").toLowerCase().startsWith("amazon.nova-");
+}
+
+function getAIProvider() {
+  return isNovaModel() ? "amazon-nova" : AI_EXPERT_PROVIDER;
 }
 
 function estimateConfidence({ text, domain, userMessage, hadError = false }) {
