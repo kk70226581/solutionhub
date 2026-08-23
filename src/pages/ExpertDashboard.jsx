@@ -1111,7 +1111,7 @@ const ExpertDashboard = () => {
         </div>
       </nav>
 
-      <main className="ed-main">
+      <main className={`ed-main ${activeTab === 'chat' ? 'ed-main--chat' : ''}`}>
         <div className="ed-shell">
 
           {loadError && (

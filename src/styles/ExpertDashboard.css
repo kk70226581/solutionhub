@@ -3034,6 +3034,31 @@
 .ed-chat-call-launcher.is-open .vc-video-card-remote,
 .ed-chat-call-launcher.is-open .vc-video-card-remote .vc-video { min-height: 0; height: 100%; }
 
+/* Chat is a workspace, so it should use the full desktop canvas instead of the
+   narrower content shell used by dashboard cards. */
+@media (min-width: 901px) {
+  .ed-main--chat {
+    padding-block: 20px;
+  }
+
+  .ed-main--chat > .ed-shell {
+    width: 100%;
+    max-width: none;
+    padding-inline: clamp(18px, 2vw, 32px);
+  }
+
+  .ed-main--chat .ed-section--chat,
+  .ed-main--chat .ed-chat-shell {
+    width: 100%;
+  }
+
+  .ed-main--chat .ed-chat-shell {
+    grid-template-columns: clamp(300px, 22vw, 360px) minmax(0, 1fr);
+    height: calc(100dvh - 106px);
+    max-height: none;
+  }
+}
+
 @media (max-width: 640px) {
   .ed-chat-call-launcher.is-open { padding: 0; }
   .ed-chat-call-launcher.is-open .vc-panel {
