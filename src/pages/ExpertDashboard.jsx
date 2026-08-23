@@ -894,6 +894,45 @@ const ExpertDashboard = () => {
         <div className="ed-grid" />
       </div>
 
+      <aside className="ed-desktop-sidebar" aria-label="Expert workspace navigation">
+        <button className="ed-side-brand" onClick={() => go('/')}>
+          <span className="ed-side-brand-mark">S</span>
+          <span className="ed-side-brand-copy"><strong>solve<span>nut</span></strong><small>Expert workspace</small></span>
+        </button>
+
+        <div className="ed-side-profile">
+          <div className="ed-side-avatar" style={{ background: `linear-gradient(135deg, ${domainColor}, #34d399)` }}>
+            {avatarSrc ? <img src={avatarSrc} alt={computedProfile.name} /> : usernameInitial}
+          </div>
+          <div className="ed-side-profile-copy">
+            <strong>{computedProfile.name}</strong>
+            <span>{computedProfile.field || 'Expert'}</span>
+          </div>
+          <div className={`ed-side-status ed-side-status--${statusRaw}`} title={statusLabel} />
+        </div>
+
+        <div className="ed-side-label">Workspace</div>
+        <nav className="ed-side-nav">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              className={`ed-side-nav-item ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+              style={activeTab === tab.id ? { '--side-accent': domainColor } : {}}
+            >
+              <span>{tab.icon}</span>
+              <strong>{tab.label}</strong>
+              {tab.badge > 0 && <em>{tab.badge}</em>}
+            </button>
+          ))}
+        </nav>
+
+        <div className="ed-side-footer">
+          <button onClick={() => go('/experts')}><Eye size={15} /><span>View public listing</span></button>
+          <button className="danger" onClick={handleLogout}><LogOut size={15} /><span>Log out</span></button>
+        </div>
+      </aside>
+
       {/* Header */}
       <header className={`ed-header ${headerScrolled ? 'ed-header--scrolled' : ''}`}>
         <div className="ed-shell ed-header-inner">
@@ -904,6 +943,11 @@ const ExpertDashboard = () => {
               <span className="ed-logo-sub">Expert</span>
             </div>
           </button>
+
+          <div className="ed-header-context">
+            <span>Expert workspace</span>
+            <strong>{TABS.find((tab) => tab.id === activeTab)?.label || 'Overview'}</strong>
+          </div>
 
           <nav className="ed-tab-nav" aria-label="Dashboard sections">
             {TABS.map((tab) => (
@@ -954,8 +998,8 @@ const ExpertDashboard = () => {
               </div>
             </div>
 
-            <button className="ed-btn ed-btn-ghost ed-btn-sm" onClick={() => go('/experts')}><Eye size={13} />Listing</button>
-            <button className="ed-btn ed-btn-danger ed-btn-sm" onClick={handleLogout}><LogOut size={13} />Logout</button>
+            <button className="ed-btn ed-btn-ghost ed-btn-sm ed-header-listing" onClick={() => go('/experts')}><Eye size={13} />Listing</button>
+            <button className="ed-btn ed-btn-danger ed-btn-sm ed-header-logout" onClick={handleLogout}><LogOut size={13} />Logout</button>
           </div>
         </div>
       </header>
