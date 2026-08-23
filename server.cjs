@@ -53,6 +53,9 @@ const fetch = (...args) =>
   import("node-fetch").then(({ default: nodeFetch }) => nodeFetch(...args));
 
 const app = express();
+// Render terminates HTTPS at one reverse proxy before forwarding to this app.
+// Trust that hop so express-rate-limit can safely use the real client IP.
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
