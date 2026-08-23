@@ -30,11 +30,18 @@ const DOMAIN_CONTEXT = {
   "personal growth": "Habits, confidence, leadership, communication, life decisions, and personal development.",
 };
 
-const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || "amazon.nova-lite-v1:0";
+const BEDROCK_MODEL_ID = process.env.BEDROCK_MODEL_ID || "google.gemma-3-4b-it";
 const AI_EXPERT_PROVIDER = process.env.AI_EXPERT_PROVIDER || "bedrock";
 const AWS_REGION = process.env.AWS_REGION || "us-east-1";
+const BEDROCK_PROJECT_API_KEY = String(
+  process.env.BEDROCK_PROJECT_API_KEY || process.env.Bedrock_project_API_key || ""
+).trim();
+const BEDROCK_MANTLE_BASE_URL = String(
+  process.env.BEDROCK_MANTLE_BASE_URL ||
+    `https://bedrock-mantle.${AWS_REGION}.api.aws/v1`
+).replace(/\/$/, "");
 const MAX_HISTORY_MESSAGES = 18;
-const MAX_TOKENS = Number(process.env.AI_EXPERT_MAX_TOKENS || 1400);
+const MAX_TOKENS = Number(process.env.AI_EXPERT_MAX_TOKENS || 800);
 const TEMPERATURE = Number(process.env.AI_EXPERT_TEMPERATURE || 0.35);
 
 let cachedBedrock = null;
@@ -55,12 +62,9 @@ function getDomainContext(domainRaw) {
   return DOMAIN_CONTEXT[domain] || DOMAIN_CONTEXT.career;
 }
 
-function isNovaModel(modelId = BEDROCK_MODEL_ID) {
-  return String(modelId || "").toLowerCase().startsWith("amazon.nova-");
-}
-
 function getAIProvider() {
-  return isNovaModel() ? "amazon-nova" : AI_EXPERT_PROVIDER;
+  if (BEDROCK_PROJECT_API_KEY) return "bedrock-mantle";
+  return String(AI_EXPERT_PROVIDER || "bedrock").trim().toLowerCase();
 }
 
 function estimateConfidence({ text, domain, userMessage, hadError = false }) {
@@ -94,10 +98,6 @@ function getEscalationReason({ confidenceScore, text, domain, userMessage, hadEr
   return "";
 }
 
-function shouldEscalate(input) {
-  return Boolean(getEscalationReason(input));
-}
-
 function buildSystemPrompt(domain) {
   const normalizedDomain = normalizeDomain(domain);
   const domainContext = getDomainContext(normalizedDomain);
@@ -128,53 +128,47 @@ function buildConverseRequest({ domain, messages }) {
     modelId: BEDROCK_MODEL_ID,
     system: [{ text: systemPrompt }],
     messages: conversationMessages,
-    // Amazon Nova accepts temperature or topP; use one predictable setting.
+    // Converse provides one request shape across supported Bedrock providers.
     inferenceConfig: { maxTokens: MAX_TOKENS, temperature: TEMPERATURE },
   };
 }
 
-function buildRequestBody({ domain, messages }) {
-  const systemPrompt = buildSystemPrompt(domain);
-
-  // Mistral format - does NOT support system parameter
-  if (BEDROCK_MODEL_ID.includes("mistral")) {
-    // Format messages for Mistral
-    const formattedMessages = messages
-      .filter((message) => ["user", "assistant"].includes(message.role) && String(message.content || "").trim())
+function buildMantleMessages({ domain, messages }) {
+  return [
+    { role: "system", content: buildSystemPrompt(domain) },
+    ...messages
+      .filter((message) =>
+        ["user", "assistant"].includes(message.role) && String(message.content || "").trim()
+      )
       .slice(-MAX_HISTORY_MESSAGES)
       .map((message) => ({
         role: message.role === "assistant" ? "assistant" : "user",
         content: String(message.content).slice(0, 8000),
-      }));
+      })),
+  ];
+}
 
-    // Prepend system prompt to first user message
-    const firstUserIndex = formattedMessages.findIndex((m) => m.role === "user");
-    if (firstUserIndex >= 0) {
-      formattedMessages[firstUserIndex].content = `${systemPrompt}\n\nUser message: ${formattedMessages[firstUserIndex].content}`;
-    }
+async function requestMantle(body) {
+  const response = await fetch(`${BEDROCK_MANTLE_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${BEDROCK_PROJECT_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
 
-    return {
-      max_tokens: MAX_TOKENS,
-      temperature: TEMPERATURE,
-      top_p: 0.9,
-      messages: formattedMessages,
-    };
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    const error = new Error(
+      payload?.error?.message || `Bedrock project API request failed (${response.status})`
+    );
+    error.name = payload?.error?.code || "BedrockMantleError";
+    error.status = response.status;
+    throw error;
   }
 
-  // Claude format (default)
-  return {
-    anthropic_version: "bedrock-2023-05-31",
-    max_tokens: MAX_TOKENS,
-    temperature: TEMPERATURE,
-    system: systemPrompt,
-    messages: messages
-      .filter((message) => ["user", "assistant"].includes(message.role) && String(message.content || "").trim())
-      .slice(-MAX_HISTORY_MESSAGES)
-      .map((message) => ({
-        role: message.role === "assistant" ? "assistant" : "user",
-        content: [{ type: "text", text: String(message.content).slice(0, 8000) }],
-      })),
-  };
+  return response;
 }
 
 async function getBedrockRuntime() {
@@ -187,16 +181,16 @@ async function getBedrockRuntime() {
     BedrockRuntimeClient,
     ConverseCommand,
     ConverseStreamCommand,
-    InvokeModelCommand,
-    InvokeModelWithResponseStreamCommand,
   } = sdk;
 
-  cachedBedrock = new BedrockRuntimeClient({ region: AWS_REGION });
+  cachedBedrock = new BedrockRuntimeClient({
+    region: AWS_REGION,
+    maxAttempts: 5,
+    retryMode: "adaptive",
+  });
   cachedCommands = {
     ConverseCommand,
     ConverseStreamCommand,
-    InvokeModelCommand,
-    InvokeModelWithResponseStreamCommand,
   };
   return { bedrock: cachedBedrock, ...cachedCommands };
 }
@@ -209,10 +203,12 @@ async function sendWithRetry(factory, { retries = 2 } = {}) {
     } catch (err) {
       lastError = err;
       const status = Number(err?.$metadata?.httpStatusCode || 0);
+      const isDailyQuotaExhausted = /too many tokens per day/i.test(String(err?.message || ""));
       const retryable =
-        status === 429 ||
-        status >= 500 ||
-        ["ThrottlingException", "TooManyRequestsException", "ServiceUnavailableException"].includes(err?.name);
+        !isDailyQuotaExhausted &&
+        (status === 429 ||
+          status >= 500 ||
+          ["ThrottlingException", "TooManyRequestsException", "ServiceUnavailableException"].includes(err?.name));
       if (!retryable || attempt === retries) break;
       await sleep(350 * Math.pow(2, attempt));
     }
@@ -262,223 +258,156 @@ function parseResponse(payload) {
 }
 
 function normalizeUsage(usage = {}) {
-  const inputTokens = Number(usage.input_tokens || usage.inputTokens || 0);
-  const outputTokens = Number(usage.output_tokens || usage.outputTokens || 0);
+  const inputTokens = Number(usage.input_tokens || usage.inputTokens || usage.prompt_tokens || 0);
+  const outputTokens = Number(
+    usage.output_tokens || usage.outputTokens || usage.completion_tokens || 0
+  );
   return {
     inputTokens,
     outputTokens,
-    totalTokens: inputTokens + outputTokens,
+    totalTokens: Number(usage.total_tokens || inputTokens + outputTokens),
   };
 }
 
-async function askAIExpert({ domain, messages, userMessage }) {
-  const { bedrock, ConverseCommand, InvokeModelCommand } = await getBedrockRuntime();
-
-  if (isNovaModel()) {
-    const response = await sendWithRetry(() =>
-      bedrock.send(new ConverseCommand(buildConverseRequest({ domain, messages })))
-    );
-    const text = parseResponse(response);
-    const confidenceScore = estimateConfidence({ text, domain, userMessage });
-    const escalationReason = getEscalationReason({ confidenceScore, text, domain, userMessage });
-
-    return {
-      text,
-      confidenceScore,
-      recommendEscalation: Boolean(escalationReason),
-      escalationReason,
-      tokenUsage: normalizeUsage(response?.usage),
-      modelId: BEDROCK_MODEL_ID,
-      raw: { stopReason: response?.stopReason, provider: getAIProvider() },
-    };
-  }
-
-  const requestBody = buildRequestBody({ domain, messages });
-
-  // Verify no system parameter for Mistral
-  if (BEDROCK_MODEL_ID.includes("mistral") && requestBody.system) {
-    console.warn("WARNING: System parameter detected for Mistral model, removing it");
-    delete requestBody.system;
-  }
-
-  console.log("AI Expert request body:", JSON.stringify(requestBody).slice(0, 300));
-
-  const response = await sendWithRetry(() =>
-    bedrock.send(
-      new InvokeModelCommand({
-        modelId: BEDROCK_MODEL_ID,
-        contentType: "application/json",
-        accept: "application/json",
-        body: JSON.stringify(requestBody),
-      })
-    )
-  );
-
-  const payload = JSON.parse(new TextDecoder().decode(response.body));
-  console.log("AI Expert raw response:", JSON.stringify(payload).slice(0, 300));
-
-  const text = parseResponse(payload);
-  console.log("AI Expert parsed text:", text.slice(0, 100));
+async function askMantleAIExpert({ domain, messages, userMessage }) {
+  const response = await requestMantle({
+    model: BEDROCK_MODEL_ID,
+    messages: buildMantleMessages({ domain, messages }),
+    max_tokens: MAX_TOKENS,
+    temperature: TEMPERATURE,
+  });
+  const payload = await response.json();
+  const text = String(payload?.choices?.[0]?.message?.content || "").trim();
+  if (!text) throw new Error("Bedrock project API returned an empty response");
 
   const confidenceScore = estimateConfidence({ text, domain, userMessage });
   const escalationReason = getEscalationReason({ confidenceScore, text, domain, userMessage });
-  const recommendEscalation = Boolean(escalationReason);
-
   return {
     text,
     confidenceScore,
-    recommendEscalation,
+    recommendEscalation: Boolean(escalationReason),
     escalationReason,
     tokenUsage: normalizeUsage(payload?.usage),
-    modelId: BEDROCK_MODEL_ID,
-    raw: {
-      stopReason: payload?.stop_reason,
-      id: payload?.id,
-      type: payload?.type,
-    },
+    modelId: payload?.model || BEDROCK_MODEL_ID,
+    raw: { provider: getAIProvider() },
   };
 }
 
-async function streamAIExpert({ domain, messages, userMessage, onToken }) {
-  const { bedrock, ConverseStreamCommand, InvokeModelWithResponseStreamCommand } = await getBedrockRuntime();
+async function streamMantleAIExpert({ domain, messages, userMessage, onToken }) {
+  const response = await requestMantle({
+    model: BEDROCK_MODEL_ID,
+    messages: buildMantleMessages({ domain, messages }),
+    max_tokens: MAX_TOKENS,
+    temperature: TEMPERATURE,
+    stream: true,
+    stream_options: { include_usage: true },
+  });
+  if (!response.body) throw new Error("Bedrock project API returned no response stream");
 
-  if (isNovaModel()) {
-    const response = await sendWithRetry(() =>
-      bedrock.send(new ConverseStreamCommand(buildConverseRequest({ domain, messages })))
-    );
-    let text = "";
-    let usage = {};
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  let usage = {};
 
-    for await (const event of response.stream) {
-      const token = event?.contentBlockDelta?.delta?.text || "";
+  const consumeEvent = (eventText) => {
+    for (const line of eventText.split("\n")) {
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === "[DONE]") continue;
+      const chunk = JSON.parse(data);
+      const token = chunk?.choices?.[0]?.delta?.content || "";
       if (token) {
         text += token;
         onToken?.(token);
       }
-      if (event?.metadata?.usage) usage = { ...usage, ...event.metadata.usage };
+      if (chunk?.usage) usage = { ...usage, ...chunk.usage };
     }
+  };
 
-    const confidenceScore = estimateConfidence({ text, domain, userMessage });
-    const escalationReason = getEscalationReason({ confidenceScore, text, domain, userMessage });
-    return {
-      text: text.trim(),
-      confidenceScore,
-      recommendEscalation: Boolean(escalationReason),
-      escalationReason,
-      tokenUsage: normalizeUsage(usage),
-      modelId: BEDROCK_MODEL_ID,
-    };
+  for await (const chunk of response.body) {
+    buffer += decoder.decode(chunk, { stream: true }).replace(/\r\n/g, "\n");
+    const events = buffer.split("\n\n");
+    buffer = events.pop() || "";
+    events.forEach(consumeEvent);
   }
+  buffer += decoder.decode();
+  if (buffer.trim()) consumeEvent(buffer);
 
-  const requestBody = buildRequestBody({ domain, messages });
+  const finalText = text.trim();
+  if (!finalText) throw new Error("Bedrock project API returned an empty response stream");
+  const confidenceScore = estimateConfidence({ text: finalText, domain, userMessage });
+  const escalationReason = getEscalationReason({
+    confidenceScore,
+    text: finalText,
+    domain,
+    userMessage,
+  });
+  return {
+    text: finalText,
+    confidenceScore,
+    recommendEscalation: Boolean(escalationReason),
+    escalationReason,
+    tokenUsage: normalizeUsage(usage),
+    modelId: BEDROCK_MODEL_ID,
+    raw: { provider: getAIProvider() },
+  };
+}
 
-  console.log("streamAIExpert called for domain:", domain);
-  console.log("Using model:", BEDROCK_MODEL_ID);
-
+async function askBedrockAIExpert({ domain, messages, userMessage }) {
+  const { bedrock, ConverseCommand } = await getBedrockRuntime();
   const response = await sendWithRetry(() =>
-    bedrock.send(
-      new InvokeModelWithResponseStreamCommand({
-        modelId: BEDROCK_MODEL_ID,
-        contentType: "application/json",
-        accept: "application/json",
-        body: JSON.stringify(requestBody),
-      })
-    )
+    bedrock.send(new ConverseCommand(buildConverseRequest({ domain, messages })))
   );
+  const text = parseResponse(response);
+  const confidenceScore = estimateConfidence({ text, domain, userMessage });
+  const escalationReason = getEscalationReason({ confidenceScore, text, domain, userMessage });
 
+  return {
+    text,
+    confidenceScore,
+    recommendEscalation: Boolean(escalationReason),
+    escalationReason,
+    tokenUsage: normalizeUsage(response?.usage),
+    modelId: BEDROCK_MODEL_ID,
+    raw: { stopReason: response?.stopReason, provider: getAIProvider() },
+  };
+}
+
+async function streamBedrockAIExpert({ domain, messages, userMessage, onToken }) {
+  const { bedrock, ConverseStreamCommand } = await getBedrockRuntime();
+  const response = await sendWithRetry(() =>
+    bedrock.send(new ConverseStreamCommand(buildConverseRequest({ domain, messages })))
+  );
   let text = "";
   let usage = {};
-  const decoder = new TextDecoder();
-  let tokenBuffer = "";
-  const BUFFER_SIZE = 20;
-  let eventCount = 0;
-  let lastLength = 0; // For Mistral accumulated text tracking
 
-  for await (const event of response.body) {
-    if (!event.chunk?.bytes) continue;
-    eventCount++;
-    
-    let payload;
-    try {
-      payload = JSON.parse(decoder.decode(event.chunk.bytes));
-    } catch (err) {
-      console.error("Failed to parse chunk:", err);
-      continue;
+  for await (const event of response.stream) {
+    const token = event?.contentBlockDelta?.delta?.text || "";
+    if (token) {
+      text += token;
+      onToken?.(token);
     }
-
-    console.log(`Event ${eventCount}:`, JSON.stringify(payload).slice(0, 200));
-
-    // Mistral streaming format - FULL TEXT in choices[0].message.content
-    // Extract only new portion since Mistral sends accumulated text
-    if (payload?.choices?.[0]?.message?.content !== undefined) {
-      const fullContent = payload.choices[0].message.content;
-      if (fullContent && fullContent.length > lastLength) {
-        const newToken = fullContent.slice(lastLength);
-        text += newToken;
-        lastLength = fullContent.length;
-        tokenBuffer += newToken;
-
-        console.log(`Mistral token: "${newToken.slice(0, 50)}..."`);
-
-        // Send buffered tokens when buffer reaches threshold or ends with punctuation
-        if (tokenBuffer.length >= BUFFER_SIZE || tokenBuffer.match(/[.!?]\s*$/)) {
-          if (onToken) {
-            console.log(`Sending buffered token: "${tokenBuffer.slice(0, 50)}..."`);
-            onToken(tokenBuffer);
-          }
-          tokenBuffer = "";
-        }
-      }
-    }
-
-    // Claude streaming format - content_block_delta with text_delta
-    if (payload.type === "content_block_delta" && payload.delta?.type === "text_delta") {
-      const token = payload.delta.text || "";
-      if (token) {
-        text += token;
-        tokenBuffer += token;
-
-        // Send buffered tokens when buffer reaches threshold or ends with punctuation
-        if (tokenBuffer.length >= BUFFER_SIZE || tokenBuffer.match(/[.!?]\s*$/)) {
-          if (onToken) {
-            onToken(tokenBuffer);
-          }
-          tokenBuffer = "";
-        }
-      }
-    }
-
-    // Claude usage tracking
-    if (payload.type === "message_delta" && payload.usage) {
-      usage = { ...usage, ...payload.usage };
-    }
-
-    if (payload.type === "message_start" && payload.message?.usage) {
-      usage = { ...usage, ...payload.message.usage };
-    }
+    if (event?.metadata?.usage) usage = { ...usage, ...event.metadata.usage };
   }
-
-  // Send any remaining buffered tokens
-  if (tokenBuffer && onToken) {
-    console.log(`Sending final buffered token: "${tokenBuffer.slice(0, 50)}..."`);
-    onToken(tokenBuffer);
-  }
-
-  console.log(`streamAIExpert finished. Events: ${eventCount}, Text length: ${text.length}, Final lastLength: ${lastLength}`);
 
   const confidenceScore = estimateConfidence({ text, domain, userMessage });
   const escalationReason = getEscalationReason({ confidenceScore, text, domain, userMessage });
-  const recommendEscalation = Boolean(escalationReason);
 
   return {
     text: text.trim(),
     confidenceScore,
-    recommendEscalation,
+    recommendEscalation: Boolean(escalationReason),
     escalationReason,
     tokenUsage: normalizeUsage(usage),
     modelId: BEDROCK_MODEL_ID,
+    raw: { provider: getAIProvider() },
   };
 }
+
+const askAIExpert = BEDROCK_PROJECT_API_KEY ? askMantleAIExpert : askBedrockAIExpert;
+const streamAIExpert = BEDROCK_PROJECT_API_KEY
+  ? streamMantleAIExpert
+  : streamBedrockAIExpert;
 
 export {
   askAIExpert,

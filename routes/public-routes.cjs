@@ -393,12 +393,17 @@ const registerPublicRoutes = (app, deps) => {
   });
 
   app.get("/api/ai/debug", (req, res) => {
+    const provider = String(process.env.AI_EXPERT_PROVIDER || "bedrock").toLowerCase();
+    const hasProjectApiKey = Boolean(
+      process.env.BEDROCK_PROJECT_API_KEY || process.env.Bedrock_project_API_key
+    );
     res.json({
-      provider: "aws-bedrock",
+      provider: hasProjectApiKey ? "bedrock-mantle" : provider,
+      hasProjectApiKey,
       hasAccessKey: Boolean(process.env.AWS_ACCESS_KEY_ID),
       hasSecretKey: Boolean(process.env.AWS_SECRET_ACCESS_KEY),
       region: process.env.AWS_REGION || "us-east-1",
-      model: process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20240620-v1:0",
+      model: process.env.BEDROCK_MODEL_ID || "google.gemma-3-4b-it",
     });
   });
 
@@ -500,6 +505,51 @@ const registerPublicRoutes = (app, deps) => {
    */
   async function generatePsychologyResponse(userMessage, systemPrompt, conversationHistory) {
     try {
+      const projectApiKey = String(
+        process.env.BEDROCK_PROJECT_API_KEY || process.env.Bedrock_project_API_key || ""
+      ).trim();
+      const region = process.env.AWS_REGION || "us-east-1";
+      const modelId = process.env.BEDROCK_MODEL_ID || "google.gemma-3-4b-it";
+      const maxTokens = Number(process.env.AI_EXPERT_MAX_TOKENS || 800);
+      const temperature = Number(process.env.AI_EXPERT_TEMPERATURE || 0.35);
+
+      if (projectApiKey) {
+        const baseUrl = String(
+          process.env.BEDROCK_MANTLE_BASE_URL ||
+            `https://bedrock-mantle.${region}.api.aws/v1`
+        ).replace(/\/$/, "");
+        const mantleResponse = await fetch(`${baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${projectApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: modelId,
+            messages: [
+              {
+                role: "system",
+                content: systemPrompt || "You are a compassionate AI psychology assistant.",
+              },
+              ...conversationHistory.slice(-10).map((message) => ({
+                role: message.role === "assistant" ? "assistant" : "user",
+                content: String(message.content || "").slice(0, 8000),
+              })),
+            ],
+            max_tokens: maxTokens,
+            temperature,
+          }),
+        });
+        if (!mantleResponse.ok) {
+          const payload = await mantleResponse.json().catch(() => ({}));
+          throw new Error(
+            payload?.error?.message || `Bedrock project API failed (${mantleResponse.status})`
+          );
+        }
+        const payload = await mantleResponse.json();
+        return String(payload?.choices?.[0]?.message?.content || "").trim() || null;
+      }
+
       // Check if AWS Bedrock is available
       const hasBedrockConfig = Boolean(
         process.env.AWS_ACCESS_KEY_ID &&
@@ -513,28 +563,31 @@ const registerPublicRoutes = (app, deps) => {
       }
 
       // Try to use Bedrock if available
-      const { BedrockRuntimeClient, InvokeModelCommand } = await import("@aws-sdk/client-bedrock-runtime");
+      const { BedrockRuntimeClient, ConverseCommand } = await import("@aws-sdk/client-bedrock-runtime");
       
-      const client = new BedrockRuntimeClient({ region: process.env.AWS_REGION || "us-east-1" });
-      const modelId = process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-5-sonnet-20240620-v1:0";
-
-      const payload = {
-        anthropic_version: "bedrock-2023-06-01",
-        max_tokens: 1024,
-        system: systemPrompt || "You are a compassionate AI psychology assistant.",
-        messages: conversationHistory.slice(-10) // Last 10 messages for context
-      };
-
-      const command = new InvokeModelCommand({
+      const client = new BedrockRuntimeClient({
+        region: process.env.AWS_REGION || "us-east-1",
+        maxAttempts: 5,
+        retryMode: "adaptive",
+      });
+      const command = new ConverseCommand({
         modelId,
-        body: JSON.stringify(payload),
+        system: [{ text: systemPrompt || "You are a compassionate AI psychology assistant." }],
+        messages: conversationHistory.slice(-10).map((message) => ({
+          role: message.role === "assistant" ? "assistant" : "user",
+          content: [{ text: String(message.content || "").slice(0, 8000) }],
+        })),
+        inferenceConfig: {
+          maxTokens: Number(process.env.AI_EXPERT_MAX_TOKENS || 800),
+          temperature: Number(process.env.AI_EXPERT_TEMPERATURE || 0.35),
+        },
       });
 
       const response = await client.send(command);
-      const responseText = new TextDecoder().decode(response.body);
-      const parsed = JSON.parse(responseText);
-
-      return parsed.content?.[0]?.text || null;
+      return response.output?.message?.content
+        ?.map((part) => part.text || "")
+        .join("\n")
+        .trim() || null;
     } catch (err) {
       console.error("Bedrock error:", err.message);
       return null; // Trigger fallback
