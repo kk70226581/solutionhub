@@ -985,9 +985,11 @@ export default function VideoCall({
     onCallStateChange({
       status: callStatus,
       connected: callStatus === 'connected',
-      active: isCallActive,
+      active: isCallActive || hasIncomingRequest,
+      incoming: hasIncomingRequest,
+      callType: hasIncomingRequest ? effectiveIncomingCallType : callType,
     });
-  }, [onCallStateChange, callStatus, isCallActive]);
+  }, [onCallStateChange, callStatus, isCallActive, hasIncomingRequest, effectiveIncomingCallType, callType]);
 
   useEffect(() => {
     if (hasIncomingRequest) {
@@ -1185,6 +1187,7 @@ export default function VideoCall({
               className="vc-btn vc-btn-primary"
               onClick={() => startCall('audio')}
               disabled={!canCall}
+              title="Start audio call"
             >
               <Phone size={16} />
               Audio call
@@ -1195,6 +1198,7 @@ export default function VideoCall({
               className="vc-btn vc-btn-ghost"
               onClick={() => startCall('video')}
               disabled={!canCall}
+              title="Start video call"
             >
               <Video size={16} />
               Video call
@@ -1257,6 +1261,16 @@ export default function VideoCall({
           End
         </button> : null}
       </div> : null}
+
+      {isVoiceCall && (isCallActive || hasIncomingRequest) ? (
+        <div className="vc-audio-stage">
+          <div className="vc-audio-avatar" aria-hidden="true">
+            <span>{String(peerLabel || 'P').trim().charAt(0).toUpperCase() || 'P'}</span>
+          </div>
+          <strong>{peerLabel}</strong>
+          <span>{statusLabel}</span>
+        </div>
+      ) : null}
 
       {showVideoStage ? (
         <div className={`vc-grid ${isCallActive ? 'vc-grid-live' : ''}`}>

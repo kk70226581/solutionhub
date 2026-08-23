@@ -67,6 +67,7 @@ const ClientChat = () => {
   const [savingRating, setSavingRating] = useState(false);
   const [mobilePane, setMobilePane] = useState('chat');
   const [isExpertPanelCollapsed, setIsExpertPanelCollapsed] = useState(false);
+  const [callOverlayOpen, setCallOverlayOpen] = useState(false);
   const [chatAccess, setChatAccess] = useState({
     checking: true,
     allowed: false,
@@ -95,6 +96,10 @@ const ClientChat = () => {
   const clearIncomingCall = useCallback(() => {
     setIncomingCall(null);
     clearStoredIncomingCall();
+  }, []);
+
+  const handleCallStateChange = useCallback(({ active }) => {
+    setCallOverlayOpen(Boolean(active));
   }, []);
 
   useEffect(() => {
@@ -849,6 +854,20 @@ const ClientChat = () => {
                       </div>
                     </div>
                     <div className="chat-thread-actions">
+                      <div className={`chat-call-launcher ${callOverlayOpen ? 'is-open' : ''}`}>
+                        <VideoCall
+                          socket={socketInstance}
+                          roomId={roomId}
+                          currentUserEmail={clientEmail}
+                          currentUserName={clientName}
+                          peerLabel={expert.name || 'Expert'}
+                          enabled={chatAccess.allowed}
+                          compact
+                          externalIncomingCall={incomingCall}
+                          onIncomingCallCleared={clearIncomingCall}
+                          onCallStateChange={handleCallStateChange}
+                        />
+                      </div>
                       <span className={`chat-thread-badge ${chatAccess.allowed ? 'open' : 'locked'}`}>
                         {chatAccess.allowed ? 'Open room' : 'Locked'}
                       </span>
@@ -857,19 +876,6 @@ const ClientChat = () => {
                       </button>
                     </div>
                   </div>
-                </div>
-                <div className="chat-call-strip">
-                  <VideoCall
-                    socket={socketInstance}
-                    roomId={roomId}
-                    currentUserEmail={clientEmail}
-                    currentUserName={clientName}
-                    peerLabel={expert.name || 'Expert'}
-                    enabled={chatAccess.allowed}
-                    compact
-                    externalIncomingCall={incomingCall}
-                    onIncomingCallCleared={clearIncomingCall}
-                  />
                 </div>
                 <div className="chat-messages" ref={chatMessagesRef}>
                   {loadingMessages ? (

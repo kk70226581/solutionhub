@@ -414,6 +414,7 @@ const ExpertDashboard = () => {
   const [msgReactions, setMsgReactions] = useState({});
   const [msgSearch, setMsgSearch] = useState('');
   const [showMsgSearch, setShowMsgSearch] = useState(false);
+  const [callOverlayOpen, setCallOverlayOpen] = useState(false);
 
   const socketRef = useRef(null);
   const activeRoomRef = useRef('');
@@ -430,6 +431,10 @@ const ExpertDashboard = () => {
   const clearIncomingCall = useCallback(() => {
     setIncomingCall(null);
     clearStoredIncomingCall();
+  }, []);
+
+  const handleCallStateChange = useCallback(({ active }) => {
+    setCallOverlayOpen(Boolean(active));
   }, []);
 
   useEffect(() => {
@@ -1369,6 +1374,20 @@ const ExpertDashboard = () => {
                           </div>
                         </div>
                         <div className="ed-chat-header-actions">
+                          <div className={`ed-chat-call-launcher ${callOverlayOpen ? 'is-open' : ''}`}>
+                            <VideoCall
+                              socket={liveSocket}
+                              roomId={activeRoom}
+                              currentUserEmail={email}
+                              currentUserName={profile.name || storedName}
+                              peerLabel={activeClientName}
+                              enabled={Boolean(activeRoom)}
+                              compact
+                              externalIncomingCall={incomingCall}
+                              onIncomingCallCleared={clearIncomingCall}
+                              onCallStateChange={handleCallStateChange}
+                            />
+                          </div>
                           <button className="ed-chat-hbtn" onClick={() => setShowMsgSearch(v => !v)} title="Search messages">
                             <Search size={15} />
                           </button>
@@ -1387,20 +1406,6 @@ const ExpertDashboard = () => {
                           <MessageSquare size={15} />
                           <span>Chat</span>
                         </button>
-                      </div>
-
-                      <div className="ed-chat-call-strip">
-                        <VideoCall
-                          socket={liveSocket}
-                          roomId={activeRoom}
-                          currentUserEmail={email}
-                          currentUserName={profile.name || storedName}
-                          peerLabel={activeClientName}
-                          enabled={Boolean(activeRoom)}
-                          compact
-                          externalIncomingCall={incomingCall}
-                          onIncomingCallCleared={clearIncomingCall}
-                        />
                       </div>
 
                       {/* Message search bar */}

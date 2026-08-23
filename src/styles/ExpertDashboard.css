@@ -2933,3 +2933,106 @@
   .ed-profile-stats, .ed-stats-bar, .ed-quick-grid, .ed-earnings-grid { grid-template-columns: 1fr; }
   .ed-hero-title { font-size: 1.8rem; }
 }
+
+/* WhatsApp-style call UX: launch from the chat header, then focus the call. */
+.ed-chat-call-launcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ed-chat-call-launcher:not(.is-open) .vc-panel {
+  display: block;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ed-chat-call-launcher:not(.is-open) .vc-header,
+.ed-chat-call-launcher:not(.is-open) .vc-footer,
+.ed-chat-call-launcher:not(.is-open) .vc-grid {
+  display: none;
+}
+
+.ed-chat-call-launcher:not(.is-open) .vc-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ed-chat-call-launcher:not(.is-open) .vc-btn {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 0;
+  color: var(--ed-muted);
+  border: 1px solid var(--ed-border);
+  background: rgba(148, 163, 184, .07);
+  box-shadow: none;
+}
+
+.ed-chat-call-launcher:not(.is-open) .vc-btn svg { width: 16px; height: 16px; }
+.ed-chat-call-launcher:not(.is-open) .vc-btn:hover:not(:disabled) {
+  color: var(--ed-teal);
+  border-color: rgba(34, 211, 238, .35);
+  background: rgba(34, 211, 238, .1);
+  transform: none;
+}
+
+.ed-chat-call-launcher.is-open {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(1, 5, 13, .88);
+  backdrop-filter: blur(16px);
+}
+
+.ed-chat-call-launcher.is-open .vc-panel {
+  width: min(960px, 100%);
+  height: min(760px, calc(100dvh - 48px));
+  min-height: 420px;
+  max-height: calc(100dvh - 48px);
+  margin: 0;
+  padding: 18px;
+  overflow: hidden;
+  border-radius: 24px;
+  border-color: rgba(34, 211, 238, .24);
+  background: radial-gradient(circle at top, rgba(17, 32, 48, .98), rgba(3, 8, 17, .995) 68%);
+  box-shadow: 0 32px 100px rgba(0, 0, 0, .72);
+}
+
+.ed-chat-call-launcher.is-open .vc-panel-audio {
+  width: min(480px, 100%);
+  height: auto;
+  min-height: 320px;
+  justify-content: center;
+}
+
+.ed-chat-call-launcher.is-open .vc-grid { order: 3; flex: 1; min-height: 0; }
+.ed-chat-call-launcher.is-open .vc-actions { order: 4; justify-content: center; padding-top: 4px; }
+.ed-chat-call-launcher.is-open .vc-footer { display: none; }
+.ed-chat-call-launcher.is-open .vc-grid-live,
+.ed-chat-call-launcher.is-open .vc-video-card-remote,
+.ed-chat-call-launcher.is-open .vc-video-card-remote .vc-video { min-height: 0; height: 100%; }
+
+@media (max-width: 640px) {
+  .ed-chat-call-launcher.is-open { padding: 0; }
+  .ed-chat-call-launcher.is-open .vc-panel {
+    width: 100%; height: 100dvh; max-height: 100dvh; min-height: 100dvh;
+    border: 0; border-radius: 0; padding: 14px;
+  }
+  .ed-chat-call-launcher.is-open .vc-header { flex-direction: row; align-items: center; }
+  .ed-chat-call-launcher.is-open .vc-header h3 { max-width: 52vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ed-chat-call-launcher:not(.is-open) .vc-btn { width: 34px; min-width: 34px; height: 34px; min-height: 34px; }
+}

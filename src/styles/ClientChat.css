@@ -3294,3 +3294,99 @@ video {
   }
   .client-chat-page .chat-call-strip .vc-status { white-space: normal; }
 }
+
+/* Real messenger call UX: the thread stays clean until a call is in progress. */
+.client-chat-page .chat-call-launcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.client-chat-page .chat-call-launcher:not(.is-open) .vc-panel {
+  display: block;
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+}
+
+.client-chat-page .chat-call-launcher:not(.is-open) .vc-header,
+.client-chat-page .chat-call-launcher:not(.is-open) .vc-footer,
+.client-chat-page .chat-call-launcher:not(.is-open) .vc-grid { display: none; }
+
+.client-chat-page .chat-call-launcher:not(.is-open) .vc-actions { display: flex; gap: 6px; }
+.client-chat-page .chat-call-launcher:not(.is-open) .vc-btn {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  font-size: 0;
+  color: var(--cc-muted);
+  border: 1px solid rgba(148, 163, 184, .2);
+  background: rgba(148, 163, 184, .07);
+  box-shadow: none;
+}
+.client-chat-page .chat-call-launcher:not(.is-open) .vc-btn svg { width: 16px; height: 16px; }
+.client-chat-page .chat-call-launcher:not(.is-open) .vc-btn:hover:not(:disabled) {
+  color: #22d3ee;
+  border-color: rgba(34, 211, 238, .35);
+  background: rgba(34, 211, 238, .1);
+  transform: none;
+}
+
+.client-chat-page .chat-call-launcher.is-open {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(1, 5, 13, .88);
+  backdrop-filter: blur(16px);
+}
+
+.client-chat-page .chat-call-launcher.is-open .vc-panel {
+  width: min(960px, 100%) !important;
+  height: min(760px, calc(100dvh - 48px)) !important;
+  min-height: 420px !important;
+  max-height: calc(100dvh - 48px);
+  margin: 0;
+  padding: 18px !important;
+  overflow: hidden !important;
+  border-radius: 24px;
+  border: 1px solid rgba(34, 211, 238, .24) !important;
+  background: radial-gradient(circle at top, rgba(17, 32, 48, .98), rgba(3, 8, 17, .995) 68%) !important;
+  box-shadow: 0 32px 100px rgba(0, 0, 0, .72) !important;
+}
+
+.client-chat-page .chat-call-launcher.is-open .vc-panel-audio {
+  width: min(480px, 100%) !important;
+  height: auto !important;
+  min-height: 320px !important;
+  justify-content: center;
+}
+.client-chat-page .chat-call-launcher.is-open .vc-grid { order: 3; flex: 1; min-height: 0 !important; }
+.client-chat-page .chat-call-launcher.is-open .vc-actions { order: 4; justify-content: center; padding-top: 4px; }
+.client-chat-page .chat-call-launcher.is-open .vc-footer { display: none; }
+.client-chat-page .chat-call-launcher.is-open .vc-grid-live,
+.client-chat-page .chat-call-launcher.is-open .vc-video-card-remote,
+.client-chat-page .chat-call-launcher.is-open .vc-video-card-remote .vc-video { min-height: 0 !important; height: 100% !important; }
+
+@media (max-width: 720px) {
+  .client-chat-page .chat-thread-badge { display: none; }
+  .client-chat-page .chat-call-launcher.is-open { padding: 0; }
+  .client-chat-page .chat-call-launcher.is-open .vc-panel {
+    width: 100% !important; height: 100dvh !important; max-height: 100dvh;
+    min-height: 100dvh !important; border: 0 !important; border-radius: 0; padding: 14px !important;
+  }
+  .client-chat-page .chat-call-launcher.is-open .vc-header { flex-direction: row; align-items: center; }
+  .client-chat-page .chat-call-launcher.is-open .vc-header h3 { max-width: 48vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .client-chat-page .chat-call-launcher:not(.is-open) .vc-btn { width: 34px; min-width: 34px; height: 34px; min-height: 34px; }
+}
