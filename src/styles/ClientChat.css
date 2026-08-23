@@ -3390,3 +3390,116 @@ video {
   .client-chat-page .chat-call-launcher.is-open .vc-header h3 { max-width: 48vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .client-chat-page .chat-call-launcher:not(.is-open) .vc-btn { width: 34px; min-width: 34px; height: 34px; min-height: 34px; }
 }
+
+@keyframes ccSpin { to { transform: rotate(360deg); } }
+.client-chat-page .cc-spin { animation: ccSpin .8s linear infinite; }
+.client-chat-page .expert-rating-line svg,
+.client-chat-page .rate-star-btn svg { color: #fbbf24; }
+.client-chat-page .info-row > svg { flex: 0 0 auto; color: var(--cc-teal); }
+
+/* Definitive phone layout: one viewport and one scrolling surface. */
+@media (max-width: 600px) {
+  .client-chat-page { width: 100%; height: 100dvh; min-height: 100dvh; overflow: hidden; }
+  .client-chat-page .chat-topbar { flex: 0 0 auto; position: relative; min-height: 52px; }
+  .client-chat-page .header-inner { min-height: 52px; padding: 0 10px; gap: 8px; }
+  .client-chat-page .brand-text { font-size: 17px; }
+  .client-chat-page .header-meta,
+  .client-chat-page .user-tag,
+  .client-chat-page .brand-subtext { display: none !important; }
+  .client-chat-page .header-actions { margin-left: auto; }
+  .client-chat-page .back-btn {
+    width: 40px; min-width: 40px; height: 40px; padding: 0;
+    display: grid; place-items: center; font-size: 0; border-radius: 12px;
+  }
+
+  .client-chat-page main { flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
+  .client-chat-page main > .shell { height: 100%; padding: 0; }
+  .client-chat-page .mobile-pane-switcher { display: none !important; }
+  .client-chat-page .chat-layout,
+  .client-chat-page .chat-layout.mobile-pane-chat,
+  .client-chat-page .chat-layout.mobile-pane-expert {
+    display: block; width: 100%; height: 100% !important; min-height: 0;
+    max-height: none !important; padding: 0; overflow: hidden;
+  }
+  .client-chat-page .expert-card { display: none !important; }
+  .client-chat-page .chat-layout .chat-section,
+  .client-chat-page .chat-layout.mobile-pane-expert .chat-section {
+    display: flex !important; width: 100%; height: 100% !important; min-height: 0;
+    padding: 0; border: 0; border-radius: 0; background: #080d18;
+  }
+  .client-chat-page .chat-box { width: 100%; height: 100%; min-height: 0; border: 0; border-radius: 0; }
+  .client-chat-page .chat-top-stack { padding: 0; }
+  .client-chat-page .chat-thread-head {
+    min-height: 58px; padding: 8px 10px; gap: 8px;
+    border-width: 0 0 1px; border-radius: 0;
+  }
+  .client-chat-page .chat-thread-person { flex: 1; gap: 8px; overflow: hidden; }
+  .client-chat-page .chat-thread-avatar { width: 38px; height: 38px; flex: 0 0 38px; }
+  .client-chat-page .chat-thread-copy { min-width: 0; }
+  .client-chat-page .chat-thread-copy strong,
+  .client-chat-page .chat-thread-copy span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .client-chat-page .chat-thread-copy span { max-width: 36vw; }
+  .client-chat-page .chat-thread-actions { display: flex !important; gap: 4px; }
+  .client-chat-page .chat-thread-badge,
+  .client-chat-page .chat-jump-btn { display: none !important; }
+
+  .client-chat-page .chat-messages {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: none; padding: 12px 10px 14px; gap: 9px; background: #080d18;
+  }
+  .client-chat-page .chat-messages::-webkit-scrollbar { display: none; }
+  .client-chat-page .message { max-width: 88%; padding: 9px 11px; border-radius: 13px; }
+  .client-chat-page .message-body { font-size: 13.5px; line-height: 1.45; }
+
+  .client-chat-page .chat-input-area {
+    flex: 0 0 auto; padding: 7px 8px calc(7px + env(safe-area-inset-bottom, 0px));
+    gap: 6px; border-top: 1px solid rgba(148,163,184,.14); background: #0d1424;
+  }
+  .client-chat-page .chat-image-preview { padding: 6px 8px; border-radius: 10px; }
+  .client-chat-page .composer-row {
+    grid-template-columns: 40px minmax(0,1fr) 42px; min-height: 46px;
+    padding: 3px; gap: 4px; border: 0; border-radius: 15px; background: #151e2f;
+  }
+  .client-chat-page .attach-btn,
+  .client-chat-page .send-btn {
+    width: 40px; min-width: 40px; min-height: 40px; height: 40px; padding: 0;
+    display: grid; place-items: center; border-radius: 12px;
+  }
+  .client-chat-page .attach-btn span,
+  .client-chat-page .send-btn span { display: none; }
+  .client-chat-page .composer-row textarea {
+    min-height: 40px; max-height: 96px; padding: 10px 8px;
+    border: 0; background: transparent; font-size: 14px; line-height: 20px;
+  }
+  .client-chat-page .composer-row textarea:focus { box-shadow: none; }
+  .client-chat-page .chat-footer { display: none !important; }
+
+  .client-chat-page .chat-call-launcher:not(.is-open) .vc-actions { display: flex !important; gap: 4px; }
+  .client-chat-page .chat-call-launcher:not(.is-open) .vc-btn {
+    width: 36px; min-width: 36px; height: 36px; min-height: 36px; border-radius: 50%;
+  }
+  .client-chat-page .chat-call-launcher.is-open .vc-panel {
+    gap: 10px !important;
+    padding: max(12px, env(safe-area-inset-top,0px)) 12px max(12px, env(safe-area-inset-bottom,0px)) !important;
+  }
+  .client-chat-page .chat-call-launcher.is-open .vc-header {
+    flex: 0 0 auto; flex-direction: row; align-items: center; gap: 8px;
+  }
+  .client-chat-page .chat-call-launcher.is-open .vc-header > div:first-child { min-width: 0; }
+  .client-chat-page .chat-call-launcher.is-open .vc-kicker { display: none; }
+  .client-chat-page .chat-call-launcher.is-open .vc-status { width: auto; padding: 6px 9px; }
+  .client-chat-page .chat-call-launcher.is-open .vc-actions {
+    display: flex !important; flex-wrap: nowrap; justify-content: center; gap: 9px; padding: 4px 0;
+  }
+  .client-chat-page .chat-call-launcher.is-open .vc-actions .vc-icon-btn,
+  .client-chat-page .chat-call-launcher.is-open .vc-actions .vc-btn {
+    width: 46px; min-width: 46px; height: 46px; min-height: 46px; padding: 0;
+    border-radius: 50%; display: grid; place-items: center; font-size: 0;
+  }
+  .client-chat-page .chat-call-launcher.is-open .vc-move-btn,
+  .client-chat-page .chat-call-launcher.is-open .vc-fullscreen-btn { display: none; }
+  .client-chat-page .chat-call-launcher.is-open .vc-grid-live { flex: 1; min-height: 0 !important; }
+  .client-chat-page .chat-call-launcher.is-open .vc-video-card-local {
+    right: 8px; bottom: 8px; width: 92px; min-width: 92px; height: 124px; min-height: 124px;
+  }
+}

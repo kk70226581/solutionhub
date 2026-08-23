@@ -438,6 +438,15 @@ const ExpertDashboard = () => {
   }, []);
 
   useEffect(() => {
+    if (!callOverlayOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [callOverlayOpen]);
+
+  useEffect(() => {
     if (!token || !email || normalizedRole !== 'expert') {
       navigate('/login', { replace: true });
     }

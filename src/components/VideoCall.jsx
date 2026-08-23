@@ -1235,7 +1235,7 @@ export default function VideoCall({
 
         {isCallActive && !isVoiceCall ? <button
           type="button"
-          className="vc-icon-btn"
+          className="vc-icon-btn vc-move-btn"
           onClick={toggleFloating}
           aria-label={isFloating ? 'Dock panel' : 'Move and resize panel'}
           title={isFloating ? 'Dock panel' : 'Move and resize panel'}
@@ -1245,7 +1245,7 @@ export default function VideoCall({
 
         {isCallActive && !isVoiceCall ? <button
           type="button"
-          className="vc-icon-btn"
+          className="vc-icon-btn vc-fullscreen-btn"
           onClick={toggleFullscreen}
           aria-label={isFullscreen ? 'Exit fullscreen' : 'Open fullscreen'}
         >

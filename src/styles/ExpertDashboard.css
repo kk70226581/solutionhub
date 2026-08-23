@@ -3036,3 +3036,68 @@
   .ed-chat-call-launcher.is-open .vc-header h3 { max-width: 52vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ed-chat-call-launcher:not(.is-open) .vc-btn { width: 34px; min-width: 34px; height: 34px; min-height: 34px; }
 }
+
+/* Phone chat is a single app viewport; only messages scroll. */
+@media (max-width: 640px) {
+  .ed-section--chat { height: calc(100dvh - 146px); min-height: 0; margin: 0; overflow: hidden; }
+  .ed-section--chat .ed-chat-shell {
+    width: 100%; height: 100%; min-height: 0; margin: 0; border-radius: 10px;
+  }
+  .ed-section--chat .ed-mobile-pane-switcher { display: none; }
+  .ed-section--chat .ed-chat-main {
+    grid-template-rows: auto auto minmax(0,1fr) auto;
+    grid-template-areas: "header" "search" "messages" "compose";
+    min-height: 0;
+  }
+  .ed-section--chat .ed-chat-header { min-height: 58px; padding: 8px; gap: 7px; }
+  .ed-section--chat .ed-chat-back-btn { width: 34px; height: 34px; flex: 0 0 34px; }
+  .ed-section--chat .ed-chat-peer-av { width: 38px; height: 38px; flex: 0 0 38px; border-radius: 50%; }
+  .ed-section--chat .ed-chat-peer-name { font-size: 12.5px; }
+  .ed-section--chat .ed-chat-peer-status {
+    font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ed-section--chat .ed-chat-header-actions { gap: 4px; }
+  .ed-section--chat .ed-chat-hbtn { display: none; }
+  .ed-section--chat .ed-chat-call-launcher:not(.is-open) .vc-actions { display: flex; gap: 4px; }
+  .ed-section--chat .ed-chat-call-launcher:not(.is-open) .vc-btn {
+    width: 34px; min-width: 34px; height: 34px; min-height: 34px; border-radius: 50%;
+  }
+  .ed-section--chat .ed-messages-area {
+    min-height: 0; height: auto; padding: 12px 9px; overscroll-behavior: contain; scrollbar-width: none;
+  }
+  .ed-section--chat .ed-messages-area::-webkit-scrollbar { display: none; }
+  .ed-section--chat .ed-msg-bubble-wrapper { max-width: 88%; }
+  .ed-section--chat .ed-compose {
+    padding: 7px 8px calc(7px + env(safe-area-inset-bottom,0px)); gap: 5px;
+  }
+  .ed-section--chat .ed-compose-row { padding: 4px 5px; border-radius: 15px; gap: 4px; }
+  .ed-section--chat .ed-compose-btn,
+  .ed-section--chat .ed-send-btn { width: 40px; min-width: 40px; height: 40px; border-radius: 12px; }
+  .ed-section--chat .ed-compose-input { min-height: 40px; max-height: 92px; padding: 9px 5px; }
+  .ed-section--chat .ed-compose-hint { display: none; }
+
+  .ed-chat-call-launcher.is-open .vc-panel {
+    gap: 10px;
+    padding: max(12px, env(safe-area-inset-top,0px)) 12px max(12px, env(safe-area-inset-bottom,0px));
+  }
+  .ed-chat-call-launcher.is-open .vc-header {
+    flex: 0 0 auto; flex-direction: row; align-items: center; gap: 8px;
+  }
+  .ed-chat-call-launcher.is-open .vc-header > div:first-child { min-width: 0; }
+  .ed-chat-call-launcher.is-open .vc-kicker { display: none; }
+  .ed-chat-call-launcher.is-open .vc-status { width: auto; padding: 6px 9px; }
+  .ed-chat-call-launcher.is-open .vc-actions {
+    display: flex; flex-wrap: nowrap; justify-content: center; gap: 9px; padding: 4px 0;
+  }
+  .ed-chat-call-launcher.is-open .vc-actions .vc-icon-btn,
+  .ed-chat-call-launcher.is-open .vc-actions .vc-btn {
+    width: 46px; min-width: 46px; height: 46px; min-height: 46px; padding: 0;
+    border-radius: 50%; display: grid; place-items: center; font-size: 0;
+  }
+  .ed-chat-call-launcher.is-open .vc-move-btn,
+  .ed-chat-call-launcher.is-open .vc-fullscreen-btn { display: none; }
+  .ed-chat-call-launcher.is-open .vc-grid-live { flex: 1; min-height: 0; }
+  .ed-chat-call-launcher.is-open .vc-video-card-local {
+    right: 8px; bottom: 8px; width: 92px; min-width: 92px; height: 124px; min-height: 124px;
+  }
+}

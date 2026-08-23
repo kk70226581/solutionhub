@@ -2,6 +2,25 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import VideoCall from '../components/VideoCall';
+import {
+  ArrowLeft,
+  BadgeCheck,
+  BriefcaseBusiness,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Expand,
+  LoaderCircle,
+  Mail,
+  MessageCircle,
+  Paperclip,
+  Send,
+  ShieldCheck,
+  Star,
+  TriangleAlert,
+  UserRound,
+  X,
+} from 'lucide-react';
 import '../styles/ClientChat.css';
 import {
   clearStoredIncomingCall,
@@ -101,6 +120,15 @@ const ClientChat = () => {
   const handleCallStateChange = useCallback(({ active }) => {
     setCallOverlayOpen(Boolean(active));
   }, []);
+
+  useEffect(() => {
+    if (!callOverlayOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [callOverlayOpen]);
 
   useEffect(() => {
     const syncMobileExpertPanel = () => {
@@ -678,7 +706,7 @@ const ClientChat = () => {
               <span>Encrypted session</span>
             </div>
             <div className="pill subtle-pill">
-              <i className="fa-regular fa-clock" />
+              <Clock3 size={14} aria-hidden="true" />
               <span>{chatAccess.allowed && chatAccess.hoursLeft ? `${chatAccess.hoursLeft}h left` : 'Live support'}</span>
             </div>
           </div>
@@ -694,7 +722,7 @@ const ClientChat = () => {
               </div>
             </div>
             <button className="back-btn" onClick={() => navigate('/experts')}>
-              <i className="fa-solid fa-arrow-left" />
+              <ArrowLeft size={16} aria-hidden="true" />
               Experts
             </button>
           </div>
@@ -709,7 +737,7 @@ const ClientChat = () => {
               className={`mobile-pane-btn ${mobilePane === 'chat' ? 'active' : ''}`}
               onClick={() => setMobilePane('chat')}
             >
-              <i className="fa-regular fa-comments" />
+              <MessageCircle size={16} aria-hidden="true" />
               <span>Chat</span>
             </button>
             <button
@@ -717,7 +745,7 @@ const ClientChat = () => {
               className={`mobile-pane-btn ${mobilePane === 'expert' ? 'active' : ''}`}
               onClick={() => setMobilePane('expert')}
             >
-              <i className="fa-regular fa-user" />
+              <UserRound size={16} aria-hidden="true" />
               <span>Expert</span>
             </button>
           </div>
@@ -736,7 +764,7 @@ const ClientChat = () => {
                     aria-label={isExpertPanelCollapsed ? 'Expand expert panel' : 'Collapse expert panel'}
                     title={isExpertPanelCollapsed ? 'Expand' : 'Collapse'}
                   >
-                    <i className={`fa-solid fa-chevron-${isExpertPanelCollapsed ? 'right' : 'left'}`} />
+                    {isExpertPanelCollapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
                   </button>
                 </div>
               </div>
@@ -774,7 +802,7 @@ const ClientChat = () => {
                   </div>
                   {expertAvatarSrc ? (
                     <span className="expert-avatar-hint">
-                      <i className="fa-solid fa-expand" />
+                      <Expand size={13} aria-hidden="true" />
                       View photo
                     </span>
                   ) : null}
@@ -790,7 +818,7 @@ const ClientChat = () => {
                 <div className="expert-name">{expert.name}</div>
                 <div className="expert-field">{expert.field || 'Expert'}</div>
                 <div className="expert-rating-line">
-                  <i className="fa-solid fa-star" />
+                  <Star size={15} fill="currentColor" aria-hidden="true" />
                   <span>{expert.avgRating ? expert.avgRating.toFixed(1) : 'New'} ({expert.ratingsCount || 0})</span>
                 </div>
               </div>
@@ -809,7 +837,7 @@ const ClientChat = () => {
                       onClick={() => setMyRating(v)}
                       aria-label={`Rate ${v} star`}
                     >
-                      <i className="fa-solid fa-star" />
+                      <Star size={17} fill="currentColor" aria-hidden="true" />
                     </button>
                   ))}
                 </div>
@@ -828,15 +856,15 @@ const ClientChat = () => {
 
               <div className="expert-info">
                 <div className="info-row">
-                  <i className="fa-solid fa-briefcase" />
+                  <BriefcaseBusiness size={16} aria-hidden="true" />
                   <span>{expert.experience}+ years experience</span>
                 </div>
                 <div className="info-row">
-                  <i className="fa-solid fa-envelope" />
+                  <Mail size={16} aria-hidden="true" />
                   <span className="expert-email">{expert.email}</span>
                 </div>
                 <div className="info-row">
-                  <i className="fa-solid fa-circle-check" />
+                  <BadgeCheck size={16} aria-hidden="true" />
                   <span>Matched for private structured guidance</span>
                 </div>
               </div>
@@ -880,12 +908,12 @@ const ClientChat = () => {
                 <div className="chat-messages" ref={chatMessagesRef}>
                   {loadingMessages ? (
                     <div className="loading-messages">
-                      <i className="fa-solid fa-spinner fa-spin" />
+                      <LoaderCircle className="cc-spin" size={18} aria-hidden="true" />
                       Loading previous messages...
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="empty-state">
-                      <i className="fa-solid fa-comments" />
+                      <MessageCircle size={26} aria-hidden="true" />
                       <h4>Start the conversation</h4>
                       <p>Send your first message to this expert.</p>
                     </div>
@@ -895,7 +923,7 @@ const ClientChat = () => {
                         if (msg.author === 'system') {
                           return (
                             <div key={msg._id || idx} className="empty-state">
-                              <i className="fa-solid fa-triangle-exclamation" />
+                              <TriangleAlert size={26} aria-hidden="true" />
                               <h4>Could not load messages</h4>
                               <p>You can still start a new chat below.</p>
                             </div>
@@ -976,7 +1004,7 @@ const ClientChat = () => {
                           if (chatFileInputRef.current) chatFileInputRef.current.value = '';
                         }}
                       >
-                        <i className="fa-solid fa-xmark" />
+                        <X size={15} aria-hidden="true" />
                       </button>
                     </div>
                   ) : null}
@@ -987,7 +1015,7 @@ const ClientChat = () => {
                       type="button"
                       onClick={() => chatFileInputRef.current?.click()}
                     >
-                      <i className="fa-solid fa-paperclip" />
+                      <Paperclip size={17} aria-hidden="true" />
                       <span>Attach</span>
                     </button>
                     <textarea
@@ -1008,7 +1036,7 @@ const ClientChat = () => {
                       onClick={handleSend}
                       disabled={(!inputValue.trim() && !selectedImageDataUrl) || !chatAccess.allowed}
                     >
-                      <i className="fa-solid fa-paper-plane" />
+                      <Send size={17} aria-hidden="true" />
                       <span>Send</span>
                     </button>
                   </div>
@@ -1026,13 +1054,7 @@ const ClientChat = () => {
         <div className="footer-row">
           <span>(c) 2026 Solvenut. Guided conversations for real-world decisions.</span>
           <span>
-            <i
-              className="fa-solid fa-shield-halved"
-              style={{
-                marginRight: 6,
-                color: 'var(--success)',
-              }}
-            />
+            <ShieldCheck size={15} style={{ marginRight: 6, color: 'var(--success)' }} aria-hidden="true" />
             Private room between you and your expert.
           </span>
         </div>
@@ -1050,7 +1072,7 @@ const ClientChat = () => {
               onClick={() => setImageViewer({ open: false, src: '', alt: '' })}
               aria-label="Close image viewer"
             >
-              <i className="fa-solid fa-xmark" />
+              <X size={17} aria-hidden="true" />
             </button>
             <img
               src={imageViewer.src}
