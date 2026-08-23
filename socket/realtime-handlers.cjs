@@ -273,12 +273,24 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
         return;
       }
 
-      socket.to(access.room).emit("offer", {
+      const callPayload = {
         room: access.room,
         offer,
         from: access.identity.email,
         callType: String(callType || "video").toLowerCase() === "audio" ? "audio" : "video",
-      });
+      };
+      socket.to(access.room).emit("offer", callPayload);
+
+      // A recipient may be authenticated but not have joined this call room yet.
+      // Deliver to their latest active socket as a fallback without duplicating
+      // the event when that socket is already a room member.
+      const recipientEmail = parseRoomEmails(access.room)
+        .find((email) => email !== access.identity.email);
+      const recipientSocketId = onlineUsers[recipientEmail]?.socketId;
+      const roomMembers = io.sockets.adapter.rooms.get(access.room);
+      if (recipientSocketId && !roomMembers?.has(recipientSocketId)) {
+        io.to(recipientSocketId).emit("offer", callPayload);
+      }
     } catch (err) {
       console.error("❌ offer relay failed:", err);
     }

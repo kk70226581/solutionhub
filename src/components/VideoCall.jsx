@@ -303,7 +303,8 @@ export default function VideoCall({
     ? incomingCallType
     : normalizeCallType(externalIncomingCall?.room === signalingRoomId ? externalIncomingCall.callType : 'video');
   const hasIncomingRequest = Boolean(effectiveIncomingOffer);
-  const showVideoStage = !compact || isCallActive || hasIncomingRequest;
+  const isVoiceCall = callType === 'audio' || (hasIncomingRequest && effectiveIncomingCallType === 'audio');
+  const showVideoStage = !isVoiceCall && (!compact || isCallActive || hasIncomingRequest);
 
   const statusLabel = useMemo(() => {
     if (callError) return callError;
@@ -1133,7 +1134,7 @@ export default function VideoCall({
   return (
     <section
       ref={panelRef}
-      className={`vc-panel ${compact ? 'vc-panel-compact' : ''} ${isCallActive ? 'vc-panel-live' : ''} ${(callType === 'audio' || effectiveIncomingCallType === 'audio') ? 'vc-panel-audio' : ''} ${isFullscreen ? 'vc-panel-fullscreen' : ''} ${isFloating ? 'vc-panel-floating' : ''}`}
+      className={`vc-panel ${compact ? 'vc-panel-compact' : ''} ${isCallActive ? 'vc-panel-live' : ''} ${isVoiceCall ? 'vc-panel-audio' : ''} ${isFullscreen ? 'vc-panel-fullscreen' : ''} ${isFloating ? 'vc-panel-floating' : ''}`}
       style={
         isFloating && compact
           ? {
@@ -1176,58 +1177,59 @@ export default function VideoCall({
         </div>
       ) : null}
 
-      <div className="vc-actions">
-        <button
-          type="button"
-          className="vc-btn vc-btn-primary"
-          onClick={() => startCall('audio')}
-          disabled={!canCall || isCallActive}
-        >
-          <Phone size={16} />
-          Audio call
-        </button>
+      {!hasIncomingRequest ? <div className="vc-actions">
+        {!isCallActive ? (
+          <>
+            <button
+              type="button"
+              className="vc-btn vc-btn-primary"
+              onClick={() => startCall('audio')}
+              disabled={!canCall}
+            >
+              <Phone size={16} />
+              Audio call
+            </button>
 
-        <button
-          type="button"
-          className="vc-btn vc-btn-ghost"
-          onClick={() => startCall('video')}
-          disabled={!canCall || isCallActive}
-        >
-          <Video size={16} />
-          Video call
-        </button>
+            <button
+              type="button"
+              className="vc-btn vc-btn-ghost"
+              onClick={() => startCall('video')}
+              disabled={!canCall}
+            >
+              <Video size={16} />
+              Video call
+            </button>
+          </>
+        ) : null}
 
-        <button
+        {isCallActive ? <button
           type="button"
           className={`vc-icon-btn ${isMuted ? 'active' : ''}`}
           onClick={toggleMute}
-          disabled={!isCallActive}
           aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
         >
           {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
-        </button>
+        </button> : null}
 
-        <button
+        {isCallActive && !isVoiceCall ? <button
           type="button"
           className={`vc-icon-btn ${isCameraOff ? 'active' : ''}`}
           onClick={toggleCamera}
-          disabled={!isCallActive || isAudioOnly}
           aria-label={isCameraOff ? 'Turn camera on' : 'Turn camera off'}
         >
           {isCameraOff ? <VideoOff size={16} /> : <Video size={16} />}
-        </button>
+        </button> : null}
 
-        <button
+        {isCallActive && !isVoiceCall ? <button
           type="button"
           className={`vc-icon-btn ${isSharingScreen ? 'active' : ''}`}
           onClick={toggleScreenShare}
-          disabled={!isCallActive || isAudioOnly}
           aria-label={isSharingScreen ? 'Stop screen sharing' : 'Share screen'}
         >
           <MonitorUp size={16} />
-        </button>
+        </button> : null}
 
-        <button
+        {isCallActive && !isVoiceCall ? <button
           type="button"
           className="vc-icon-btn"
           onClick={toggleFloating}
@@ -1235,27 +1237,26 @@ export default function VideoCall({
           title={isFloating ? 'Dock panel' : 'Move and resize panel'}
         >
           <Move size={16} />
-        </button>
+        </button> : null}
 
-        <button
+        {isCallActive && !isVoiceCall ? <button
           type="button"
           className="vc-icon-btn"
           onClick={toggleFullscreen}
           aria-label={isFullscreen ? 'Exit fullscreen' : 'Open fullscreen'}
         >
           {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-        </button>
+        </button> : null}
 
-        <button
+        {isCallActive ? <button
           type="button"
           className="vc-btn vc-btn-danger"
           onClick={() => endCall(true)}
-          disabled={!isCallActive && !hasIncomingRequest}
         >
           <PhoneOff size={16} />
           End
-        </button>
-      </div>
+        </button> : null}
+      </div> : null}
 
       {showVideoStage ? (
         <div className={`vc-grid ${isCallActive ? 'vc-grid-live' : ''}`}>

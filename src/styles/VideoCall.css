@@ -259,6 +259,18 @@
   font-size: 14px;
 }
 
+.vc-panel-compact.vc-panel-audio.vc-panel-live {
+  min-height: 0;
+}
+
+.vc-panel-compact.vc-panel-audio .vc-header {
+  align-items: center;
+}
+
+.vc-panel-compact.vc-panel-audio .vc-actions {
+  justify-content: flex-end;
+}
+
 .vc-incoming {
   display: flex;
   align-items: center;

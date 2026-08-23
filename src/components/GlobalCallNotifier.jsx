@@ -80,14 +80,20 @@ export default function GlobalCallNotifier() {
     socket.on('offer', ({ room, offer, from, callType }) => {
       if (!room || !offer || String(from || '').toLowerCase() === String(email || '').toLowerCase()) return;
       const match = conversationsRef.current.find((conversation) => conversation.room === room);
+      const normalizedCallType = String(callType || '').toLowerCase() === 'audio' ? 'audio' : 'video';
       setCall({
         room,
         offer,
         from: from || 'Caller',
-        callType: String(callType || '').toLowerCase() === 'audio' ? 'audio' : 'video',
+        callType: normalizedCallType,
         otherEmail: match?.otherEmail || from || '',
         at: Date.now(),
       });
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.hidden) {
+        new Notification(`Incoming ${normalizedCallType} call`, {
+          body: `${from || 'A participant'} is calling you on Solvenut.`,
+        });
+      }
     });
     socket.on('call-ended', ({ room }) => {
       setIncomingCall((prev) => {
@@ -128,11 +134,13 @@ export default function GlobalCallNotifier() {
 
   return (
     <div className="gcn-popup" role="dialog" aria-live="assertive" aria-label="Incoming call">
-      <div className="gcn-kicker">Incoming {incomingCall.callType === 'audio' ? 'Audio' : 'Video'} Call</div>
-      <div className="gcn-title">{incomingCall.from} is calling</div>
-      <div className="gcn-subtitle">Open the private room to answer the call.</div>
-      <div className="gcn-detail">
-        {incomingCall.otherEmail ? `For ${incomingCall.otherEmail}` : 'Private session ready'}
+      <div className="gcn-call-row">
+        <div className="gcn-call-icon"><Phone size={21} /></div>
+        <div className="gcn-call-copy">
+          <div className="gcn-kicker">Incoming {incomingCall.callType === 'audio' ? 'Audio' : 'Video'} Call</div>
+          <div className="gcn-title">{incomingCall.from}</div>
+          <div className="gcn-subtitle">Open the private room to answer.</div>
+        </div>
       </div>
       <div className="gcn-actions">
         <button type="button" className="gcn-btn gcn-btn-primary" onClick={openCall}>
