@@ -3396,6 +3396,9 @@ video {
 .client-chat-page .expert-rating-line svg,
 .client-chat-page .rate-star-btn svg { color: #fbbf24; }
 .client-chat-page .info-row > svg { flex: 0 0 auto; color: var(--cc-teal); }
+.client-chat-page .message.failed { border-color: rgba(251,113,133,.55); }
+.client-chat-page .message-delivery { margin-top: 5px; text-align: right; font-size: 9px; opacity: .72; }
+.client-chat-page .message-delivery.failed { color: #fda4af; opacity: 1; }
 
 /* Definitive phone layout: one viewport and one scrolling surface. */
 @media (max-width: 600px) {

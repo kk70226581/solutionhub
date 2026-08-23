@@ -13,10 +13,26 @@ import {
 } from 'lucide-react';
 import '../styles/VideoCall.css';
 
+const TURN_URLS = String(import.meta.env.VITE_TURN_URLS || import.meta.env.VITE_TURN_URL || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+const TURN_USERNAME = String(import.meta.env.VITE_TURN_USERNAME || '').trim();
+const TURN_CREDENTIAL = String(import.meta.env.VITE_TURN_CREDENTIAL || '').trim();
+
 const RTC_CONFIG = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+    ...(TURN_URLS.length
+      ? [{
+          urls: TURN_URLS,
+          ...(TURN_USERNAME ? { username: TURN_USERNAME } : {}),
+          ...(TURN_CREDENTIAL ? { credential: TURN_CREDENTIAL } : {}),
+        }]
+      : []),
   ],
+  iceCandidatePoolSize: 10,
+  bundlePolicy: 'max-bundle',
 };
 
 const AUDIO_CONSTRAINTS = {
@@ -244,6 +260,7 @@ export default function VideoCall({
   const processedAudioNodesRef = useRef([]);
   const outgoingAudioTrackRef = useRef(null);
   const ringtoneTimeoutRef = useRef(null);
+  const unansweredCallTimeoutRef = useRef(null);
   const activeNodesRef = useRef([]);
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
@@ -271,6 +288,7 @@ export default function VideoCall({
   const [localVideoIsPortrait, setLocalVideoIsPortrait] = useState(false);
   const [remoteVideoIsPortrait, setRemoteVideoIsPortrait] = useState(false);
   const [remoteMediaMode, setRemoteMediaMode] = useState('camera');
+  const [isSocketConnected, setIsSocketConnected] = useState(Boolean(socket?.connected));
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isFloating, setIsFloating] = useState(false);
   const [floatingRect, setFloatingRect] = useState({
@@ -295,10 +313,13 @@ export default function VideoCall({
   );
 
   const canCall = Boolean(socket && signalingRoomId && enabled);
+  const canInitiateCall = canCall && isSocketConnected;
   const isCallActive = callStatus === 'calling' || callStatus === 'ringing' || callStatus === 'connected';
   const externalOfferForRoom = externalIncomingCall?.room === signalingRoomId ? externalIncomingCall.offer : null;
   const effectiveIncomingOffer = incomingOffer || externalOfferForRoom;
-  const effectiveIncomingFrom = incomingFrom || (externalIncomingCall?.room === signalingRoomId ? externalIncomingCall.from : '');
+  const effectiveIncomingFrom = incomingFrom || (externalIncomingCall?.room === signalingRoomId
+    ? (externalIncomingCall.fromName || externalIncomingCall.from)
+    : '');
   const effectiveIncomingCallType = incomingOffer
     ? incomingCallType
     : normalizeCallType(externalIncomingCall?.room === signalingRoomId ? externalIncomingCall.callType : 'video');
@@ -312,8 +333,8 @@ export default function VideoCall({
     if (callStatus === 'calling') return `${callType === 'audio' ? 'Audio' : 'Video'} call ringing...`;
     if (callStatus === 'ringing') return 'Connecting...';
     if (callStatus === 'connected') return `Live • ${formatDuration(callSeconds)}`;
-    return canCall ? 'Ready for a private call' : 'Call unavailable';
-  }, [callError, hasIncomingRequest, effectiveIncomingFrom, effectiveIncomingCallType, peerLabel, callStatus, callSeconds, canCall, callType]);
+    return canInitiateCall ? 'Ready for a private call' : 'Connecting securely...';
+  }, [callError, hasIncomingRequest, effectiveIncomingFrom, effectiveIncomingCallType, peerLabel, callStatus, callSeconds, canInitiateCall, callType]);
 
   const localMediaMode = isSharingScreen ? 'screen-share' : isAudioOnly ? 'audio-only' : 'camera';
 
@@ -690,7 +711,10 @@ export default function VideoCall({
   });
 
   const startCall = async (requestedCallType = 'video') => {
-    if (!canCall) return;
+    if (!canInitiateCall) {
+      setCallError('Call service is reconnecting. Try again in a moment.');
+      return;
+    }
 
     try {
       const nextCallType = normalizeCallType(requestedCallType);
@@ -753,6 +777,9 @@ export default function VideoCall({
   };
 
   const declineIncomingCall = () => {
+    if (socket && signalingRoomId) {
+      socket.emit('call-declined', { room: signalingRoomId });
+    }
     setIncomingOffer(null);
     setIncomingFrom('');
     setIncomingCallType('video');
@@ -851,6 +878,21 @@ export default function VideoCall({
   }, [updateVideoOrientation, hasLocalPreview, hasRemotePreview, isSharingScreen, remoteMediaMode]);
 
   useEffect(() => {
+    if (!socket) return undefined;
+
+    const handleConnect = () => setIsSocketConnected(true);
+    const handleDisconnect = () => setIsSocketConnected(false);
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    if (socket.connected) queueMicrotask(handleConnect);
+    else queueMicrotask(handleDisconnect);
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+    };
+  }, [socket]);
+
+  useEffect(() => {
     if (!canCall) {
       resetCallStateRef.current({ keepJoinedRoom: false });
       return undefined;
@@ -884,11 +926,11 @@ export default function VideoCall({
       joinedRoomRef.current = room;
     };
 
-    const handleOffer = async ({ room, offer, from, callType: offeredCallType }) => {
+    const handleOffer = async ({ room, offer, from, fromName, callType: offeredCallType }) => {
       if (room !== signalingRoomId || from === normalizedCurrentUserEmail) return;
       const nextCallType = normalizeCallType(offeredCallType);
       setIncomingOffer(offer);
-      setIncomingFrom(from || peerLabel);
+      setIncomingFrom(fromName || from || peerLabel);
       setIncomingCallType(nextCallType);
       setCallType(nextCallType);
       setRemoteMediaMode(nextCallType === 'audio' ? 'audio-only' : 'camera');
@@ -898,10 +940,15 @@ export default function VideoCall({
 
     const handleAnswer = async ({ room, answer }) => {
       if (room !== signalingRoomId || !peerConnectionRef.current) return;
-      await peerConnectionRef.current.setRemoteDescription(
-        new RTCSessionDescription(answer)
-      );
-      await flushPendingCandidates();
+      try {
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(answer)
+        );
+        await flushPendingCandidates();
+      } catch (err) {
+        console.error('Failed to apply call answer', err);
+        setCallError('Could not establish the call');
+      }
     };
 
     const handleIceCandidate = async ({ room, candidate }) => {
@@ -922,19 +969,25 @@ export default function VideoCall({
 
     const handleCallEnded = async ({ room }) => {
       if (room !== signalingRoomId) return;
-      setCallError('Call ended');
       await resetCallStateRef.current();
+      setCallError('Call ended');
+    };
+
+    const handleCallDeclined = async ({ room }) => {
+      if (room !== signalingRoomId) return;
+      await resetCallStateRef.current();
+      setCallError('Call declined');
     };
 
     const handlePeerDisconnected = async ({ room }) => {
       if (room !== signalingRoomId) return;
-      setCallError('Peer disconnected');
       await resetCallStateRef.current();
+      setCallError('Peer disconnected');
     };
 
-    const handleCallDenied = ({ room, message }) => {
+    const handleCallDenied = async ({ room, message }) => {
       if (room && room !== signalingRoomId) return;
-      setCallStatus('idle');
+      await resetCallStateRef.current();
       setCallError(message || 'Call access denied');
     };
 
@@ -948,6 +1001,7 @@ export default function VideoCall({
     socket.on('answer', handleAnswer);
     socket.on('ice-candidate', handleIceCandidate);
     socket.on('call-ended', handleCallEnded);
+    socket.on('call-declined', handleCallDeclined);
     socket.on('peer-disconnected', handlePeerDisconnected);
     socket.on('call_access_denied', handleCallDenied);
     socket.on('media-mode-changed', handleMediaModeChanged);
@@ -958,11 +1012,33 @@ export default function VideoCall({
       socket.off('answer', handleAnswer);
       socket.off('ice-candidate', handleIceCandidate);
       socket.off('call-ended', handleCallEnded);
+      socket.off('call-declined', handleCallDeclined);
       socket.off('peer-disconnected', handlePeerDisconnected);
       socket.off('call_access_denied', handleCallDenied);
       socket.off('media-mode-changed', handleMediaModeChanged);
     };
   }, [socket, signalingRoomId, normalizedCurrentUserEmail, peerLabel]);
+
+  useEffect(() => {
+    if (unansweredCallTimeoutRef.current) {
+      window.clearTimeout(unansweredCallTimeoutRef.current);
+      unansweredCallTimeoutRef.current = null;
+    }
+    if (callStatus !== 'calling') return undefined;
+
+    unansweredCallTimeoutRef.current = window.setTimeout(async () => {
+      if (socket && signalingRoomId) socket.emit('call-ended', { room: signalingRoomId });
+      await resetCallStateRef.current();
+      setCallError('No answer');
+    }, 45_000);
+
+    return () => {
+      if (unansweredCallTimeoutRef.current) {
+        window.clearTimeout(unansweredCallTimeoutRef.current);
+        unansweredCallTimeoutRef.current = null;
+      }
+    };
+  }, [callStatus, signalingRoomId, socket]);
 
   useEffect(() => {
     if (!canCall) return;
@@ -988,8 +1064,9 @@ export default function VideoCall({
       active: isCallActive || hasIncomingRequest,
       incoming: hasIncomingRequest,
       callType: hasIncomingRequest ? effectiveIncomingCallType : callType,
+      error: callError,
     });
-  }, [onCallStateChange, callStatus, isCallActive, hasIncomingRequest, effectiveIncomingCallType, callType]);
+  }, [onCallStateChange, callStatus, isCallActive, hasIncomingRequest, effectiveIncomingCallType, callType, callError]);
 
   useEffect(() => {
     if (hasIncomingRequest) {
@@ -1186,7 +1263,7 @@ export default function VideoCall({
               type="button"
               className="vc-btn vc-btn-primary"
               onClick={() => startCall('audio')}
-              disabled={!canCall}
+              disabled={!canInitiateCall}
               title="Start audio call"
             >
               <Phone size={16} />
@@ -1197,7 +1274,7 @@ export default function VideoCall({
               type="button"
               className="vc-btn vc-btn-ghost"
               onClick={() => startCall('video')}
-              disabled={!canCall}
+              disabled={!canInitiateCall}
               title="Start video call"
             >
               <Video size={16} />

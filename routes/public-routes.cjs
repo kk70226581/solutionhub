@@ -138,11 +138,17 @@ const registerPublicRoutes = (app, deps) => {
     }
   });
 
-  app.get("/api/messages", async (req, res) => {
+  app.get("/api/messages", authMiddleware, async (req, res) => {
     try {
       const room = String(req.query.room || "").trim();
       if (!room) {
         return res.status(400).json({ error: "Room ID required" });
+      }
+
+      const requesterEmail = normalizeEmail(req.user?.email);
+      const roomEmails = room.split("_").map(normalizeEmail).filter(Boolean);
+      if (!requesterEmail || roomEmails.length !== 2 || !roomEmails.includes(requesterEmail)) {
+        return res.status(403).json({ error: "Not authorized for this conversation" });
       }
 
       const messages = await Message.find({ room }).sort({ createdAt: 1 }).limit(100);
@@ -153,19 +159,26 @@ const registerPublicRoutes = (app, deps) => {
     }
   });
 
-  app.get("/api/conversations", async (req, res) => {
+  app.get("/api/conversations", authMiddleware, async (req, res) => {
     try {
-      const email = normalizeEmail(req.query.email);
+      const email = normalizeEmail(req.user?.email);
       if (!email) {
         return res.status(400).json({ error: "Email required" });
       }
 
+      const requestedEmail = normalizeEmail(req.query.email || email);
+      if (requestedEmail !== email) {
+        return res.status(403).json({ error: "Cannot access another user's conversations" });
+      }
+
       const messages = await Message.find({
-        room: { $regex: email },
+        room: { $regex: email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") },
       }).sort({ createdAt: -1 });
 
       const roomMap = {};
       for (const message of messages) {
+        const participants = String(message.room || "").split("_").map(normalizeEmail).filter(Boolean);
+        if (!participants.includes(email)) continue;
         if (roomMap[message.room]) {
           continue;
         }
@@ -180,7 +193,20 @@ const registerPublicRoutes = (app, deps) => {
         };
       }
 
-      return res.json(Object.values(roomMap));
+      const conversations = Object.values(roomMap);
+      const otherEmails = [...new Set(conversations.map((item) => normalizeEmail(item.otherEmail)).filter(Boolean))];
+      const [users, experts] = await Promise.all([
+        User.find({ email: { $in: otherEmails } }).select("name email").lean(),
+        Expert.find({ email: { $in: otherEmails } }).select("name email").lean(),
+      ]);
+      const names = new Map(
+        [...users, ...experts].map((person) => [normalizeEmail(person.email), String(person.name || "").trim()])
+      );
+
+      return res.json(conversations.map((conversation) => ({
+        ...conversation,
+        otherName: names.get(normalizeEmail(conversation.otherEmail)) || String(conversation.otherEmail || "").split("@")[0] || "Participant",
+      })));
     } catch (err) {
       console.error("Error fetching conversations:", err);
       return res.status(500).json({ error: "Failed to fetch conversations" });

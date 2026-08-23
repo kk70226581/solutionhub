@@ -117,8 +117,18 @@ const ClientChat = () => {
     clearStoredIncomingCall();
   }, []);
 
-  const handleCallStateChange = useCallback(({ active }) => {
+  const handleCallStateChange = useCallback(({ active, error }) => {
     setCallOverlayOpen(Boolean(active));
+    if (error) {
+      setToast({
+        visible: true,
+        text: error,
+        error: !['Call ended', 'Call declined', 'No answer'].includes(error),
+      });
+      window.setTimeout(() => {
+        setToast((prev) => ({ ...prev, visible: false }));
+      }, 3200);
+    }
   }, []);
 
   useEffect(() => {
@@ -398,7 +408,9 @@ const ClientChat = () => {
   const loadChatHistory = useCallback(async rid => {
     setLoadingMessages(true);
     try {
-      const res = await fetch(`${API}/api/messages?room=${encodeURIComponent(rid)}`);
+      const res = await fetch(`${API}/api/messages?room=${encodeURIComponent(rid)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) throw new Error('history_fetch_failed');
       const msgs = await res.json();
       const setIds = new Set();
@@ -425,7 +437,7 @@ const ClientChat = () => {
       setLoadingMessages(false);
       setTimeout(scrollToBottom, 50);
     }
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     if (!expertEmail || !clientEmail) return;
@@ -440,23 +452,30 @@ const ClientChat = () => {
 
     const s = io(API, {
       auth: token ? { token } : undefined,
-      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      timeout: 12_000,
     });
 
     s.on('connect', () => {
       if (token) {
         s.emit('authenticate', { token });
       }
+    });
+
+    s.on('auth_success', () => {
       s.emit('join_private', rid);
-      s.emit('user_online', {
-        email: String(clientEmail || '').toLowerCase(),
-        name: clientName,
-        role: 'client',
-      });
     });
 
     s.on('receive_message', data => {
-      if (data.author === clientEmail) return;
+      if (data.author === clientEmail) {
+        if (data.clientMessageId) {
+          setMessages((prev) => prev.map((item) => (
+            item.clientMessageId === data.clientMessageId ? { ...data, status: 'sent' } : item
+          )));
+        }
+        return;
+      }
 
       const id =
         (data._id || '') +
@@ -473,16 +492,18 @@ const ClientChat = () => {
       setTimeout(scrollToBottom, 20);
     });
 
-    s.on('user_typing', data => {
-      if (data.room === rid && data.author !== clientEmail) {
-        setTypingVisible(true);
-      }
+    s.on('typing', data => {
+      if (data.room !== rid || data.user === String(clientEmail || '').toLowerCase()) return;
+      setTypingVisible(Boolean(data.isTyping));
     });
 
-    s.on('user_stopped_typing', data => {
-      if (data.room === rid) {
-        setTypingVisible(false);
+    s.on('message_failed', ({ clientMessageId, message }) => {
+      if (clientMessageId) {
+        setMessages((prev) => prev.map((item) => (
+          item.clientMessageId === clientMessageId ? { ...item, status: 'failed' } : item
+        )));
       }
+      showToast(message || 'Message failed to send', true);
     });
 
     s.on('online_users', users => {
@@ -511,6 +532,7 @@ const ClientChat = () => {
     loadChatHistory(rid);
 
     return () => {
+      setSocketInstance(null);
       s.disconnect();
     };
   }, [expertEmail, clientEmail, clientName, loadChatHistory, token]);
@@ -536,9 +558,12 @@ const ClientChat = () => {
     if (!trimmed && !hasAttachment) return;
 
     const localMsg = {
+      _id: `local-${Date.now()}`,
+      clientMessageId: `client-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       author: clientEmail,
       message: trimmed,
       createdAt: new Date().toISOString(),
+      status: 'sending',
       ...attachmentPayload,
     };
 
@@ -549,6 +574,7 @@ const ClientChat = () => {
       room: roomId,
       author: clientEmail,
       authorRole: 'client',
+      clientMessageId: localMsg.clientMessageId,
       message: trimmed,
       ...attachmentPayload,
     });
@@ -597,8 +623,7 @@ const ClientChat = () => {
       isTypingRef.current = true;
       socketInstance.emit('typing', {
         room: roomId,
-        name: clientName,
-        author: clientEmail,
+        isTyping: true,
       });
     }
     if (typingTimeoutRef.current) {
@@ -625,6 +650,11 @@ const ClientChat = () => {
   useEffect(() => {
     if (!socketInstance) return;
     const onDenied = data => {
+      if (data?.clientMessageId) {
+        setMessages((prev) => prev.map((item) => (
+          item.clientMessageId === data.clientMessageId ? { ...item, status: 'failed' } : item
+        )));
+      }
       setChatAccess(prev => ({
         ...prev,
         allowed: false,
@@ -941,12 +971,17 @@ const ClientChat = () => {
                             <div className="message-avatar">
                               {isMe ? (clientName[0]?.toUpperCase() || 'Y') : avatarInitial}
                             </div>
-                            <div className={`message ${isMe ? 'me' : 'other'}`}>
+                            <div className={`message ${isMe ? 'me' : 'other'} ${msg.status === 'failed' ? 'failed' : ''}`}>
                               <div className="message-meta">
                                 <div className="message-sender">{senderName}</div>
                                 <div className="message-time">{formatTime(msg.createdAt)}</div>
                               </div>
                               {renderMessageContent(msg)}
+                              {isMe && msg.status && (
+                                <div className={`message-delivery ${msg.status}`}>
+                                  {msg.status === 'sending' ? 'Sending…' : msg.status === 'failed' ? 'Not sent' : 'Sent'}
+                                </div>
+                              )}
                             </div>
                           </div>
                         );

@@ -42,6 +42,7 @@ const messageSchema = new mongoose.Schema(
     room: String,
     author: String,
     authorRole: String,
+    clientMessageId: String,
     message: String,
     messageType: {
       type: String,

@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const jwt = require("jsonwebtoken");
 
 process.env.NODE_ENV = "test";
 process.env.RATE_LIMIT_WINDOW_MS = "60000";
@@ -43,6 +44,27 @@ test("GET /api/docs/openapi.json exposes key paths", async () => {
   assert.equal(body.openapi, "3.0.3");
   assert.ok(body.paths["/api/login"]);
   assert.ok(body.paths["/api/forgot-password"]);
+});
+
+test("chat history requires authentication", async () => {
+  const res = await fetch(`${baseUrl}/api/messages?room=client@example.com_expert@example.com`);
+  assert.equal(res.status, 401);
+});
+
+test("conversation list requires authentication", async () => {
+  const res = await fetch(`${baseUrl}/api/conversations?email=client@example.com`);
+  assert.equal(res.status, 401);
+});
+
+test("authenticated users cannot request another user's conversations", async () => {
+  const token = jwt.sign(
+    { email: "client@example.com", role: "client", name: "Client" },
+    process.env.JWT_SECRET || "solutionhub_secret"
+  );
+  const res = await fetch(`${baseUrl}/api/conversations?email=other@example.com`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  assert.equal(res.status, 403);
 });
 
 test("global rate limiter throttles repeated API calls", async () => {

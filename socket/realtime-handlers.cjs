@@ -49,18 +49,16 @@ const validatePrivateRoomAccess = async (room, socket, Expert, Message, Payment,
     return { ok: false, code: "invalid_room", message: "Invalid room participants" };
   }
 
-  if (identity.role === "client") {
-    const access = await getClientExpertChatAccess(Payment, Message, clientEmail, expertEmail);
-    if (!access.hasAccess) {
-      return {
-        ok: false,
-        code: access.reason || "payment_required",
-        message:
-          access.reason === "window_expired"
-            ? "Your 24-hour call window has expired."
-            : "Payment verification is required for calls.",
-      };
-    }
+  const access = await getClientExpertChatAccess(Payment, Message, clientEmail, expertEmail);
+  if (!access.hasAccess) {
+    return {
+      ok: false,
+      code: access.reason || "payment_required",
+      message:
+        access.reason === "window_expired"
+          ? "The 24-hour private room has expired."
+          : "Payment verification is required for this private room.",
+    };
   }
 
   return { ok: true, room: normalizedRoom, identity };
@@ -118,6 +116,15 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
     const normalizedRole = String(role || "").toLowerCase();
     const normalizedName = String(name || normalizedEmail.split("@")[0] || "").trim();
 
+    if (
+      !socket.data.user?.email ||
+      socket.data.user.email !== normalizedEmail ||
+      socket.data.user.role !== normalizedRole
+    ) {
+      socket.emit("auth_error", "Authenticate before updating presence");
+      return;
+    }
+
     const presence = {
       socketId: socket.id,
       name: normalizedName,
@@ -138,9 +145,18 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
   // CHAT
   // ============================================================
   socket.on("join_private", async (room) => {
-    socket.join(room);
     try {
-      const history = await Message.find({ room })
+      const access = await validatePrivateRoomAccess(room, socket, Expert, Message, Payment, onlineUsers);
+      if (!access.ok) {
+        socket.emit("chat_access_denied", {
+          room,
+          reason: access.code,
+          message: access.message,
+        });
+        return;
+      }
+      socket.join(access.room);
+      const history = await Message.find({ room: access.room })
         .sort({ createdAt: 1 })
         .limit(50);
       socket.emit("chat_history", history);
@@ -151,33 +167,42 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
 
   socket.on("send_private_message", async (data) => {
     try {
-      const senderEntry = Object.entries(onlineUsers).find(
-        ([, info]) => info.socketId === socket.id
-      );
-      const senderEmail = normalizeEmail(senderEntry?.[0] || data.author || "");
-      const senderRole = String(senderEntry?.[1]?.role || data.authorRole || "").toLowerCase();
+      const identity = getSocketIdentity(socket, onlineUsers);
+      const senderEmail = normalizeEmail(identity?.email || "");
+      const senderRole = String(identity?.role || "").toLowerCase();
       const room = String(data.room || "");
 
-      if (!room) {
-        socket.emit("error", "Invalid room");
+      if (!room || !senderEmail || !senderRole) {
+        socket.emit("message_failed", {
+          clientMessageId: String(data.clientMessageId || ""),
+          message: "Authenticate before sending messages",
+        });
         return;
       }
 
-      // Enforce payment/access window for client messages
-      if (senderRole === "client") {
-        const emails = parseRoomEmails(room);
-        const expertEmail = emails.find((e) => e && e !== senderEmail) || "";
-        const access = await getClientExpertChatAccess(Payment, Message, senderEmail, expertEmail);
-        if (!access.hasAccess) {
-          socket.emit("chat_access_denied", {
-            reason: access.reason,
-            message:
-              access.reason === "window_expired"
-                ? "Your 24-hour chat window has expired. Please make a new payment to continue."
-                : "Please complete payment to continue chatting with this expert.",
-          });
-          return;
-        }
+      const roomEmails = parseRoomEmails(room);
+      if (roomEmails.length !== 2 || !roomEmails.includes(senderEmail)) {
+        socket.emit("message_failed", {
+          clientMessageId: String(data.clientMessageId || ""),
+          message: "Invalid private room",
+        });
+        return;
+      }
+
+      const otherEmail = roomEmails.find((entry) => entry !== senderEmail) || "";
+      const clientEmail = senderRole === "client" ? senderEmail : otherEmail;
+      const expertEmail = senderRole === "expert" ? senderEmail : otherEmail;
+      const access = await getClientExpertChatAccess(Payment, Message, clientEmail, expertEmail);
+      if (!access.hasAccess) {
+        socket.emit("chat_access_denied", {
+          reason: access.reason,
+          clientMessageId: String(data.clientMessageId || ""),
+          message:
+            access.reason === "window_expired"
+              ? "The 24-hour chat window has expired. A new payment is required to continue."
+              : "Payment verification is required for this conversation.",
+        });
+        return;
       }
 
       const payload = {
@@ -185,6 +210,7 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
         room,
         author: senderEmail || data.author,
         authorRole: senderRole || data.authorRole,
+        clientMessageId: String(data.clientMessageId || "").trim().slice(0, 120),
       };
       const text = String(payload.message || "").trim();
       const attachmentUrl = toChatAttachmentDataUrl(payload.attachmentUrl || payload.imageUrl);
@@ -203,7 +229,10 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
       const hasAttachment = Boolean(attachmentUrl && attachmentType);
 
       if (!hasText && !hasAttachment) {
-        socket.emit("error", "Message cannot be empty");
+        socket.emit("message_failed", {
+          clientMessageId: payload.clientMessageId,
+          message: "Message cannot be empty",
+        });
         return;
       }
 
@@ -229,7 +258,40 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
       });
     } catch (err) {
       console.error("❌ Message save failed:", err);
-      socket.emit("error", "Message failed");
+      socket.emit("message_failed", {
+        clientMessageId: String(data?.clientMessageId || ""),
+        message: "Message failed to send",
+      });
+    }
+  });
+
+  socket.on("typing", async ({ room, isTyping }) => {
+    try {
+      const access = await validatePrivateRoomAccess(room, socket, Expert, Message, Payment, onlineUsers);
+      if (!access.ok) return;
+      socket.to(access.room).emit("typing", {
+        room: access.room,
+        user: access.identity.email,
+        name: access.identity.name || access.identity.email.split("@")[0],
+        isTyping: Boolean(isTyping),
+      });
+    } catch (err) {
+      console.error("❌ typing relay failed:", err);
+    }
+  });
+
+  socket.on("stop_typing", async ({ room }) => {
+    try {
+      const access = await validatePrivateRoomAccess(room, socket, Expert, Message, Payment, onlineUsers);
+      if (!access.ok) return;
+      socket.to(access.room).emit("typing", {
+        room: access.room,
+        user: access.identity.email,
+        name: access.identity.name || access.identity.email.split("@")[0],
+        isTyping: false,
+      });
+    } catch (err) {
+      console.error("❌ stop_typing relay failed:", err);
     }
   });
 
@@ -277,19 +339,24 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
         room: access.room,
         offer,
         from: access.identity.email,
+        fromName: access.identity.name || access.identity.email.split("@")[0],
         callType: String(callType || "video").toLowerCase() === "audio" ? "audio" : "video",
       };
       socket.to(access.room).emit("offer", callPayload);
 
-      // A recipient may be authenticated but not have joined this call room yet.
-      // Deliver to their latest active socket as a fallback without duplicating
-      // the event when that socket is already a room member.
+      // Deliver to every authenticated recipient socket that is not already in
+      // the room. A user can have a dashboard socket and the global notifier
+      // socket open at once; targeting only the latest socket loses calls.
       const recipientEmail = parseRoomEmails(access.room)
         .find((email) => email !== access.identity.email);
-      const recipientSocketId = onlineUsers[recipientEmail]?.socketId;
       const roomMembers = io.sockets.adapter.rooms.get(access.room);
-      if (recipientSocketId && !roomMembers?.has(recipientSocketId)) {
-        io.to(recipientSocketId).emit("offer", callPayload);
+      for (const [recipientSocketId, recipientSocket] of io.sockets.sockets) {
+        if (
+          normalizeEmail(recipientSocket?.data?.user?.email) === recipientEmail &&
+          !roomMembers?.has(recipientSocketId)
+        ) {
+          io.to(recipientSocketId).emit("offer", callPayload);
+        }
       }
     } catch (err) {
       console.error("❌ offer relay failed:", err);
@@ -351,6 +418,20 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
       });
     } catch (err) {
       console.error("❌ call-ended relay failed:", err);
+    }
+  });
+
+  socket.on("call-declined", async ({ room }) => {
+    try {
+      const access = await validatePrivateRoomAccess(room, socket, Expert, Message, Payment, onlineUsers);
+      if (!access.ok) return;
+      socket.to(access.room).emit("call-declined", {
+        room: access.room,
+        from: access.identity.email,
+        fromName: access.identity.name || access.identity.email.split("@")[0],
+      });
+    } catch (err) {
+      console.error("❌ call-declined relay failed:", err);
     }
   });
 

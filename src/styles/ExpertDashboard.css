@@ -1281,6 +1281,14 @@
 .ed-msg-meta.mine { justify-content: flex-end; }
 .ed-msg-time { opacity: .75; }
 .ed-msg-tick { display: flex; align-items: center; color: rgba(255,255,255,.7); }
+.ed-msg-tick.failed { color: #fda4af; }
+.ed-call-feedback {
+  position: fixed; top: 18px; left: 50%; z-index: 4100;
+  transform: translateX(-50%); max-width: min(420px, calc(100vw - 24px));
+  padding: 10px 14px; border: 1px solid rgba(34,211,238,.28); border-radius: 12px;
+  color: var(--ed-text); background: rgba(8,15,24,.96); box-shadow: 0 16px 42px rgba(0,0,0,.42);
+  font-size: 12px; font-weight: 700; text-align: center;
+}
 
 .ed-msg-reaction {
   font-size: 16px; margin-top: 2px; animation: edMsgIn .2s var(--ease);

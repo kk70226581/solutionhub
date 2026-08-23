@@ -335,8 +335,8 @@ function MessageBubble({ msg, mine, onReact }) {
         <div className={`ed-msg-meta ${mine ? 'mine' : ''}`}>
           <span className="ed-msg-time">{formatTime(msg.createdAt)}</span>
           {mine && (
-            <span className="ed-msg-tick">
-              {msg.status === 'sending' ? <Clock size={10} /> : msg.status === 'sent' ? <Check size={10} /> : <CheckCheck size={10} />}
+            <span className={`ed-msg-tick ${msg.status === 'failed' ? 'failed' : ''}`} title={msg.status === 'failed' ? 'Message failed to send' : undefined}>
+              {msg.status === 'sending' ? <Clock size={10} /> : msg.status === 'failed' ? <XCircle size={10} /> : msg.status === 'sent' ? <Check size={10} /> : <CheckCheck size={10} />}
             </span>
           )}
         </div>
@@ -415,6 +415,7 @@ const ExpertDashboard = () => {
   const [msgSearch, setMsgSearch] = useState('');
   const [showMsgSearch, setShowMsgSearch] = useState(false);
   const [callOverlayOpen, setCallOverlayOpen] = useState(false);
+  const [callFeedback, setCallFeedback] = useState('');
 
   const socketRef = useRef(null);
   const activeRoomRef = useRef('');
@@ -422,6 +423,7 @@ const ExpertDashboard = () => {
   const msgsEndRef = useRef(null);
   const chatImageInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const expertTypingRef = useRef(false);
   const chatInputRef = useRef(null);
 
   const [statsRef, statsInView] = useInView(0.25);
@@ -433,9 +435,16 @@ const ExpertDashboard = () => {
     clearStoredIncomingCall();
   }, []);
 
-  const handleCallStateChange = useCallback(({ active }) => {
+  const handleCallStateChange = useCallback(({ active, error }) => {
     setCallOverlayOpen(Boolean(active));
+    if (error) setCallFeedback(error);
   }, []);
+
+  useEffect(() => {
+    if (!callFeedback) return undefined;
+    const timer = window.setTimeout(() => setCallFeedback(''), 4000);
+    return () => window.clearTimeout(timer);
+  }, [callFeedback]);
 
   useEffect(() => {
     if (!callOverlayOpen) return undefined;
@@ -514,7 +523,12 @@ const ExpertDashboard = () => {
 
   useEffect(() => {
     if (!token) return;
-    const s = io(API, { auth: { token }, transports: ['websocket'] });
+    const s = io(API, {
+      auth: { token },
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      timeout: 12_000,
+    });
     socketRef.current = s;
     setLiveSocket(s);
 
@@ -523,6 +537,7 @@ const ExpertDashboard = () => {
       conversationsRef.current.forEach((c) => {
         if (c?.room) s.emit('join-room', { room: c.room });
       });
+      if (activeRoomRef.current) s.emit('join_private', activeRoomRef.current);
     });
     s.on('receive_message', (msg) => {
       if (!msg?.room || msg.room !== activeRoomRef.current) {
@@ -531,7 +546,14 @@ const ExpertDashboard = () => {
         }
         return;
       }
-      if (msg.author === email) return;
+      if (msg.author === email) {
+        if (msg.clientMessageId) {
+          setChatMessages((prev) => prev.map((item) => (
+            item.clientMessageId === msg.clientMessageId ? { ...msg, status: 'sent' } : item
+          )));
+        }
+        return;
+      }
       setChatMessages((prev) => {
         const last = prev[prev.length - 1];
         if (last && last.author === msg.author && last.message === msg.message && (last.attachmentUrl || last.imageUrl) === (msg.attachmentUrl || msg.imageUrl) && Math.abs(new Date(last.createdAt || 0) - new Date(msg.createdAt || 0)) < 3000) {
@@ -548,6 +570,20 @@ const ExpertDashboard = () => {
         if (isTyping) next.add(user); else next.delete(user);
         return next;
       });
+    });
+    s.on('message_failed', ({ clientMessageId }) => {
+      if (!clientMessageId) return;
+      setChatMessages((prev) => prev.map((item) => (
+        item.clientMessageId === clientMessageId ? { ...item, status: 'failed' } : item
+      )));
+    });
+    s.on('chat_access_denied', ({ clientMessageId, message }) => {
+      if (clientMessageId) {
+        setChatMessages((prev) => prev.map((item) => (
+          item.clientMessageId === clientMessageId ? { ...item, status: 'failed' } : item
+        )));
+      }
+      if (message) setCallFeedback(message);
     });
     s.on('online_users', (users) => {
       const next = {};
@@ -725,8 +761,16 @@ const ExpertDashboard = () => {
 
   useEffect(() => {
     if (!incomingCall?.room || activeRoom === incomingCall.room) return;
-    const incomingConversation = conversations.find((item) => item.room === incomingCall.room);
-    if (incomingConversation) openConversation(incomingConversation);
+    const existingConversation = conversations.find((item) => item.room === incomingCall.room);
+    const incomingConversation = existingConversation || {
+      room: incomingCall.room,
+      otherEmail: incomingCall.otherEmail || incomingCall.from || 'client',
+      otherName: incomingCall.fromName || String(incomingCall.from || 'Client').split('@')[0],
+    };
+    if (!existingConversation) {
+      setConversations((prev) => [incomingConversation, ...prev]);
+    }
+    openConversation(incomingConversation);
   }, [incomingCall, conversations, activeRoom, openConversation]);
 
   const sendChatMessage = useCallback(() => {
@@ -739,8 +783,10 @@ const ExpertDashboard = () => {
     });
     const hasAttachment = Boolean(attachmentPayload.attachmentUrl);
     if (!room || (!txt && !hasAttachment) || !email) return;
+    const clientMessageId = `expert-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const local = {
       _id: `local-${Date.now()}`,
+      clientMessageId,
       room, author: email, authorRole: 'expert',
       message: txt,
       createdAt: new Date().toISOString(),
@@ -753,10 +799,12 @@ const ExpertDashboard = () => {
     setChatImageName('');
     setChatAttachmentMime('');
     if (chatImageInputRef.current) chatImageInputRef.current.value = '';
-    socketRef.current?.emit('typing', { room, user: email, isTyping: false });
+    expertTypingRef.current = false;
+    socketRef.current?.emit('stop_typing', { room });
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     socketRef.current?.emit('send_private_message', {
       room, author: email, authorRole: 'expert',
+      clientMessageId,
       message: txt,
       ...attachmentPayload,
     });
@@ -784,11 +832,19 @@ const ExpertDashboard = () => {
     setChatInput(value);
     const room = activeRoomRef.current || activeRoom;
     if (!room || !email) return;
-    socketRef.current?.emit('typing', { room, user: email, isTyping: Boolean(value.trim()) });
+    const hasText = Boolean(value.trim());
+    if (hasText && !expertTypingRef.current) {
+      expertTypingRef.current = true;
+      socketRef.current?.emit('typing', { room, isTyping: true });
+    } else if (!hasText && expertTypingRef.current) {
+      expertTypingRef.current = false;
+      socketRef.current?.emit('stop_typing', { room });
+    }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    if (value.trim()) {
+    if (hasText) {
       typingTimeoutRef.current = setTimeout(() => {
-        socketRef.current?.emit('typing', { room, user: email, isTyping: false });
+        expertTypingRef.current = false;
+        socketRef.current?.emit('stop_typing', { room });
       }, 2000);
     }
   }, [activeRoom, email]);
@@ -895,7 +951,10 @@ const ExpertDashboard = () => {
   const usernameInitial = (computedProfile.name?.charAt(0) || 'E').toUpperCase();
   const avatarSrc = toAssetUrl(computedProfile.avatar);
   const activeConversation = useMemo(() => conversations.find((item) => item.room === activeRoom) || null, [conversations, activeRoom]);
-  const activeClientName = useMemo(() => String(activeConversation?.otherEmail || 'Client').split('@')[0] || 'Client', [activeConversation]);
+  const activeClientName = useMemo(
+    () => activeConversation?.otherName || String(activeConversation?.otherEmail || 'Client').split('@')[0] || 'Client',
+    [activeConversation]
+  );
   const activeClientOnline = clientOnlineStatus[activeConversation?.otherEmail] || false;
   const totalUnread = Object.values(unreadCounts).reduce((sum, count) => sum + Number(count || 0), 0);
 
@@ -923,6 +982,7 @@ const ExpertDashboard = () => {
 
   return (
     <div className="ed-page">
+      {callFeedback && <div className="ed-call-feedback" role="status">{callFeedback}</div>}
       {/* Canvas */}
       <div className="ed-canvas" aria-hidden>
         <div className="ed-grid" />
@@ -1324,7 +1384,7 @@ const ExpertDashboard = () => {
                         <p>{conversationSearch ? 'No results' : 'No conversations yet'}</p>
                       </div>
                     ) : filteredConversations.map((c) => {
-                      const who = c.otherEmail || 'client';
+                      const who = c.otherName || c.otherEmail || 'client';
                       const isOnline = clientOnlineStatus[c.otherEmail] || false;
                       const unread = unreadCounts[c.room] || 0;
                       const isActive = activeRoom === c.room;
@@ -1375,7 +1435,7 @@ const ExpertDashboard = () => {
                           {activeClientName[0]?.toUpperCase() || 'C'}
                         </div>
                         <div className="ed-chat-peer-info">
-                          <div className="ed-chat-peer-name">{activeConversation?.otherEmail || 'Client'}</div>
+                          <div className="ed-chat-peer-name">{activeClientName}</div>
                           <div className={`ed-chat-peer-status ${activeClientOnline ? 'online' : ''}`}>
                             <span className={`ed-presence-dot ${activeClientOnline ? 'online' : ''}`} />
                             {activeClientOnline ? 'Online now' : 'Offline'}
