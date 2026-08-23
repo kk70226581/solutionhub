@@ -237,6 +237,28 @@
   font-weight: 700;
 }
 
+.vc-panel-audio .vc-grid,
+.vc-panel-audio .vc-grid-live {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.vc-panel-audio .vc-video-card-local {
+  display: none;
+}
+
+.vc-panel-audio .vc-video-card-remote,
+.vc-panel-audio .vc-video-card-remote .vc-video {
+  min-height: 150px;
+}
+
+.vc-panel-audio .vc-video-empty {
+  background:
+    radial-gradient(circle at center, rgba(34, 211, 238, 0.14), transparent 28%),
+    rgba(3, 7, 18, 0.94);
+  color: #dbeafe;
+  font-size: 14px;
+}
+
 .vc-incoming {
   display: flex;
   align-items: center;

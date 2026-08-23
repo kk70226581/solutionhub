@@ -1,7 +1,13 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
+import VideoCall from '../components/VideoCall';
 import '../styles/ClientChat.css';
+import {
+  clearStoredIncomingCall,
+  getStoredIncomingCall,
+  subscribeToIncomingCallChanges,
+} from '../utils/incomingCallStorage';
 import {
   CHAT_ATTACHMENT_ACCEPT,
   getChatAttachmentPayload,
@@ -45,6 +51,7 @@ const ClientChat = () => {
 
   const [roomId, setRoomId] = useState(null);
   const [socketInstance, setSocketInstance] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(() => getStoredIncomingCall());
   const [messages, setMessages] = useState([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [inputValue, setInputValue] = useState('');
@@ -82,6 +89,13 @@ const ClientChat = () => {
       navigate('/login', { replace: true });
     }
   }, [token, clientEmail, navigate]);
+
+  useEffect(() => subscribeToIncomingCallChanges(setIncomingCall), []);
+
+  const clearIncomingCall = useCallback(() => {
+    setIncomingCall(null);
+    clearStoredIncomingCall();
+  }, []);
 
   useEffect(() => {
     const syncMobileExpertPanel = () => {
@@ -843,6 +857,19 @@ const ClientChat = () => {
                       </button>
                     </div>
                   </div>
+                </div>
+                <div className="chat-call-strip">
+                  <VideoCall
+                    socket={socketInstance}
+                    roomId={roomId}
+                    currentUserEmail={clientEmail}
+                    currentUserName={clientName}
+                    peerLabel={expert.name || 'Expert'}
+                    enabled={chatAccess.allowed}
+                    compact
+                    externalIncomingCall={incomingCall}
+                    onIncomingCallCleared={clearIncomingCall}
+                  />
                 </div>
                 <div className="chat-messages" ref={chatMessagesRef}>
                   {loadingMessages ? (

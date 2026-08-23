@@ -261,7 +261,7 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
     }
   });
 
-  socket.on("offer", async ({ room, offer }) => {
+  socket.on("offer", async ({ room, offer, callType }) => {
     try {
       const access = await validatePrivateRoomAccess(room, socket, Expert, Message, Payment, onlineUsers);
       if (!access.ok) {
@@ -277,13 +277,14 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
         room: access.room,
         offer,
         from: access.identity.email,
+        callType: String(callType || "video").toLowerCase() === "audio" ? "audio" : "video",
       });
     } catch (err) {
       console.error("❌ offer relay failed:", err);
     }
   });
 
-  socket.on("answer", async ({ room, answer }) => {
+  socket.on("answer", async ({ room, answer, callType }) => {
     try {
       const access = await validatePrivateRoomAccess(room, socket, Expert, Message, Payment, onlineUsers);
       if (!access.ok) {
@@ -299,6 +300,7 @@ const registerSocketHandlers = (io, socket, models, onlineUsers, addLocalOnlineU
         room: access.room,
         answer,
         from: access.identity.email,
+        callType: String(callType || "video").toLowerCase() === "audio" ? "audio" : "video",
       });
     } catch (err) {
       console.error("❌ answer relay failed:", err);

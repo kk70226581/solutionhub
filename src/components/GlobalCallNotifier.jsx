@@ -6,6 +6,7 @@ import '../styles/GlobalCallNotifier.css';
 import {
   getStoredIncomingCall,
   setStoredIncomingCall,
+  subscribeToIncomingCallChanges,
 } from '../utils/incomingCallStorage';
 
 const API = import.meta.env.VITE_API_BASE || 'https://solutionhub66.onrender.com';
@@ -25,6 +26,8 @@ export default function GlobalCallNotifier() {
     setIncomingCall(call);
     setStoredIncomingCall(call);
   }, []);
+
+  useEffect(() => subscribeToIncomingCallChanges(setIncomingCall), []);
 
   useEffect(() => {
     if (!token || !email || !['client', 'expert'].includes(role)) return undefined;
@@ -74,13 +77,14 @@ export default function GlobalCallNotifier() {
 
     socket.on('connect', () => socket.emit('authenticate', { token }));
     socket.on('auth_success', joinKnownRooms);
-    socket.on('offer', ({ room, offer, from }) => {
+    socket.on('offer', ({ room, offer, from, callType }) => {
       if (!room || !offer || String(from || '').toLowerCase() === String(email || '').toLowerCase()) return;
       const match = conversationsRef.current.find((conversation) => conversation.room === room);
       setCall({
         room,
         offer,
         from: from || 'Caller',
+        callType: String(callType || '').toLowerCase() === 'audio' ? 'audio' : 'video',
         otherEmail: match?.otherEmail || from || '',
         at: Date.now(),
       });
@@ -124,7 +128,7 @@ export default function GlobalCallNotifier() {
 
   return (
     <div className="gcn-popup" role="dialog" aria-live="assertive" aria-label="Incoming call">
-      <div className="gcn-kicker">Incoming Call</div>
+      <div className="gcn-kicker">Incoming {incomingCall.callType === 'audio' ? 'Audio' : 'Video'} Call</div>
       <div className="gcn-title">{incomingCall.from} is calling</div>
       <div className="gcn-subtitle">Open the private room to answer the call.</div>
       <div className="gcn-detail">

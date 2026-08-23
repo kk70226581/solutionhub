@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
+import VideoCall from '../components/VideoCall';
 import {
   TrendingUp, Star, Clock, MessageCircle, Users, Briefcase,
   DollarSign, BarChart3, Settings, Bell, Edit3, Eye, CheckCircle,
@@ -9,6 +10,11 @@ import {
   Activity, TrendingDown, Filter, RefreshCw, LogOut, Home, MessageSquare,
 } from 'lucide-react';
 import '../styles/ExpertDashboard.css';
+import {
+  clearStoredIncomingCall,
+  getStoredIncomingCall,
+  subscribeToIncomingCallChanges,
+} from '../utils/incomingCallStorage';
 import {
   CHAT_ATTACHMENT_ACCEPT,
   getChatAttachmentPayload,
@@ -397,6 +403,7 @@ const ExpertDashboard = () => {
   const [chatAttachmentMime, setChatAttachmentMime] = useState('');
   const [loadingChat, setLoadingChat] = useState(false);
   const [liveSocket, setLiveSocket] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(() => getStoredIncomingCall());
   const [chatImageViewer, setChatImageViewer] = useState({ open: false, src: '', alt: '' });
   const [typingUsers, setTypingUsers] = useState(new Set());
   const [unreadCounts, setUnreadCounts] = useState({});
@@ -417,6 +424,13 @@ const ExpertDashboard = () => {
   const chatInputRef = useRef(null);
 
   const [statsRef, statsInView] = useInView(0.25);
+
+  useEffect(() => subscribeToIncomingCallChanges(setIncomingCall), []);
+
+  const clearIncomingCall = useCallback(() => {
+    setIncomingCall(null);
+    clearStoredIncomingCall();
+  }, []);
 
   useEffect(() => {
     if (!token || !email || normalizedRole !== 'expert') {
@@ -694,6 +708,12 @@ const ExpertDashboard = () => {
       setLoadingChat(false);
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!incomingCall?.room || activeRoom === incomingCall.room) return;
+    const incomingConversation = conversations.find((item) => item.room === incomingCall.room);
+    if (incomingConversation) openConversation(incomingConversation);
+  }, [incomingCall, conversations, activeRoom, openConversation]);
 
   const sendChatMessage = useCallback(() => {
     const room = activeRoomRef.current || activeRoom;
@@ -1367,6 +1387,20 @@ const ExpertDashboard = () => {
                           <MessageSquare size={15} />
                           <span>Chat</span>
                         </button>
+                      </div>
+
+                      <div className="ed-chat-call-strip">
+                        <VideoCall
+                          socket={liveSocket}
+                          roomId={activeRoom}
+                          currentUserEmail={email}
+                          currentUserName={profile.name || storedName}
+                          peerLabel={activeClientName}
+                          enabled={Boolean(activeRoom)}
+                          compact
+                          externalIncomingCall={incomingCall}
+                          onIncomingCallCleared={clearIncomingCall}
+                        />
                       </div>
 
                       {/* Message search bar */}

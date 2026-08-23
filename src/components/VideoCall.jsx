@@ -47,6 +47,10 @@ function normalizeRoomId(roomRaw) {
     .join('_');
 }
 
+function normalizeCallType(value) {
+  return String(value || '').toLowerCase() === 'audio' ? 'audio' : 'video';
+}
+
 function formatDuration(totalSeconds) {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -254,6 +258,8 @@ export default function VideoCall({
   const [callStatus, setCallStatus] = useState('idle');
   const [incomingOffer, setIncomingOffer] = useState(null);
   const [incomingFrom, setIncomingFrom] = useState('');
+  const [incomingCallType, setIncomingCallType] = useState('video');
+  const [callType, setCallType] = useState('video');
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isAudioOnly, setIsAudioOnly] = useState(false);
@@ -293,17 +299,20 @@ export default function VideoCall({
   const externalOfferForRoom = externalIncomingCall?.room === signalingRoomId ? externalIncomingCall.offer : null;
   const effectiveIncomingOffer = incomingOffer || externalOfferForRoom;
   const effectiveIncomingFrom = incomingFrom || (externalIncomingCall?.room === signalingRoomId ? externalIncomingCall.from : '');
+  const effectiveIncomingCallType = incomingOffer
+    ? incomingCallType
+    : normalizeCallType(externalIncomingCall?.room === signalingRoomId ? externalIncomingCall.callType : 'video');
   const hasIncomingRequest = Boolean(effectiveIncomingOffer);
   const showVideoStage = !compact || isCallActive || hasIncomingRequest;
 
   const statusLabel = useMemo(() => {
     if (callError) return callError;
-    if (hasIncomingRequest) return `${effectiveIncomingFrom || peerLabel} is calling`;
-    if (callStatus === 'calling') return 'Calling...';
+    if (hasIncomingRequest) return `${effectiveIncomingFrom || peerLabel} is starting an ${effectiveIncomingCallType} call`;
+    if (callStatus === 'calling') return `${callType === 'audio' ? 'Audio' : 'Video'} call ringing...`;
     if (callStatus === 'ringing') return 'Connecting...';
     if (callStatus === 'connected') return `Live • ${formatDuration(callSeconds)}`;
     return canCall ? 'Ready for a private call' : 'Call unavailable';
-  }, [callError, hasIncomingRequest, effectiveIncomingFrom, peerLabel, callStatus, callSeconds, canCall]);
+  }, [callError, hasIncomingRequest, effectiveIncomingFrom, effectiveIncomingCallType, peerLabel, callStatus, callSeconds, canCall, callType]);
 
   const localMediaMode = isSharingScreen ? 'screen-share' : isAudioOnly ? 'audio-only' : 'camera';
 
@@ -521,6 +530,7 @@ export default function VideoCall({
     await stopLocalMedia();
     setIncomingOffer(null);
     setIncomingFrom('');
+    setIncomingCallType('video');
     setCallStatus(keepJoinedRoom ? 'idle' : 'idle');
     setCallError('');
     setCallSeconds(0);
@@ -530,18 +540,19 @@ export default function VideoCall({
     }
   };
 
-  const ensureLocalMedia = useCallback(async () => {
+  const ensureLocalMedia = useCallback(async (requestedCallType = 'video') => {
     if (localStreamRef.current) return localStreamRef.current;
 
     let stream;
+    const audioOnly = normalizeCallType(requestedCallType) === 'audio';
 
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: VIDEO_CONSTRAINTS,
+        video: audioOnly ? false : VIDEO_CONSTRAINTS,
         audio: AUDIO_CONSTRAINTS,
       });
-      setIsAudioOnly(false);
-      setIsCameraOff(false);
+      setIsAudioOnly(audioOnly);
+      setIsCameraOff(audioOnly);
     } catch (error) {
       const canFallbackToAudio =
         error?.name === 'NotReadableError' ||
@@ -602,10 +613,10 @@ export default function VideoCall({
     }
   };
 
-  const createPeerConnection = async () => {
+  const createPeerConnection = async (requestedCallType = callType) => {
     if (peerConnectionRef.current) return peerConnectionRef.current;
 
-    const stream = await ensureLocalMedia();
+    const stream = await ensureLocalMedia(requestedCallType);
     const connection = new RTCPeerConnection(RTC_CONFIG);
 
     remoteStreamRef.current = new MediaStream();
@@ -677,23 +688,27 @@ export default function VideoCall({
     resetCallStateRef.current = resetCallState;
   });
 
-  const startCall = async () => {
+  const startCall = async (requestedCallType = 'video') => {
     if (!canCall) return;
 
     try {
+      const nextCallType = normalizeCallType(requestedCallType);
       setCallError('');
       setIncomingOffer(null);
       setIncomingFrom('');
+      setIncomingCallType('video');
+      setCallType(nextCallType);
       setCallStatus('calling');
       joinRoom();
 
-      const connection = await createPeerConnection();
+      const connection = await createPeerConnection(nextCallType);
       const offer = await connection.createOffer();
       await connection.setLocalDescription(offer);
 
       socket.emit('offer', {
         room: signalingRoomId,
         offer,
+        callType: nextCallType,
       });
     } catch (err) {
       console.error('Failed to start call', err);
@@ -706,11 +721,13 @@ export default function VideoCall({
     if (!effectiveIncomingOffer || !socket || !signalingRoomId) return;
 
     try {
+      const nextCallType = normalizeCallType(effectiveIncomingCallType);
       setCallError('');
+      setCallType(nextCallType);
       setCallStatus('ringing');
       joinRoom();
 
-      const connection = await createPeerConnection();
+      const connection = await createPeerConnection(nextCallType);
       await connection.setRemoteDescription(new RTCSessionDescription(effectiveIncomingOffer));
       await flushPendingCandidates();
 
@@ -720,10 +737,12 @@ export default function VideoCall({
       socket.emit('answer', {
         room: signalingRoomId,
         answer,
+        callType: nextCallType,
       });
 
       setIncomingOffer(null);
       setIncomingFrom('');
+      setIncomingCallType('video');
       onIncomingCallCleared?.();
     } catch (err) {
       console.error('Failed to accept call', err);
@@ -735,6 +754,7 @@ export default function VideoCall({
   const declineIncomingCall = () => {
     setIncomingOffer(null);
     setIncomingFrom('');
+    setIncomingCallType('video');
     setCallStatus('idle');
     onIncomingCallCleared?.();
   };
@@ -863,10 +883,14 @@ export default function VideoCall({
       joinedRoomRef.current = room;
     };
 
-    const handleOffer = async ({ room, offer, from }) => {
+    const handleOffer = async ({ room, offer, from, callType: offeredCallType }) => {
       if (room !== signalingRoomId || from === normalizedCurrentUserEmail) return;
+      const nextCallType = normalizeCallType(offeredCallType);
       setIncomingOffer(offer);
       setIncomingFrom(from || peerLabel);
+      setIncomingCallType(nextCallType);
+      setCallType(nextCallType);
+      setRemoteMediaMode(nextCallType === 'audio' ? 'audio-only' : 'camera');
       setCallStatus('ringing');
       setCallError('');
     };
@@ -1109,7 +1133,7 @@ export default function VideoCall({
   return (
     <section
       ref={panelRef}
-      className={`vc-panel ${compact ? 'vc-panel-compact' : ''} ${isCallActive ? 'vc-panel-live' : ''} ${isFullscreen ? 'vc-panel-fullscreen' : ''} ${isFloating ? 'vc-panel-floating' : ''}`}
+      className={`vc-panel ${compact ? 'vc-panel-compact' : ''} ${isCallActive ? 'vc-panel-live' : ''} ${(callType === 'audio' || effectiveIncomingCallType === 'audio') ? 'vc-panel-audio' : ''} ${isFullscreen ? 'vc-panel-fullscreen' : ''} ${isFloating ? 'vc-panel-floating' : ''}`}
       style={
         isFloating && compact
           ? {
@@ -1124,7 +1148,7 @@ export default function VideoCall({
       <div className="vc-header" onPointerDown={startDragging}>
         <div>
           <div className="vc-kicker">{compact ? 'Call controls' : 'Private call'}</div>
-          <h3>{compact ? peerLabel : `Video and audio with ${peerLabel}`}</h3>
+          <h3>{compact ? peerLabel : `${callType === 'audio' ? 'Audio' : 'Video'} call with ${peerLabel}`}</h3>
         </div>
         <div className={`vc-status ${isCallActive ? 'live' : ''}`}>
           <span>{statusLabel}</span>
@@ -1138,7 +1162,7 @@ export default function VideoCall({
 
       {hasIncomingRequest ? (
         <div className="vc-incoming">
-          <span>{incomingFrom || peerLabel} wants to start a call.</span>
+          <span>{effectiveIncomingFrom || peerLabel} wants to start an {effectiveIncomingCallType} call.</span>
           <div className="vc-inline-actions">
             <button type="button" className="vc-btn vc-btn-primary" onClick={acceptCall}>
               <Phone size={16} />
@@ -1156,11 +1180,21 @@ export default function VideoCall({
         <button
           type="button"
           className="vc-btn vc-btn-primary"
-          onClick={startCall}
+          onClick={() => startCall('audio')}
           disabled={!canCall || isCallActive}
         >
           <Phone size={16} />
-          Start call
+          Audio call
+        </button>
+
+        <button
+          type="button"
+          className="vc-btn vc-btn-ghost"
+          onClick={() => startCall('video')}
+          disabled={!canCall || isCallActive}
+        >
+          <Video size={16} />
+          Video call
         </button>
 
         <button
@@ -1229,7 +1263,11 @@ export default function VideoCall({
             <div className="vc-video-label">{peerLabel}</div>
             <video ref={remoteVideoRef} autoPlay playsInline className={`vc-video vc-${remoteMediaMode} ${remoteVideoIsPortrait ? 'vc-video-portrait' : ''}`} />
             {!hasRemotePreview ? (
-              <div className="vc-video-empty">Waiting for remote stream</div>
+              <div className="vc-video-empty">
+                {callType === 'audio'
+                  ? (callStatus === 'connected' ? `${peerLabel} is on the audio call` : `Waiting for ${peerLabel}`)
+                  : 'Waiting for remote stream'}
+              </div>
             ) : null}
           </div>
 

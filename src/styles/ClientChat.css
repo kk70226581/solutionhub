@@ -3261,3 +3261,36 @@ video {
   .client-chat-page .chat-layout.mobile-pane-expert .expert-card { display:flex; height:auto; min-height:0; max-height:none; }
   .client-chat-page .chat-layout.mobile-pane-chat .chat-section { height:min(calc(100dvh - 134px), 800px); }
 }
+
+/* Voice/video calling stays inside the conversation without changing the page palette. */
+.client-chat-page .chat-call-strip {
+  flex: 0 0 auto;
+  padding: 8px 10px 0;
+  min-width: 0;
+}
+
+.client-chat-page .chat-call-strip .vc-panel {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #101827;
+}
+
+.client-chat-page .chat-call-strip .vc-footer {
+  display: none;
+}
+
+.client-chat-page .chat-call-strip .vc-panel-compact.vc-panel-live {
+  min-height: 0;
+  max-height: min(48vh, 420px);
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .client-chat-page .chat-call-strip { padding: 7px 7px 0; }
+  .client-chat-page .chat-call-strip .vc-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .client-chat-page .chat-call-strip .vc-status { white-space: normal; }
+}
